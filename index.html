@@ -1373,7 +1373,7 @@ async function fbGetU(){
 }
 let _msReady=false;
 function startListener(){
-  db.collection('cases').orderBy('createdAt','desc').onSnapshot(s=>{
+  db.collection('cases').orderBy('openDate','desc').onSnapshot(s=>{
     cc=s.docs.map(d=>({id:d.id,...d.data()}));
     // Apply data restriction for non-admin users (multi-select arrays)
     if(cu&&cu.role!=='admin'&&cu.role!=='superadmin'&&cu.username!=='admin'){
