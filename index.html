@@ -890,6 +890,7 @@ async function hashPw(pw){
   <div id="pg-settings" class="pg">
     <div class="stitle"><h2>⚙️ Settings</h2>
       
+      
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start">
 
@@ -1171,7 +1172,7 @@ const HIER_KEY_MAP={};
   HIER_KEY_MAP['Bengaluru Region']='Bengaluru';
 })();
 
-const DEPTS=["Shari'ah Advisory Board (Ifta Department)", "Dar-ul-Ifta Ahl-e-Sunnat", "Jami'ah-tul-Madinah Department", "Madrasa-tul-Madinah Department", "Madrasa-tul-Madinah for Adults", "Faizan Online Academy", "Department of Qaflah", "Dar-us-Sunnah Department", "Department for Good Deeds", "Al Madinah-tul-Ilmiyyah (Islamic Research Centre)", "Translation Department", "Department for Salah Timings", "Department Emam-Masajid", "Khuddam-ul-Masajid wal Madaris ul Madinah Department", "Department of Education", "Medical Coordination Department", "Homeopathic Coordination Department", "Agriculture and Livestock Coordination Department", "Herbal Medicine Practitioner Coordination Department", "Awqaf Coordination Department", "Scholars Coordination Department", "Department of Mazaraat-e-Awliya", "Personalities Coordination Department", "Traders Coordination Department", "Lawyers Coordination Department", "Transport Coordination Department", "Showbiz Coordination Department", "Sports Coordination Department", "Media Department", "Faizan-e-Murshid Department", "Social Media Coordination Department", "Muhbbat Barhao Department", "Al-Madinah Library Department", "Faizan-e-Madinah Department", "Courses Department", "Prisoners Reformation Coordination Department", "Special Persons Department", "Finance Department", "Donation Box Department", "Rural Areas Department", "Shrouding and Burial Department", "Department of Congregational Sacrifice", "Hides Department", "Sacred Pages Department", "Donation Cells Department", "Ruhaani Ilaj Department", "Ramadan I'tikaf Department", "Hajj and Umrah Department", "Weekly Ijtima' Department", "Weekly Madani Muzakarah Department", "Ushr Department", "Maktaba-tul-Madinah Department", "Taqseem-e-Rasaail Department", "Mahafil-e-Na't Department", "Quality Enhancement Department", "International Travel Department", "Faizan Rehabilitation Centre", "Data Analytics Department", "Language Department", "Security Department", "Tree Plantation Department", "Sehra-e-Madinah Department", "Public Relationship Management", "Legal Aid Department", "Faizan Global Relief Foundation", "Professionals' Department", "Marketing Department", "Social Media Department", "Research, Training and Development", "Faizan Islamic School System", "Faizan Education Network", "Faizan-e-Islam Department", "Dar-ul-Madinah Islamic School and College", "Dar-ul-Madinah University", "Faizan Weekend Islamic School", "Madani Channel", "I.T. Department", "Property and Construction Department", "New Societies Department", "Langar-e-Razawiyyah Department", "H.R. Department"];
+const DEPTS=["Central Chain", "Courses Department", "Department of Qaflah", "Donation Cells Department", "FGN Channel", "Finance Department", "GNOA Department", "Garelu Sadqa Box (GSB)", "H.R. Department", "Hajj and Umrah Department", "Imam Masajid", "Islahe Amal", "Jami'ah-tul-Madinah Department", "Khuddam-ul-Masajid wal Madaris ul Madinah Department", "MTM Balighan", "Madani Atiyat Box (M.A.B)", "Madani Atiyyat Box (MAB)", "Madrasa-tul-Madinah Department", "Madrasa-tul-Madinah for Adults", "Majlis Etekaf", "Majlis HR", "Majlis Muawinat", "Maktaba-tul-Madinah Department", "Ruhaani Ilaj Department", "SHOBA IMAM-E-MASAJID", "Sharai Rahnumai Desk", "Ushr Department", "Waqf Muballig", "Wekly Ijtima", "Hind Mushawarat Office (HMO)", "Darul Madinah", "Darus Sunnah", "Faizan E Madinah", "Muawanat Baraye Islami Behan", "Reporting Desk", "Other", "G.N.R.F. Department", "TIBBI ILAJ", "I.T. Majlis", "Jami'ah-tul-Madinah Girls Department", "Madrasa-tul-Madinah Girls Department", "Property Department", "Audit Majlis", "Donation Cell Department", "Haftawar Ijtema", "Majlis Atekaf", "Purchase Department", "Education Department", "jadwal majlis", "Special Person", "Majlis Tajiran", "Majlis Rabita Bil Ulama", "Darul Ifta Ahle Sunnat", "GNRF Department"];
 
 // ===== DEPARTMENT NAME MAPPING (old → new) =====
 const DEPT_MAP = {
@@ -1955,9 +1956,11 @@ function rRegCards(){
     if(!rs[rk])rs[rk]={t:0,pz:0,po:0,mt:0,'if':0,cl:0};
     rs[rk].t++;
     if(c.status==='closed')rs[rk].cl++;
-    if(c.status==='pending_z')rs[rk].pz++;
-    if(c.status==='pending_o')rs[rk].po++;
-    if(c.status==='meeting')rs[rk].mt++;
+    else if(c.status==='pending_z')rs[rk].pz++;
+    else if(c.status==='pending_o')rs[rk].po++;
+    else if(c.status==='meeting')rs[rk].mt++;
+    else if(c.status==='ifta')rs[rk]['if']=(rs[rk]['if']||0)+1;
+    else rs[rk].pz++;
     if(c.status==='ifta')rs[rk]['if']++;
     // Tawan
     const gs=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]);
@@ -5218,6 +5221,199 @@ function openDelTool(){
   document.getElementById('delModal').style.display='flex';
 }
 </script>
+
+
+<!-- EXCEL IMPORT TOOL -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden;margin:auto">
+    <div style="background:linear-gradient(135deg,#1565c0,#0d47a1);padding:16px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;font-size:.95rem">📥 Excel Import Tool — 2024/2025 Data</span>
+      <button onclick="document.getElementById('importModal').style.display='none'" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:9px;padding:12px;margin-bottom:16px;font-size:.8rem;color:#1565c0">
+        ℹ️ Excel file upload karo (<b>Hind_Sharai_Rahnumai_Desk_2024_2025_corrected.xlsx</b>) — 2024 aur 2025 ke cases automatically Firebase mein import ho jayenge.
+        Duplicate case numbers skip ho jayenge.
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:.82rem;font-weight:700;color:#1565c0;display:block;margin-bottom:6px">📂 Excel File Select Karo:</label>
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="padding:8px;border:2px dashed #90caf9;border-radius:8px;width:100%;font-size:.8rem;cursor:pointer">
+      </div>
+      <div id="importStatus" style="margin-bottom:14px;font-size:.82rem;color:#607090;min-height:24px"></div>
+      <div id="importPreview" style="max-height:200px;overflow-y:auto;margin-bottom:14px;font-size:.75rem;border:1px solid #e0e6f0;border-radius:8px;padding:10px;display:none"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="importParse()" id="importParseBtn" style="padding:9px 18px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700">🔍 Parse & Preview</button>
+        <button onclick="importRun()" id="importRunBtn" style="padding:9px 18px;background:#2e7d32;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700;display:none">📥 Import to Firebase</button>
+        <button onclick="document.getElementById('importModal').style.display='none'" style="padding:9px 18px;background:#fff;border:1px solid #e0e6f0;color:#607090;border-radius:8px;cursor:pointer;font-size:.82rem">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+var _importRows = [];
+
+// Excel serial date to ISO string
+function excelDateToISO(serial){
+  if(!serial || isNaN(serial)) return '';
+  var d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  var y = d.getUTCFullYear();
+  var m = String(d.getUTCMonth()+1).padStart(2,'0');
+  var day = String(d.getUTCDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
+// Status mapping Excel → Dashboard
+function mapStatus(s){
+  if(!s) return 'pending_z';
+  var sv = s.toString().trim();
+  // Agar numeric hai (date serial) to yeh status nahi hai — pending_z return karo
+  if(!isNaN(sv) && sv !== '') return 'pending_z';
+  var sl = sv.toLowerCase();
+  if(sl==='closed') return 'closed';
+  if(sl.includes('ifta')) return 'ifta';
+  if(sl.includes('meeting')) return 'meeting';
+  if(sl.includes('office')) return 'pending_o';
+  if(sl.includes('zimmedar') || sl.includes('pending')) return 'pending_z';
+  return 'pending_z';
+}
+
+async function importParse(){
+  var fileInput = document.getElementById('importFile');
+  var status = document.getElementById('importStatus');
+  var preview = document.getElementById('importPreview');
+  if(!fileInput.files[0]){status.innerHTML='❌ Pehle file select karo!';return;}
+  status.innerHTML='⏳ File parse kar raha hoon...';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array'});
+      _importRows = [];
+      var sheets = ['2024','2025'];
+      sheets.forEach(function(sheetName){
+        if(!wb.Sheets[sheetName]) return;
+        var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:''});
+        rows.forEach(function(r){
+          var caseNo = (r['Case No']||r['Case No ']||'').toString().trim();
+          if(!caseNo) return;
+          var openDateRaw = r['Case Opening Date ']||r['Case Opening Date']||'';
+          var closeDateRaw = r['Closing Date']||r['Closing Date ']||'';
+          var openDate = (typeof openDateRaw==='number') ? excelDateToISO(openDateRaw) : (openDateRaw||'').toString().trim();
+          var closeDate = (typeof closeDateRaw==='number') ? excelDateToISO(closeDateRaw) : (closeDateRaw||'').toString().trim();
+          var yr = (r['Years ']||r['Years']||r['Year']||'').toString().trim();
+          if(!yr && openDate) yr = openDate.substring(0,4);
+          var dept = (r['Department (Multiple select)']||r['Department']||'').toString().trim();
+          _importRows.push({
+            caseNo: caseNo,
+            openDate: openDate,
+            closeDate: closeDate,
+            year: yr,
+            region: (r['Region']||'').toString().trim(),
+            state: (r['State']||'').toString().trim(),
+            division: (r['Divison']||r['Division']||'').toString().trim(),
+            district: (r['District']||'').toString().trim(),
+            city: (r['City']||'').toString().trim(),
+            dept: dept,
+            depts: dept ? dept.split(',').map(function(d){return d.trim();}).filter(Boolean) : [],
+            subject: (r['Subject']||'').toString().trim(),
+            referredBy: (r['Referred By']||r['Referred by']||'').toString().trim(),
+            mufattish: (r['Investigator Name']||'').toString().trim(),
+            rahnumai: (r['Rahnumai Text']||'').toString().trim(),
+            detail: (r['Case Details']||'').toString().trim(),
+            remarks: (r['Remark']||r['Remarks']||'').toString().trim(),
+            status: mapStatus(r['Status']||''),
+            name: '-',
+            mobile: '',
+          });
+        });
+      });
+      if(_importRows.length===0){
+        status.innerHTML='❌ Koi rows nahi mili! Sheet names check karo (2024, 2025 hone chahiye).';
+        return;
+      }
+      // Check duplicates against existing cases
+      var existing = (typeof cc !== 'undefined' ? cc : []);
+      var existingNos = {};
+      existing.forEach(function(c){if(c.caseNo) existingNos[c.caseNo.trim().toLowerCase()]=true;});
+      var newRows = _importRows.filter(function(r){return !existingNos[r.caseNo.toLowerCase()];});
+      var dupRows = _importRows.length - newRows.length;
+      _importRows = newRows;
+      preview.style.display='block';
+      preview.innerHTML = '<div style="font-weight:700;color:#1565c0;margin-bottom:6px">📋 Preview — First 10 rows:</div>'
+        + _importRows.slice(0,10).map(function(r,i){
+          return '<div style="padding:3px 0;border-bottom:1px solid #f0f4f8;font-size:.72rem">'
+            +'<b style="color:#1565c0">'+(i+1)+'.</b> '
+            +'<b>'+r.caseNo+'</b> | '
+            +r.openDate+' | '
+            +r.region+' | '
+            +r.state+' | '
+            +'<span style="color:'+( r.status==='closed'?'green':'red')+'">'+r.status+'</span>'
+            +'</div>';
+        }).join('');
+      status.innerHTML = '✅ <b>'+_importRows.length+' new cases</b> ready to import'+(dupRows>0?' | <span style="color:orange">'+dupRows+' duplicates skip honge</span>':'')+'';
+      document.getElementById('importRunBtn').style.display = _importRows.length > 0 ? 'inline-block' : 'none';
+    }catch(err){
+      status.innerHTML = '❌ Parse error: '+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(fileInput.files[0]);
+}
+
+async function importRun(){
+  if(!_importRows.length){alert('Pehle Parse karo!');return;}
+  if(!confirm(_importRows.length+' cases Firebase mein import karne hain?'))return;
+  var btn = document.getElementById('importRunBtn');
+  var status = document.getElementById('importStatus');
+  btn.disabled=true;
+  btn.textContent='⏳ Importing...';
+  var done=0, failed=0;
+  for(var i=0;i<_importRows.length;i++){
+    status.innerHTML='📥 Importing '+(i+1)+'/'+_importRows.length+': '+_importRows[i].caseNo+'...';
+    try{
+      var row = _importRows[i];
+      row.createdAt = new Date().toISOString();
+      row.updatedAt = new Date().toISOString();
+      await db.collection('cases').add(row);
+      done++;
+    }catch(e){
+      failed++;
+      console.error('Failed:',_importRows[i].caseNo, e);
+    }
+  }
+  status.innerHTML='✅ Import complete! <b>'+done+' cases added</b>'+(failed>0?' | ❌ '+failed+' failed':'')+'.<br>Page refresh hoga...';
+  btn.style.display='none';
+  _importRows=[];
+  setTimeout(function(){
+    document.getElementById('importModal').style.display='none';
+    location.reload();
+  },2500);
+}
+
+function openImportTool(){
+  _importRows=[];
+  document.getElementById('importStatus').innerHTML='';
+  document.getElementById('importPreview').style.display='none';
+  document.getElementById('importPreview').innerHTML='';
+  document.getElementById('importRunBtn').style.display='none';
+  document.getElementById('importParseBtn').disabled=false;
+  document.getElementById('importParseBtn').textContent='🔍 Parse & Preview';
+  document.getElementById('importFile').value='';
+  document.getElementById('importModal').style.display='flex';
+}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
 
 </body>
 </html>
