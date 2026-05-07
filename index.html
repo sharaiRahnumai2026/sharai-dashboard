@@ -888,7 +888,9 @@ async function hashPw(pw){
 
   <!-- SETTINGS -->
   <div id="pg-settings" class="pg">
-    <div class="stitle"><h2>⚙️ Settings</h2></div>
+    <div class="stitle"><h2>⚙️ Settings</h2>
+      
+    </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start">
 
     <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
@@ -1375,17 +1377,43 @@ let _msReady=false;
 function startListener(){
   db.collection('cases').orderBy('openDate','desc').onSnapshot(s=>{
     cc=s.docs.map(d=>({id:d.id,...d.data()}));
-    // Apply data restriction for non-admin users (multi-select arrays)
+    // Apply data restriction: REGION required match, DEPT soft match
     if(cu&&cu.role!=='admin'&&cu.role!=='superadmin'&&cu.username!=='admin'){
       var dr=cu.dataRestrict||{};
-      // SIMPLE CLEAN FILTER: Only region matters. If region set, show only those cases.
-      if(dr.regions&&dr.regions.length>0){
+      var normDR=function(s){return (s||'').trim().toLowerCase();};
+      var drRegs=(dr.regions||[]).map(normDR);
+      var drSts=(dr.states||[]).map(normDR);
+      var drDivs=(dr.divisions||[]).map(normDR);
+      var drDists=(dr.districts||[]).map(normDR);
+      var drDepts=(dr.depts||[]).map(normDR);
+      var hasAnyFilter=drRegs.length>0||drSts.length>0||drDivs.length>0||drDists.length>0||drDepts.length>0;
+      if(hasAnyFilter){
         cc=cc.filter(function(c){
-          var cReg=(c.region||'').trim().toLowerCase();
-          return dr.regions.some(function(r){
-            var rr=(r||'').trim().toLowerCase();
-            return cReg===rr;
-          });
+          var norm=normDR;
+          // REGION — strict: agar region set hai to case ki region match karni chahiye
+          if(drRegs.length>0){
+            if(!drRegs.some(function(r){return norm(c.region)===r;}))return false;
+          }
+          // STATE — soft: agar set hai aur case ki state bhi filled hai to match karo, warna pass
+          if(drSts.length>0&&c.state&&c.state.trim()){
+            if(!drSts.some(function(s){return norm(c.state)===s;}))return false;
+          }
+          // DIVISION — soft: agar set hai aur case ki division bhi filled hai to match karo, warna pass
+          if(drDivs.length>0&&c.division&&c.division.trim()){
+            if(!drDivs.some(function(d){return norm(c.division)===d;}))return false;
+          }
+          // DISTRICT — soft: agar set hai aur case ka district bhi filled hai to match karo, warna pass
+          if(drDists.length>0&&c.district&&c.district.trim()){
+            if(!drDists.some(function(d){return norm(c.district)===d;}))return false;
+          }
+          // DEPARTMENT — soft: agar set hai aur case ka dept bhi filled hai to match karo, warna pass
+          if(drDepts.length>0){
+            var cDepts=(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[]));
+            if(cDepts.length>0){
+              if(!cDepts.some(function(d){return drDepts.some(function(dd){return norm(d)===dd;});}))return false;
+            }
+          }
+          return true;
         });
       }
     }
@@ -2945,7 +2973,6 @@ function viewC(id){
 // Users
 function rUsers(){
   const rL={admin:'Administrator',staff:'Staff',viewer:'Viewer'};
-  const dL={'admin':'🔑 Admin','superadmin':'⭐ Super Admin','nazim_ala':'🏛️ Nazim e Ala','nazim':'📋 Nazim','naib_nazim':'📋 Naib Nazim','muhtamim':'🗂️ Muhtamim','naib_muhtamim':'🗂️ Naib Muhtamim','mufattish':'🔍 Mufattish','sael_zimmedar':'📞 Sael Zimmedar','zimmedar':'✅ Zimmedar','viewer_basic':'👁️ Viewer Basic','viewer_report':'📊 Viewer+Reports','viewer_tawan':'💰 Viewer+Tawan'};
   document.getElementById('uList').innerHTML=uc.map(u=>{
     const act=u.active!==false;
     const dr=u.dataRestrict||{};
@@ -2959,13 +2986,19 @@ function rUsers(){
           🔒 <b>Data Restrict:</b> ${drKeys.map(function(k){var v=dr[k];var display=Array.isArray(v)?v.join(', '):v;return (drLabels[k]||k)+': <b>'+display+'</b>';}).join(' | ')}
         </div>`
       :`<div style="margin-top:4px;font-size:.64rem;color:#aaa">🔓 No restriction (sab data dikhega)</div>`;
-    return`<div class="ucard ${u.role==='admin'?'adm':''}">
+    return`<div class="ucard ${u.role==='admin'?'adm':''}" style="${!act?'opacity:.7;border-left-color:var(--red)':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:38px;height:38px;border-radius:50%;background:${u.role==='admin'?'linear-gradient(135deg,var(--orange),#ff8f00)':'linear-gradient(135deg,var(--blue),var(--blue3))'};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;flex-shrink:0">${(u.fullname||'?').charAt(0).toUpperCase()}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${!act?'#bdbdbd':u.role==='admin'?'linear-gradient(135deg,var(--orange),#ff8f00)':'linear-gradient(135deg,var(--blue),var(--blue3))'};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;flex-shrink:0">${(u.fullname||'?').charAt(0).toUpperCase()}</div>
           <div>
-            <div style="font-weight:700;font-size:.83rem">${u.fullname} <span class="badge ${u.role==='admin'?'bo':'bb'}">${dL[u.designation]||rL[u.role]||u.role}</span> <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${act?'var(--green)':'var(--red)'};margin-left:2px"></span></div>
+            <div style="font-weight:700;font-size:.83rem">
+              ${u.fullname}
+              <span class="badge ${u.role==='admin'?'bo':'bb'}">${rL[u.role]||u.role}</span>
+              ${act?'<span class="badge bg" style="font-size:.58rem">✅ Active</span>':'<span class="badge br" style="font-size:.58rem">❌ Inactive</span>'}
+              ${u.mustChangePw?'<span class="badge by" style="font-size:.58rem">🔑 PW Change Required</span>':''}
+            </div>
             <div style="font-size:.69rem;color:var(--mt)">@${u.username}${u.note?' — '+u.note:''}</div>
+            ${u.createdAt?`<div style="font-size:.62rem;color:#bbb;margin-top:1px">📅 Created: ${u.createdAt.substring(0,10)}</div>`:''}
           </div>
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -2984,13 +3017,11 @@ function rUsers(){
 function openUM(id){
   eUId=id||null;document.getElementById('umTit').textContent=id?'Edit User':'New User';
   if(id){const u=uc.find(x=>x.id===id);if(!u)return;document.getElementById('uUN').value=u.username;document.getElementById('uFN').value=u.fullname;document.getElementById('uPW').value='';document.getElementById('uRl').value=u.role||'viewer';document.getElementById('uAc').value=u.active!==false?'1':'0';document.getElementById('uNt').value=u.note||'';
-    var de=document.getElementById('uDesig');if(de)de.value=u.designation||'';
     sPm(u.perms||{});
-    if(u.designation){setTimeout(applyDesignationPreset,50);}else{var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';}
     var dr=u.dataRestrict||{};
     initUDRestrict(dr);
   }
-  else{['uUN','uFN','uPW','uNt'].forEach(id=>document.getElementById(id).value='');document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';var de=document.getElementById('uDesig');if(de)de.value='';var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';sPm({view:true,search:true});initUDRestrict({});}
+  else{['uUN','uFN','uPW','uNt'].forEach(id=>document.getElementById(id).value='');document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';sPm({view:true,search:true});initUDRestrict({});}
   document.getElementById('mUser').classList.add('open');
 }
 function sPm(p){document.getElementById('pv').checked=!!p.view;document.getElementById('pa').checked=!!p.add;document.getElementById('pe').checked=!!p.edit;document.getElementById('pd').checked=!!(p.del||p.delete);document.getElementById('ps').checked=!!p.search;document.getElementById('pr').checked=!!p.reports;document.getElementById('pu').checked=!!p.users;document.getElementById('pst').checked=!!p.settings;}
@@ -3258,44 +3289,6 @@ function initUDRestrict(savedDR){
   drRenderBox('uDDeptBox', DEPTS, dr.depts||[], '');
 }
 // ===== END USER DATA RESTRICTION =====
-// ===== DESIGNATION PRESET SYSTEM =====
-var DESIG_PRESETS = {
-  'admin':         {role:'admin',  perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},  pages:['dash','cases','newcase','search','reports','tawan','users','settings'], label:'Full access — sab kuch'},
-  'superadmin':    {role:'superadmin', perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true}, pages:['dash','cases','newcase','search','reports','tawan','users','settings'], label:'Full access + Super privileges'},
-  'nazim_ala':     {role:'admin',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:true,settings:false}, pages:['dash','cases','search','reports','tawan','users'],                          label:'Dashboard, Cases, Reports, Tawan, Users'},
-  'nazim':         {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false}, pages:['dash','cases','newcase','search','reports','tawan'],                        label:'Dashboard, Cases, New Case, Reports, Tawan'},
-  'naib_nazim':    {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','newcase','search'],                                           label:'Dashboard, Cases, New Case, Search'},
-  'muhtamim':      {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false}, pages:['dash','cases','newcase','search','reports','tawan'],                        label:'Dashboard, Cases, New Case, Reports, Tawan'},
-  'naib_muhtamim': {role:'staff',  perms:{view:true,add:true,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','newcase','search'],                                          label:'Dashboard, Cases, New Case, Search'},
-  'mufattish':     {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:false,users:false,settings:false}, pages:['dash','cases','newcase','search'],                                          label:'Dashboard, Cases, New Case, Search'},
-  'sael_zimmedar': {role:'staff',  perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','search'],                                                   label:'Dashboard, Cases, Search (View only)'},
-  'zimmedar':      {role:'staff',  perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','search'],                                                   label:'Dashboard, Cases, Search (View only)'},
-  'viewer_basic':  {role:'viewer', perms:{view:true,add:false,edit:false,del:false,search:false,reports:false,users:false,settings:false},pages:['dash'],                                                                   label:'Sirf Dashboard'},
-  'viewer_report': {role:'viewer', perms:{view:true,add:false,edit:false,del:false,search:true,reports:true,users:false,settings:false}, pages:['dash','cases','search','reports'],                                         label:'Dashboard, Cases, Search, Reports'},
-  'viewer_tawan':  {role:'viewer', perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','search','tawan'],                                           label:'Dashboard, Cases, Search, Tawan'},
-};
-
-function applyDesignationPreset(){
-  var desig = document.getElementById('uDesig').value;
-  var preview = document.getElementById('desigPreview');
-  var previewWrap = document.getElementById('desigPreviewWrap');
-  var roleEl = document.getElementById('uRl');
-  if(!desig){ previewWrap.style.display='none'; return; }
-  var preset = DESIG_PRESETS[desig];
-  if(!preset){ previewWrap.style.display='none'; return; }
-  // Set hidden role
-  roleEl.value = preset.role;
-  // Set permissions
-  sPm(preset.perms);
-  // Show preview
-  previewWrap.style.display='block';
-  preview.innerHTML = '<b>📋 '+document.getElementById('uDesig').options[document.getElementById('uDesig').selectedIndex].text+'</b>'
-    +'<div style="margin-top:5px;color:var(--mt)">📱 Pages: <b style="color:var(--bd)">'+preset.label+'</b></div>'
-    +'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
-    +Object.entries(preset.perms).filter(function(e){return e[1];}).map(function(e){return '<span style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7;padding:1px 7px;border-radius:8px;font-size:.65rem">✓ '+e[0]+'</span>';}).join('')
-    +'</div>';
-}
-// ===== END DESIGNATION PRESET SYSTEM =====
 
 function autoPm(){const r=document.getElementById('uRl').value;sPm({admin:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},staff:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false},viewer:{view:true,add:false,edit:false,del:false,search:true,reports:true,users:false,settings:false}}[r]||{});}
 async function saveUser(){
@@ -3332,7 +3325,16 @@ async function saveUser(){
   }
   // Auto-set role from permissions
   var _perms2=gPm();var _autoRole=_perms2.users||_perms2.settings?'admin':(_perms2.add||_perms2.edit||_perms2.del?'staff':'viewer');document.getElementById('uRl').value=_autoRole;
-  var desigVal='';const d={username:un,fullname:fn,password:finalPw,role:_autoRole,designation:desigVal,active:document.getElementById('uAc').value==='1',note:document.getElementById('uNt').value.trim(),perms:gPm(),dataRestrict:cleanDR,updatedAt:new Date().toISOString()};
+  var _now=new Date().toISOString();
+  var d;
+  if(eUId){
+    var _existU=uc.find(function(x){return x.id===eUId;});
+    d={username:un,fullname:fn,password:finalPw,role:_autoRole,active:document.getElementById('uAc').value==='1',note:document.getElementById('uNt').value.trim(),perms:gPm(),dataRestrict:cleanDR,updatedAt:_now,createdAt:(_existU&&_existU.createdAt)||_now};
+    if(pw) d.mustChangePw=true;
+    else d.mustChangePw=(_existU&&_existU.mustChangePw)||false;
+  } else {
+    d={username:un,fullname:fn,password:finalPw,role:_autoRole,active:document.getElementById('uAc').value==='1',note:document.getElementById('uNt').value.trim(),perms:gPm(),dataRestrict:cleanDR,mustChangePw:true,createdAt:_now,updatedAt:_now};
+  }
   // Use set without merge to completely overwrite (removes old fields like region/sael/division/state)
   try{
     if(eUId) await db.collection('users').doc(eUId).set(d);
@@ -4979,5 +4981,243 @@ function deptClose(){
     </div>
   </div>
 </div>
+
+<!-- MIGRATION TOOL: Hyderabad Region 22/23/24 → Hyderabad Region (Old) -->
+<div id="migModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+    <div style="background:linear-gradient(135deg,#0d47a1,#1976d2);padding:16px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;font-size:.95rem">🔄 Region Migration Tool</span>
+      <button onclick="document.getElementById('migModal').style.display='none'" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:9px;padding:12px;margin-bottom:16px;font-size:.8rem;color:#e65100">
+        ⚠️ Yeh tool <b>Hyderabad Region</b> ke <b>2022, 2023, 2024</b> ke saare cases ko <b>Hyderabad Region (Old)</b> mein move karega.<br><br>
+        Yeh action <b>undo nahi ho sakta</b>. Pehle confirm karo.
+      </div>
+      <div id="migStatus" style="margin-bottom:14px;font-size:.82rem;color:#607090">
+        ⏳ Ready — Neeche button click karo scan karne ke liye...
+      </div>
+      <div id="migList" style="max-height:220px;overflow-y:auto;margin-bottom:14px;font-size:.75rem;border:1px solid #e0e6f0;border-radius:8px;padding:10px;display:none"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="migScan()" id="migScanBtn" style="padding:9px 18px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700">🔍 Scan Cases</button>
+        <button onclick="migRun()" id="migRunBtn" style="padding:9px 18px;background:#e53935;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700;display:none">✅ Confirm Move</button>
+        <button onclick="document.getElementById('migModal').style.display='none'" style="padding:9px 18px;background:#fff;border:1px solid #e0e6f0;color:#607090;border-radius:8px;cursor:pointer;font-size:.82rem">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _migCases = [];
+
+async function migScan(){
+  var btn = document.getElementById('migScanBtn');
+  var status = document.getElementById('migStatus');
+  var listDiv = document.getElementById('migList');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning...';
+  status.innerHTML = '🔍 Firebase se cases fetch kar raha hoon...';
+  try {
+    var snap = await db.collection('cases')
+      .where('region','==','Hyderabad Region')
+      .get();
+    _migCases = [];
+    snap.docs.forEach(function(doc){
+      var d = doc.data();
+      var yr = parseInt(d.year||d.openDate||'0');
+      // year field check
+      var y = d.year ? parseInt(d.year) : 0;
+      // openDate check e.g. "2022-05-01"
+      if(!y && d.openDate) y = parseInt((d.openDate||'').substring(0,4));
+      if(y===2022||y===2023||y===2024){
+        _migCases.push({id:doc.id, caseNo:d.caseNo||doc.id, year:y, openDate:d.openDate||'', name:d.name||'-', status:d.status||'-'});
+      }
+    });
+    if(_migCases.length===0){
+      status.innerHTML = '✅ Koi case nahi mila Hyderabad Region mein 2022/2023/2024 ka!';
+      listDiv.style.display='none';
+      btn.disabled=false;
+      btn.textContent='🔍 Scan Cases';
+      return;
+    }
+    // Show list
+    listDiv.style.display='block';
+    listDiv.innerHTML = _migCases.map(function(c,i){
+      return '<div style="padding:4px 0;border-bottom:1px solid #f0f4f8;display:flex;gap:8px;align-items:center">'
+        +'<span style="color:#1565c0;font-weight:700;min-width:20px">'+(i+1)+'.</span>'
+        +'<span style="font-weight:600;min-width:130px">'+c.caseNo+'</span>'
+        +'<span style="color:#607090;min-width:50px">'+c.year+'</span>'
+        +'<span style="color:#333">'+c.name+'</span>'
+        +'</div>';
+    }).join('');
+    status.innerHTML = '⚠️ <b>'+_migCases.length+' cases</b> mile — Hyderabad Region (Old) mein move honge. Confirm karo!';
+    document.getElementById('migRunBtn').style.display='inline-block';
+    btn.disabled=false;
+    btn.textContent='🔍 Scan Cases';
+  } catch(e){
+    status.innerHTML = '❌ Error: '+e.message;
+    btn.disabled=false;
+    btn.textContent='🔍 Scan Cases';
+  }
+}
+
+async function migRun(){
+  if(!_migCases.length){alert('Pehle Scan karo!');return;}
+  if(!confirm(_migCases.length+' cases ko Hyderabad Region (Old) mein move karna hai? Yeh undo nahi hoga!'))return;
+  var btn = document.getElementById('migRunBtn');
+  var status = document.getElementById('migStatus');
+  btn.disabled=true;
+  btn.textContent='⏳ Moving...';
+  var done=0, failed=0;
+  for(var i=0;i<_migCases.length;i++){
+    var c=_migCases[i];
+    status.innerHTML='⏳ Moving '+( i+1)+'/'+_migCases.length+': '+c.caseNo+'...';
+    try{
+      await db.collection('cases').doc(c.id).update({region:'Hyderabad Region (Old)'});
+      done++;
+    }catch(e){
+      failed++;
+      console.error('Failed:',c.id,e);
+    }
+  }
+  status.innerHTML='✅ Done! <b>'+done+' cases moved</b>'+(failed>0?' | ❌ '+failed+' failed':'')+'.<br>Page refresh hoga...';
+  btn.style.display='none';
+  _migCases=[];
+  setTimeout(function(){
+    document.getElementById('migModal').style.display='none';
+    location.reload();
+  },2500);
+}
+
+function openMigTool(){
+  _migCases=[];
+  document.getElementById('migStatus').innerHTML='⏳ Ready — Neeche button click karo scan karne ke liye...';
+  document.getElementById('migList').style.display='none';
+  document.getElementById('migList').innerHTML='';
+  document.getElementById('migRunBtn').style.display='none';
+  document.getElementById('migScanBtn').disabled=false;
+  document.getElementById('migScanBtn').textContent='🔍 Scan Cases';
+  document.getElementById('migModal').style.display='flex';
+}
+</script>
+
+
+<!-- DELETE TOOL: 2022/2023/2024/2025 cases delete karo -->
+<div id="delModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden">
+    <div style="background:linear-gradient(135deg,#b71c1c,#e53935);padding:16px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;font-size:.95rem">🗑️ Bulk Delete Tool — 2022/2023/2024/2025</span>
+      <button onclick="document.getElementById('delModal').style.display='none'" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:9px;padding:12px;margin-bottom:16px;font-size:.8rem;color:#b71c1c">
+        ⚠️ <b>KHABARDAR!</b> Yeh tool <b>2022, 2023, 2024, 2025</b> ke saare cases <b>permanently delete</b> karega.<br><br>
+        Yeh action <b>bilkul undo nahi ho sakta!</b>
+      </div>
+      <div id="delStatus" style="margin-bottom:14px;font-size:.82rem;color:#607090">
+        ⏳ Ready — Pehle Scan karo...
+      </div>
+      <div id="delList" style="max-height:220px;overflow-y:auto;margin-bottom:14px;font-size:.75rem;border:1px solid #e0e6f0;border-radius:8px;padding:10px;display:none"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="delScan()" id="delScanBtn" style="padding:9px 18px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700">🔍 Scan Cases</button>
+        <button onclick="delRun()" id="delRunBtn" style="padding:9px 18px;background:#b71c1c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700;display:none">🗑️ PERMANENTLY DELETE</button>
+        <button onclick="document.getElementById('delModal').style.display='none'" style="padding:9px 18px;background:#fff;border:1px solid #e0e6f0;color:#607090;border-radius:8px;cursor:pointer;font-size:.82rem">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _delCases = [];
+
+async function delScan(){
+  var btn = document.getElementById('delScanBtn');
+  var status = document.getElementById('delStatus');
+  var listDiv = document.getElementById('delList');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning...';
+  status.innerHTML = '🔍 Cases fetch kar raha hoon...';
+  try {
+    var snap = await db.collection('cases').get();
+    _delCases = [];
+    snap.docs.forEach(function(doc){
+      var d = doc.data();
+      var y = d.year ? parseInt(d.year) : 0;
+      if(!y && d.openDate) y = parseInt((d.openDate||'').substring(0,4));
+      if(y===2022||y===2023||y===2024||y===2025){
+        _delCases.push({id:doc.id, caseNo:d.caseNo||doc.id, year:y, region:d.region||'-', name:d.name||'-'});
+      }
+    });
+    if(_delCases.length===0){
+      status.innerHTML = '✅ Koi case nahi mila 2022/2023/2024/2025 ka!';
+      listDiv.style.display='none';
+      btn.disabled=false;
+      btn.textContent='🔍 Scan Cases';
+      return;
+    }
+    listDiv.style.display='block';
+    listDiv.innerHTML = '<div style="font-weight:700;color:#b71c1c;margin-bottom:6px">⚠️ Yeh '+_delCases.length+' cases delete honge:</div>'
+      + _delCases.map(function(c,i){
+      return '<div style="padding:4px 0;border-bottom:1px solid #ffebee;display:flex;gap:8px;align-items:center">'
+        +'<span style="color:#b71c1c;font-weight:700;min-width:25px">'+(i+1)+'.</span>'
+        +'<span style="font-weight:600;min-width:130px">'+c.caseNo+'</span>'
+        +'<span style="color:#607090;min-width:45px">'+c.year+'</span>'
+        +'<span style="color:#333;min-width:120px">'+c.region+'</span>'
+        +'<span style="color:#555">'+c.name+'</span>'
+        +'</div>';
+    }).join('');
+    status.innerHTML = '⚠️ <b>'+_delCases.length+' cases</b> mile — DELETE honge permanently!';
+    document.getElementById('delRunBtn').style.display='inline-block';
+    btn.disabled=false;
+    btn.textContent='🔍 Scan Cases';
+  } catch(e){
+    status.innerHTML = '❌ Error: '+e.message;
+    btn.disabled=false;
+    btn.textContent='🔍 Scan Cases';
+  }
+}
+
+async function delRun(){
+  if(!_delCases.length){alert('Pehle Scan karo!');return;}
+  if(!confirm('⚠️ FINAL CONFIRM: '+_delCases.length+' cases PERMANENTLY DELETE honge! Wapas nahi aayenge! Pakka?'))return;
+  var btn = document.getElementById('delRunBtn');
+  var status = document.getElementById('delStatus');
+  btn.disabled=true;
+  btn.textContent='⏳ Deleting...';
+  var done=0, failed=0;
+  // Batch delete in groups of 500
+  var batch = db.batch();
+  var batchCount = 0;
+  for(var i=0;i<_delCases.length;i++){
+    status.innerHTML='🗑️ Deleting '+(i+1)+'/'+_delCases.length+': '+_delCases[i].caseNo+'...';
+    try{
+      await db.collection('cases').doc(_delCases[i].id).delete();
+      done++;
+    }catch(e){
+      failed++;
+      console.error('Failed:',_delCases[i].id,e);
+    }
+  }
+  status.innerHTML='✅ Done! <b>'+done+' cases deleted</b>'+(failed>0?' | ❌ '+failed+' failed':'')+'.<br>Page refresh hoga...';
+  btn.style.display='none';
+  _delCases=[];
+  setTimeout(function(){
+    document.getElementById('delModal').style.display='none';
+    location.reload();
+  },2500);
+}
+
+function openDelTool(){
+  _delCases=[];
+  document.getElementById('delStatus').innerHTML='⏳ Ready — Pehle Scan karo...';
+  document.getElementById('delList').style.display='none';
+  document.getElementById('delList').innerHTML='';
+  document.getElementById('delRunBtn').style.display='none';
+  document.getElementById('delScanBtn').disabled=false;
+  document.getElementById('delScanBtn').textContent='🔍 Scan Cases';
+  document.getElementById('delModal').style.display='flex';
+}
+</script>
+
 </body>
 </html>
