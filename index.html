@@ -1961,7 +1961,6 @@ function rRegCards(){
     else if(c.status==='meeting')rs[rk].mt++;
     else if(c.status==='ifta')rs[rk]['if']=(rs[rk]['if']||0)+1;
     else rs[rk].pz++;
-    if(c.status==='ifta')rs[rk]['if']++;
     // Tawan
     const gs=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]);
     if(gs.indexOf('tawan')>-1){
@@ -5402,6 +5401,12 @@ function openImportTool(){
   document.getElementById('importModal').style.display='flex';
 }
 </script>
+
+
+
+
+
+
 
 
 
