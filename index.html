@@ -1007,7 +1007,8 @@ async function hashPw(pw){
         </div>
       </div>
     </div>
-    <div id="rpC" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:13px;align-items:start;direction:ltr"></div>
+    <div id="rpRC" style="margin-bottom:14px"></div>
+    <div id="rpC" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:start;direction:ltr"></div>
   </div>
 
   <!-- USERS -->
@@ -1022,7 +1023,7 @@ async function hashPw(pw){
   <!-- SETTINGS -->
   <div id="pg-settings" class="pg">
     <div class="stitle"><h2>⚙️ Settings</h2></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;grid-auto-rows:auto">
 
     <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
       <h3 style="color:var(--bd);margin-bottom:12px;font-size:.87rem">🖼️ Company Logo</h3>
@@ -1043,7 +1044,7 @@ async function hashPw(pw){
       </div>
     </div>
 
-    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
+    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);grid-column:1/-1">
       <h3 style="color:var(--bd);margin-bottom:4px;font-size:.87rem">🗺️ Location Manager</h3>
       <p style="font-size:.7rem;color:var(--mt);margin-bottom:10px">Region → State → Division → District add/remove karein</p>
       <div style="display:flex;flex-direction:column;gap:9px">
@@ -1090,7 +1091,7 @@ async function hashPw(pw){
     </div>
 
     <!-- DEPARTMENT MANAGER -->
-    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
+    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);grid-column:1/-1">
       <h3 style="color:var(--bd);margin-bottom:4px;font-size:.87rem">🏢 Department Manager</h3>
       <p style="font-size:.7rem;color:var(--mt);margin-bottom:6px">Departments add/edit/remove karein</p>
 
@@ -1128,7 +1129,7 @@ async function hashPw(pw){
     </div>
 
     <!-- SAEL MANAGER -->
-    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
+    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);grid-column:1/-1">
       <h3 style="color:var(--bd);margin-bottom:4px;font-size:.87rem">📋 Referred By Manager <span style="font-weight:400;font-size:.73rem;color:var(--mt)">(مجلس / شعبہ)</span></h3>
       <p style="font-size:.7rem;color:var(--mt);margin-bottom:10px">Add/edit/remove Referred By options</p>
       <div style="display:flex;gap:5px;margin-bottom:10px">
@@ -3058,25 +3059,33 @@ function rRep(){
   regionCards += '<div style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:10px;padding:14px 16px;color:#fff;grid-column:1/-1">'
     +'<div style="font-weight:800;font-size:.9rem;margin-bottom:10px">📊 Grand Total — Sab Regions ('+filterLabel+')</div>'
     +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">'
-    +'<div><div style="font-size:1.5rem;font-weight:800;color:#ff9800">'+gSab+'</div><div style="font-size:.65rem;opacity:.8;direction:ltr;font-family:var(--urdu-font)">سابقہ پینڈنگ</div></div>'
-    +'<div><div style="font-size:1.5rem;font-weight:800;color:#90caf9">'+gMou+'</div><div style="font-size:.65rem;opacity:.8;direction:ltr;font-family:var(--urdu-font)">موجودہ مسائل</div></div>'
-    +'<div><div style="font-size:1.5rem;font-weight:800;color:#fff">'+gKul+'</div><div style="font-size:.65rem;opacity:.8">Total Cases</div></div>'
-    +'<div><div style="font-size:1.5rem;font-weight:800;color:#69f0ae">'+gHal+'</div><div style="font-size:.65rem;opacity:.8">کل حل شدہ</div></div>'
-    +'<div><div style="font-size:1.5rem;font-weight:800;color:#f44336">'+gPending+'</div><div style="font-size:.65rem;opacity:.8;direction:ltr;font-family:var(--urdu-font)">پینڈنگ مسائل</div></div>'
+    +'<div style="cursor:pointer" onclick="gtClick(\'abiq\')" title="Saabiqah Pending dekhein"><div style="font-size:1.5rem;font-weight:800;color:#ff9800">'+gSab+'</div><div style="font-size:.65rem;opacity:.8;direction:ltr;font-family:var(--urdu-font)">سابقہ پینڈنگ</div></div>'
+    +'<div style="cursor:pointer" onclick="gtClick(\'mojuda\')" title="Mojuda Masail dekhein"><div style="font-size:1.5rem;font-weight:800;color:#90caf9">'+gMou+'</div><div style="font-size:.65rem;opacity:.8;direction:ltr;font-family:var(--urdu-font)">موجودہ مسائل</div></div>'
+    +'<div style="cursor:pointer" onclick="gtClick(\'all\')" title="Tamam cases dekhein"><div style="font-size:1.5rem;font-weight:800;color:#fff">'+gKul+'</div><div style="font-size:.65rem;opacity:.8">Total Cases</div></div>'
+    +'<div style="cursor:pointer" onclick="gtClick(\'closed\')" title="Closed cases dekhein"><div style="font-size:1.5rem;font-weight:800;color:#69f0ae">'+gHal+'</div><div style="font-size:.65rem;opacity:.8">کل حل شدہ</div></div>'
+    +'<div style="cursor:pointer" onclick="gtClick(\'pending\')" title="Pending cases dekhein"><div style="font-size:1.5rem;font-weight:800;color:#f44336">'+gPending+'</div><div style="font-size:.65rem;opacity:.8;direction:ltr;font-family:var(--urdu-font)">پینڈنگ مسائل</div></div>'
     +'</div></div>';
   regionCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
 
   var h = regionCards;
-  var bar2=function(v,col,mx){ return '<div style="flex:1;background:#f0f4f8;border-radius:4px;height:9px;overflow:hidden"><div style="width:'+Math.round(v/(mx||1)*100)+'%;height:100%;background:'+col+';border-radius:4px;min-width:3px"></div></div>'; };
-  h+='<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>';
-  h+='<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>';
-  h+='<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>';
-  h+='<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>';
-  var tRm=tTot-tPd;
-  h+='<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>';
-  var hC=fcc.filter(function(c){return c.guide==='halfia';}), hD=hC.filter(function(c){return c.hSt==='yes';}).length;
-  h+='<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>';
-  document.getElementById('rpC').innerHTML=h;
+  document.getElementById('rpC').innerHTML='';
+  document.getElementById('rpRC').innerHTML = h;
+
+  var tRm = tTot - tPd;
+  var hC = fcc.filter(function(c){ return c.guide==='halfia'; });
+  var hD = hC.filter(function(c){ return c.hSt==='yes'; }).length;
+
+  var cards = [
+    {size: Object.keys(bS).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickStatus(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickRegion(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Math.min(Object.keys(bSt).length, 10) * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Math.min(Object.keys(bD).length, 10) * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;tawan_all&quot;)" title="Tamam Tawan cases"><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_received&quot;)" title="Received Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_pending&quot;)" title="Pending Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>'},
+    {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;halfia_all&quot;)" title="Tamam Halfiya cases"><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_done&quot;)" title="Done cases"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_pending&quot;)" title="Pending cases"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>'}
+  ];
+  // Sort by size descending - biggest first
+  cards.sort(function(a,b){ return b.size - a.size; });
+  document.getElementById('rpC').innerHTML = cards.map(function(c){ return c.html; }).join('');
 }
 
 // Case CRUD
@@ -3733,6 +3742,86 @@ function toggleOldLoc(yr){
   sec.style.display = (yr==='2022'||yr==='2023') ? 'block' : 'none';
 }
 
+// Report card row clicks
+function gtClickStatus(status){
+  doSrch._customFilter=null; doSrch._halfSt=null; doSrch._tawnSt=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  if(MS['ms-sStat']){ MS['ms-sStat'].selected=new Set([status]); msUpdateBtn('ms-sStat'); }
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+function gtClickRegion(region){
+  doSrch._customFilter=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  if(MS['ms-sRg']){ MS['ms-sRg'].selected=new Set([region]); msUpdateBtn('ms-sRg'); }
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+function gtClickState(state){
+  doSrch._customFilter=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  if(MS['ms-sSt']){ MS['ms-sSt'].selected=new Set([state]); msUpdateBtn('ms-sSt'); }
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+function gtClickDept(dept){
+  doSrch._customFilter=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  if(MS['ms-sDp']){ MS['ms-sDp'].selected=new Set([dept]); msUpdateBtn('ms-sDp'); }
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+
+// Grand Total card click — All Cases mein redirect
+function gtClick(type){
+  doSrch._halfSt=null; doSrch._tawnSt=null;
+  doSrch._customFilter=null;
+  // Reset all filters
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){
+    if(MS[id]){ MS[id].selected=new Set(); msUpdateBtn(id); }
+  });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.value='';
+  });
+
+  if(type==='all'){
+    // No filter — show all
+  } else if(type==='closed'){
+    if(MS['ms-sStat']){ MS['ms-sStat'].selected=new Set(['closed']); msUpdateBtn('ms-sStat'); }
+  } else if(type==='pending'){
+    if(MS['ms-sStat']){ MS['ms-sStat'].selected=new Set(['pending_z','pending_o','meeting','ifta']); msUpdateBtn('ms-sStat'); }
+  } else if(type==='abiq'){
+    // Saabiqah = pending cases jo is mahine se pehle khule
+    var thisMonthStart = new Date(); thisMonthStart.setDate(1); thisMonthStart.setHours(0,0,0,0);
+    doSrch._customFilter = function(c){
+      var closed = c.status==='closed';
+      var od = c.openDate ? new Date(c.openDate) : null;
+      return !closed && od && od < thisMonthStart;
+    };
+  } else if(type==='mojuda'){
+    // Moujuda = cases jo is mahine khule hain
+    var thisMonthStart2 = new Date(); thisMonthStart2.setDate(1); thisMonthStart2.setHours(0,0,0,0);
+    doSrch._customFilter = function(c){
+      var od = c.openDate ? new Date(c.openDate) : null;
+      return od && od >= thisMonthStart2;
+    };
+  } else if(type==='tawan_all'){
+    doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('tawan')>-1; };
+  } else if(type==='tawan_received'){
+    doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('tawan')>-1 && c.tawnSt==='closed'; };
+  } else if(type==='tawan_pending'){
+    doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('tawan')>-1 && c.tawnSt!=='closed'; };
+  } else if(type==='halfia_all'){
+    doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('halfia')>-1; };
+  } else if(type==='halfia_done'){
+    doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('halfia')>-1 && (c.halfiaSt==='closed'||c.hSt==='yes'); };
+  } else if(type==='halfia_pending'){
+    doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('halfia')>-1 && c.halfiaSt!=='closed' && c.hSt!=='yes'; };
+  }
+  goPage('search');
+  setTimeout(function(){ doSrch(); }, 200);
+}
+
 function rowClick(e, id){
   // Agar button ya link click hua to modal mat kholo
   if(e.target.closest('button') || e.target.closest('a')) return;
@@ -3912,7 +4001,7 @@ function renderTawan(){
   // Nafila = tTot - tPd (total - received = remaining)
   // Wajiba = tPd (received)
   tbody.innerHTML = filtered.map((c,i)=>`
-    <tr>
+    <tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')">
       <td style="font-weight:800;color:var(--bd)">${i+1}</td>
       <td>${c.mufattish||'—'}</td>
       <td>${c.region||'—'}</td>
