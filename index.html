@@ -467,7 +467,7 @@ async function hashPw(pw){
         <div class="fg">
           <div class="fgr"><label>Case No <span style="color:var(--red)">*</span></label><input id="fCNo" placeholder="Case No daalen..." required style="border-color:var(--red)"></div>
           <div class="fgr"><label>Opening Date</label><input type="date" id="fOD" onchange="calcKT()"></div>
-          <div class="fgr"><label>Year</label><input id="fYr" placeholder="2025"></div>
+          <div class="fgr"><label>Year</label><input id="fYr" placeholder="2025" onchange="toggleOldLoc(this.value)"></div>
           <div class="fgr"><label>Investigator Name</label><select id="fMuf"><option value="">-- Select Investigator --</option></select></div>
           <div class="fgr"><label>Referred By</label><select id="fSael"><option value="">Select...</option></select></div>
           <div class="fgr" id="fDeptWrap"><label>Department <span style="font-size:.65rem;color:var(--mt)">(Multiple select)</span></label>
@@ -503,6 +503,16 @@ async function hashPw(pw){
           <div class="fgr"><label>Division</label><select id="fDiv" onchange="fFDi()"><option value="">Select...</option></select></div>
           <div class="fgr"><label>District</label><select id="fDist"><option value="">Select...</option></select></div>
           <div class="fgr"><label>City</label><input id="fCity"></div>
+        </div>
+        <!-- Purana Location 2022/2023 — hidden by default, shows when year=2022/2023 -->
+        <div id="oldLocSection" style="display:none;margin-top:12px;padding-top:12px;border-top:1.5px dashed #ffe082;">
+          <div style="font-size:.68rem;font-weight:700;color:#9c7a00;text-transform:uppercase;margin-bottom:8px;background:#fffde7;padding:5px 10px;border-radius:6px;border:1px solid #ffe082;width:fit-content">📍 Purana Location — 2022 / 2023 (Optional)</div>
+          <div class="fg">
+            <div class="fgr"><label style="color:#9c7a00">Purana Region</label><input id="fOldRegion" placeholder="Purana Region..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fgr"><label style="color:#9c7a00">Purana Division</label><input id="fOldDivision" placeholder="Purana Division..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fgr"><label style="color:#9c7a00">Kabina</label><input id="fOldKabina" placeholder="Kabina..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fgr"><label style="color:#9c7a00">Sheher</label><input id="fOldSheher" placeholder="Sheher..." style="background:#fffde7;border-color:#ffe082"></div>
+          </div>
         </div>
       </div>
       <div class="sbox">
@@ -855,6 +865,16 @@ async function hashPw(pw){
         <div class="fi"><label>Rahnumai</label><div class="ms-wrap" id="ms-sGd"></div></div>
         <div class="fi"><label>Date From</label><input type="date" id="sDF" onchange="doSrch()"></div>
         <div class="fi"><label>Date To</label><input type="date" id="sDT" onchange="doSrch()"></div>
+        <!-- Purana Location Filter — 2022/2023 mein show hoga -->
+        <div id="oldLocFilters" style="display:none;grid-column:1/-1;background:#fffde7;border:1.5px dashed #ffe082;border-radius:8px;padding:10px;margin-top:4px">
+          <div style="font-size:.68rem;font-weight:700;color:#9c7a00;margin-bottom:8px">📍 Purana Location Filter (2022/2023)</div>
+          <div class="sgrid">
+            <div class="fi"><label style="color:#9c7a00">Purana Region</label><input id="sOldReg" oninput="doSrch()" placeholder="Purana Region..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fi"><label style="color:#9c7a00">Purana Division</label><input id="sOldDiv" oninput="doSrch()" placeholder="Purana Division..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fi"><label style="color:#9c7a00">Kabina</label><input id="sOldKab" oninput="doSrch()" placeholder="Kabina..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fi"><label style="color:#9c7a00">Sheher</label><input id="sOldShh" oninput="doSrch()" placeholder="Sheher..." style="background:#fffde7;border-color:#ffe082"></div>
+          </div>
+        </div>
         <div class="fi" style="align-self:end"><button class="btn bout bsm" onclick="clrSrchAndSearch()">✕ Clear All</button></div>
       </div>
     </div>
@@ -1751,14 +1771,6 @@ async function restoreS(){
 function launch(){
   document.getElementById('lw').classList.add('hide');
   const ap=document.getElementById('app');ap.style.display='flex';
-  // Prompt password change if required
-  if(cu.mustChangePw){
-    setTimeout(function(){
-      if(confirm('⚠️ Aapka password reset hua hai ya pehli dafa login kar rahe hain.\nAbhi password change karna zaroori hai. Settings mein jayein?')){
-        goPage('settings');
-      }
-    }, 800);
-  }
   document.getElementById('sbName').textContent=cu.fullname;
 
   document.getElementById('sbRole').textContent=cu.role.toUpperCase();
@@ -2454,7 +2466,14 @@ function initMultiSelects(){
   const mufattish=[...mufSet].sort().map(function(m){return{value:m,label:m};});
   msCreate('ms-sMuf','Investigator (All)',mufattish,doSrch);MS['ms-sMuf']._label='Investigator (All)';
   const years=uniq(cc.map(function(c){return c.year?String(c.year):'';})).map(function(y){return{value:y,label:y};});
-  msCreate('ms-sYr','Year (All)',years,doSrch);MS['ms-sYr']._label='Year (All)';
+  msCreate('ms-sYr','Year (All)',years,function(){
+    // Year change hone par purana filter show/hide
+    var sel = MS['ms-sYr'] ? Array.from(MS['ms-sYr'].selected) : [];
+    var hasOld = sel.some(function(y){ return y==='2022'||y==='2023'; });
+    var oldSec = document.getElementById('oldLocFilters');
+    if(oldSec) oldSec.style.display = hasOld ? 'block' : 'none';
+    doSrch();
+  });MS['ms-sYr']._label='Year (All)';
   const regions=uniq(cc.map(function(c){return c.region||'';})).map(function(r){return{value:r,label:r};});
   msCreate('ms-sRg','Region (All)',regions,sFS);MS['ms-sRg']._label='Region (All)';
   msCreate('ms-sSt','State (All)',[],sFD);MS['ms-sSt']._label='State (All)';
@@ -2592,6 +2611,11 @@ function doSrch(){
   const rgs=msGet('ms-sRg'),sts=msGet('ms-sSt'),dvs=msGet('ms-sDv'),dis=msGet('ms-sDi');
   const dps=msGet('ms-sDp'),sss=msGet('ms-sStat'),gds=msGet('ms-sGd');
   const df=document.getElementById('sDF').value,dt=document.getElementById('sDT').value;
+  // Purana location filters
+  const sOldReg=(document.getElementById('sOldReg')||{}).value||'';
+  const sOldDiv=(document.getElementById('sOldDiv')||{}).value||'';
+  const sOldKab=(document.getElementById('sOldKab')||{}).value||'';
+  const sOldShh=(document.getElementById('sOldShh')||{}).value||'';
   const _halfSt=doSrch._halfSt||null;
   const _tawnSt=doSrch._tawnSt||null;
   const _tafhimSt=doSrch._tafhimSt||null;
@@ -2628,6 +2652,11 @@ function doSrch(){
       var cgs=(c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[])).map(norm);
       if(!gdsN.some(function(g){return cgs.includes(g);}))return false;
     }
+    // Purana location filters
+    if(sOldReg&&!(c.oldRegion||'').toLowerCase().includes(sOldReg.toLowerCase()))return false;
+    if(sOldDiv&&!(c.oldDivision||'').toLowerCase().includes(sOldDiv.toLowerCase()))return false;
+    if(sOldKab&&!(c.oldKabina||'').toLowerCase().includes(sOldKab.toLowerCase()))return false;
+    if(sOldShh&&!(c.oldSheher||'').toLowerCase().includes(sOldShh.toLowerCase()))return false;
     // Sub-status filters from dashboard clicks
     if(_halfSt==='pending' && c.halfiaSt==='closed') return false;
     if(_halfSt==='closed' && c.halfiaSt!=='closed') return false;
@@ -2649,7 +2678,7 @@ function doSrch(){
   document.getElementById('srCnt').textContent='Results: '+res.length;
 }
 function clrSrch(){
-  ['sq','sCN','sDF','sDT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['sq','sCN','sDF','sDT','sOldReg','sOldDiv','sOldKab','sOldShh'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(id=>msClearAll(id));
   msSetOptions('ms-sSt',[]);msSetOptions('ms-sDv',[]);msSetOptions('ms-sDi',[]);
   doSrch._halfSt=null; doSrch._tawnSt=null; doSrch._tafhimSt=null; doSrch._tabadlaSt=null; doSrch._mazSt=null; doSrch._customFilter=null;
@@ -3071,13 +3100,14 @@ function calcContactTotal(){
 function resetF(){
   eId=null;
   document.getElementById('formTit').textContent='➕ New Case';
-  ['fCNo','fCity','fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt','tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fMuf','fKT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher','fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt','tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fMuf','fKT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   clearRTE('rte-fSub'); clearRTE('rte-fRem'); clearRTE('rte-fRah');
   ['tTot','tPd','tRm','tNaf','tWaj','fCall','fMail','fWA','fCTotal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   tInsts=[];renderInstallments();
   document.getElementById('hDt').value='';
   document.getElementById('fOD').value=new Date().toISOString().slice(0,10);
   document.getElementById('fYr').value=new Date().getFullYear();
+  toggleOldLoc(document.getElementById('fYr').value);
   ['fIdr','fReg','fSt','fDiv','fDist','fGd','fSael','tDO','tDC','tJm','tPM','hSt','halfiaSt','tawnSt','tfT','tfD','tbO','tbD','mazSt'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
   initDeptMS();
   setGuideValues([]);
@@ -3112,7 +3142,7 @@ async function saveCase(){
   const nm=(persons[0]||{}).name||'';
   const mb=(persons[0]||{}).mobile||'';
   if(!cn){toast('❌ Case No required');return;}
-  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:document.getElementById('fSub').value.trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:document.getElementById('fRem').value.trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:document.getElementById('fRah').value.trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
+  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:document.getElementById('fSub').value.trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:document.getElementById('fRem').value.trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:document.getElementById('fRah').value.trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
       tTypeAshiya:document.getElementById('tTypeAshiya')?document.getElementById('tTypeAshiya').checked:false,
       tCollMethod:(function(){var r=document.querySelector('input[name="tCollMethod"]:checked');return r?r.value:'';}()),
@@ -3155,10 +3185,11 @@ function editC(id){
   const c=cc.find(x=>x.id===id);if(!c)return;
   eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';
   setTimeout(()=>{
-    const fv={fCNo:'caseNo',fOD:'openDate',fYr:'year',fMuf:'mufattish',fCity:'city',fIdN:'idaraName',fNm:'name',fMob:'mobile',fEC:'empCode',fSub:'subject',fDet:'detail',fCD:'closeDate',fRem:'remarks',fKT:'closingTime',fCall:'callCount',fMail:'mailCount',fWA:'waCount',fCTotal:'contactTotal',fRah:'rahnumai',tDR:'tDR',tDRCustom:'tDRCustom',tDonor:'tDonor',tHkm:'tHkm',tNaf:'tNaf',tWaj:'tWaj',tTot:'tTot',tPd:'tPd',tRm:'tRm',tCategory:'tCategory',tPurpose:'tPurpose',tDonor:'tDonor',tNt:'tNt',hDt:'hDt',hNt:'hNt',tfNt:'tfNt',tbPl:'tbPl',tbNt:'tbNt',mazDt:'mazDt',mazNt:'mazNt'};
+    const fv={fCNo:'caseNo',fOD:'openDate',fYr:'year',fMuf:'mufattish',fCity:'city',fOldRegion:'oldRegion',fOldDivision:'oldDivision',fOldKabina:'oldKabina',fOldSheher:'oldSheher',fIdN:'idaraName',fNm:'name',fMob:'mobile',fEC:'empCode',fSub:'subject',fDet:'detail',fCD:'closeDate',fRem:'remarks',fKT:'closingTime',fCall:'callCount',fMail:'mailCount',fWA:'waCount',fCTotal:'contactTotal',fRah:'rahnumai',tDR:'tDR',tDRCustom:'tDRCustom',tDonor:'tDonor',tHkm:'tHkm',tNaf:'tNaf',tWaj:'tWaj',tTot:'tTot',tPd:'tPd',tRm:'tRm',tCategory:'tCategory',tPurpose:'tPurpose',tDonor:'tDonor',tNt:'tNt',hDt:'hDt',hNt:'hNt',tfNt:'tfNt',tbPl:'tbPl',tbNt:'tbNt',mazDt:'mazDt',mazNt:'mazNt'};
     Object.entries(fv).forEach(([fi,k])=>{const e=document.getElementById(fi);if(e&&c[k]!==undefined)e.value=c[k]||'';});
     // Load RTE editors with saved HTML
     setRTE("rte-fSub", c.subject||""); setRTE("rte-fRem", c.remarks||""); setRTE("rte-fRah", c.rahnumai||"");
+    toggleOldLoc(c.year||'');
     // Restore depts multi-select
     setDeptValues(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[]));
     // Restore persons
@@ -3695,6 +3726,13 @@ async function chPass(){
 function cmo(id){document.getElementById(id).classList.remove('open');}
 
 // ===== ROW CLICK → CASE DETAIL =====
+// Show/hide purana location based on year
+function toggleOldLoc(yr){
+  var sec = document.getElementById('oldLocSection');
+  if(!sec) return;
+  sec.style.display = (yr==='2022'||yr==='2023') ? 'block' : 'none';
+}
+
 function rowClick(e, id){
   // Agar button ya link click hua to modal mat kholo
   if(e.target.closest('button') || e.target.closest('a')) return;
