@@ -494,6 +494,7 @@ async function hashPw(pw){
         <button class="btn bout bsm" onclick="selectedCases.clear();updateBulkBar();rCases()">✕ Cancel</button>
       </div>
       <div style="overflow-x:auto" id="cTableWrap"><table><thead><tr id="cTH"></tr></thead><tbody id="cTB"></tbody></table></div>
+      <div id="casesPagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 14px;border-top:1px solid var(--bor);flex-wrap:wrap;"></div>
       <div id="cCardWrap" style="display:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:12px"></div>
     </div>
   </div>
@@ -932,6 +933,7 @@ async function hashPw(pw){
       <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
       <div id="srDebug" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px;margin:8px;font-size:.72rem;color:#333;line-height:1.7"></div>
       <div style="overflow-x:auto"><table><thead><tr id="srTH"></tr></thead><tbody id="srTB"></tbody></table></div>
+      <div id="searchPagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 14px;border-top:1px solid var(--bor);flex-wrap:wrap;"></div>
     </div>
   </div>
 
@@ -1730,39 +1732,59 @@ async function fbGetU(){
 }
 let _msReady=false;
 var _casesUnsub=null; // Listener unsubscribe handle
-function startListener(){
-  // Pehle se active listener ho to band karo — duplicate se bacho
-  if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
-  var _dashUpdateTimer = null;
-  _casesUnsub = db.collection('cases').onSnapshot(function(s){
-    cc=s.docs.map(d=>({id:d.id,...d.data()}));
-    cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
-    if(cu&&cu.role!=='admin'&&cu.role!=='superadmin'&&cu.username!=='admin'){
-      var dr=cu.dataRestrict||{};
-      if(dr.regions&&dr.regions.length>0){
-        cc=cc.filter(function(c){
-          var cReg=(c.region||'').trim().toLowerCase();
-          return dr.regions.some(function(r){
-            var rr=(r||'').trim().toLowerCase();
-            return cReg===rr;
-          });
+// ===== PAGINATION SYSTEM =====
+var PAGE_SIZE = 50; // Ek baar mein 50 cases
+
+// cc = sirf dashboard + stats + search ke liye full array (lightweight fetch)
+// casesPage = All Cases tab ki current page
+var _casesPage = 1;
+var _casesFiltered = []; // filtered+sorted full list (IDs + basic fields)
+var _casesPageData = []; // current page ke full docs
+
+function _applyRestriction(arr){
+  if(cu&&cu.role!=='admin'&&cu.role!=='superadmin'&&cu.username!=='admin'){
+    var dr=cu.dataRestrict||{};
+    if(dr.regions&&dr.regions.length>0){
+      return arr.filter(function(c){
+        var cReg=(c.region||'').trim().toLowerCase();
+        return dr.regions.some(function(r){
+          var rr=(r||'').trim().toLowerCase();
+          return cReg===rr;
         });
-      }
+      });
     }
-    // Throttle — 800ms mein ek baar update
-    clearTimeout(_dashUpdateTimer);
-    _dashUpdateTimer = setTimeout(function(){
-      updStats();
-      // Sirf active page render karo
-      if(_currentPg==='dash') rDash();
-      if(_currentPg==='cases') rCases();
-      if(!_msReady){initMultiSelects();_msReady=true;}
-      else{refreshMSOptions();}
-      if(_currentPg==='search') doSrch();
-      if(_currentPg==='reports') rRep();
-    }, 800);
-  },function(){ setFS(false); });
+  }
+  return arr;
 }
+
+function _processCases(docs){
+  cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+  cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
+  cc = _applyRestriction(cc);
+  updStats();
+  if(_currentPg==='dash') rDash();
+  if(_currentPg==='cases'){ _casesPage=1; rCases(); }
+  if(!_msReady){initMultiSelects();_msReady=true;}
+  else{refreshMSOptions();}
+  if(_currentPg==='search') doSrch();
+  if(_currentPg==='reports') rRep();
+  setFS(true);
+}
+
+function startListener(){
+  if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
+  setFS(true);
+  db.collection('cases').get().then(function(s){
+    _processCases(s.docs);
+  }).catch(function(){ setFS(false); });
+}
+
+function reloadCases(){
+  db.collection('cases').get().then(function(s){
+    _processCases(s.docs);
+  }).catch(function(e){ console.warn('reloadCases:',e); });
+}
+// ===== END PAGINATION SYSTEM =====
 // Sirf cc-based options refresh karo, selected state touch mat karo
 function refreshMSOptions(){
   const mufSet2=new Set(MUFATTISH.filter(function(m){return m&&m.trim();}));
@@ -2365,25 +2387,74 @@ function rDash(){
 }
 var _rCasesHash = '';
 function rCases(){
-  var newHash = cc.length + '|' + (cc[0]&&cc[0].id||'') + '|' + (cc[cc.length-1]&&cc[cc.length-1].id||'');
-  var isVisible = _currentPg === 'cases';
-  // Background update + same data = skip. Visible pe hamesha render
-  if(newHash === _rCasesHash && !isVisible) return;
-  _rCasesHash = newHash;
-  setTH(document.getElementById('cTH'),THF);
+  // cc se sorted list banao
   var sorted = cc.slice().sort(function(a,b){
     var x=a.caseNo||''; var y=b.caseNo||'';
     return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
   });
-  // DocumentFragment use karo — direct innerHTML se fast
-  var frag = document.createDocumentFragment();
-  var tmp = document.createElement('tbody');
-  tmp.innerHTML = sorted.length ? sorted.map(function(c,i){ return mRow(c,i+1,false); }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No cases</td></tr>';
-  while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+  _casesFiltered = sorted;
+
+  var totalPages = Math.max(1, Math.ceil(_casesFiltered.length / PAGE_SIZE));
+  if(_casesPage > totalPages) _casesPage = totalPages;
+  if(_casesPage < 1) _casesPage = 1;
+
+  var start = (_casesPage - 1) * PAGE_SIZE;
+  var pageData = _casesFiltered.slice(start, start + PAGE_SIZE);
+
+  setTH(document.getElementById('cTH'),THF);
+
   var tb = document.getElementById('cTB');
-  tb.innerHTML = '';
-  tb.appendChild(frag);
-  document.getElementById('cCnt').textContent='Total: '+cc.length;
+  tb.innerHTML = pageData.length
+    ? pageData.map(function(c,i){ return mRow(c, start+i+1, false); }).join('')
+    : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No cases</td></tr>';
+
+  document.getElementById('cCnt').textContent =
+    'Total: ' + _casesFiltered.length +
+    ' | Page ' + _casesPage + '/' + totalPages +
+    ' (' + (start+1) + '-' + Math.min(start+PAGE_SIZE, _casesFiltered.length) + ')';
+
+  // Pagination buttons render karo
+  renderCasesPagination(totalPages);
+}
+
+function renderCasesPagination(totalPages){
+  var el = document.getElementById('casesPagination');
+  if(!el) return;
+  if(totalPages <= 1){ el.innerHTML=''; return; }
+
+  var btns = '';
+  btns += '<button onclick="casesPgGo(1)" '+((_casesPage===1)?'disabled':'')+' style="'+pgBtnStyle(_casesPage===1)+'">«</button>';
+  btns += '<button onclick="casesPgGo('+(_casesPage-1)+')" '+((_casesPage===1)?'disabled':'')+' style="'+pgBtnStyle(_casesPage===1)+'">‹</button>';
+
+  // Page number buttons — sirf nearby pages dikhao
+  var start = Math.max(1, _casesPage-2);
+  var end   = Math.min(totalPages, _casesPage+2);
+  for(var i=start; i<=end; i++){
+    var active = (i===_casesPage);
+    btns += '<button onclick="casesPgGo('+i+')" style="'+pgBtnStyle(false,active)+'">'+i+'</button>';
+  }
+
+  btns += '<button onclick="casesPgGo('+(_casesPage+1)+')" '+((_casesPage===totalPages)?'disabled':'')+' style="'+pgBtnStyle(_casesPage===totalPages)+'">›</button>';
+  btns += '<button onclick="casesPgGo('+totalPages+')" '+((_casesPage===totalPages)?'disabled':'')+' style="'+pgBtnStyle(_casesPage===totalPages)+'">»</button>';
+  btns += '<span style="font-size:.72rem;color:var(--mt);padding:0 6px">Page <input type="number" min="1" max="'+totalPages+'" value="'+_casesPage+'" onchange="casesPgGo(+this.value)" style="width:42px;padding:2px 4px;border:1px solid var(--bor);border-radius:4px;font-size:.72rem;text-align:center"> / '+totalPages+'</span>';
+
+  el.innerHTML = btns;
+}
+
+function pgBtnStyle(disabled, active){
+  if(active) return 'padding:4px 9px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;border-radius:5px;cursor:pointer;font-size:.75rem;font-weight:700;';
+  if(disabled) return 'padding:4px 9px;border:1px solid var(--bor);background:#f5f5f5;color:#bbb;border-radius:5px;cursor:default;font-size:.75rem;';
+  return 'padding:4px 9px;border:1px solid var(--bor);background:#fff;color:var(--tx);border-radius:5px;cursor:pointer;font-size:.75rem;';
+}
+
+function casesPgGo(pg){
+  var totalPages = Math.max(1, Math.ceil(_casesFiltered.length / PAGE_SIZE));
+  if(pg<1) pg=1; if(pg>totalPages) pg=totalPages;
+  _casesPage = pg;
+  rCases();
+  // Table ke upar scroll karo
+  var tb = document.getElementById('cTB');
+  if(tb) tb.closest('.twrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function rRegCards(){
   const rs={};
@@ -2834,10 +2905,72 @@ function doSrch(){
     var x = a.caseNo||''; var y = b.caseNo||'';
     return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
   });
-  document.getElementById('srTB').innerHTML=res.length?res.map((c,i)=>mRow(c,i+1,false)).join(''):`<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No results</td></tr>`;
-  document.getElementById('srCnt').textContent='Results: '+res.length;
+  // Pagination for search results
+  var _srPage = doSrch._page || 1;
+  var srTotal = res.length;
+  var srTotalPages = Math.max(1, Math.ceil(srTotal / PAGE_SIZE));
+  if(_srPage > srTotalPages) _srPage = 1;
+  doSrch._res = res; // cache for page navigation
+  doSrch._page = _srPage;
+
+  var srStart = (_srPage-1)*PAGE_SIZE;
+  var srPageData = res.slice(srStart, srStart+PAGE_SIZE);
+
+  document.getElementById('srTB').innerHTML = srPageData.length
+    ? srPageData.map(function(c,i){ return mRow(c,srStart+i+1,false); }).join('')
+    : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No results</td></tr>';
+
+  document.getElementById('srCnt').textContent =
+    'Results: '+srTotal +
+    (srTotalPages>1 ? ' | Page '+_srPage+'/'+srTotalPages+' ('+(srStart+1)+'-'+Math.min(srStart+PAGE_SIZE,srTotal)+')' : '');
+
+  // Search pagination buttons
+  var spEl = document.getElementById('searchPagination');
+  if(spEl){
+    if(srTotalPages<=1){ spEl.innerHTML=''; }
+    else{
+      var sb='';
+      sb+='<button onclick="srchPgGo(1)" '+((_srPage===1)?'disabled':'')+' style="'+pgBtnStyle(_srPage===1)+'">«</button>';
+      sb+='<button onclick="srchPgGo('+(_srPage-1)+')" '+((_srPage===1)?'disabled':'')+' style="'+pgBtnStyle(_srPage===1)+'">‹</button>';
+      var ss=Math.max(1,_srPage-2),se=Math.min(srTotalPages,_srPage+2);
+      for(var si=ss;si<=se;si++){
+        sb+='<button onclick="srchPgGo('+si+')" style="'+pgBtnStyle(false,si===_srPage)+'">'+si+'</button>';
+      }
+      sb+='<button onclick="srchPgGo('+(_srPage+1)+')" '+((_srPage===srTotalPages)?'disabled':'')+' style="'+pgBtnStyle(_srPage===srTotalPages)+'">›</button>';
+      sb+='<button onclick="srchPgGo('+srTotalPages+')" '+((_srPage===srTotalPages)?'disabled':'')+' style="'+pgBtnStyle(_srPage===srTotalPages)+'">»</button>';
+      sb+='<span style="font-size:.72rem;color:var(--mt);padding:0 6px">/ '+srTotalPages+'</span>';
+      spEl.innerHTML=sb;
+    }
+  }
 }
-function clrSrch(){
+function srchPgGo(pg){
+  var res = doSrch._res||[];
+  var totalPages = Math.max(1,Math.ceil(res.length/PAGE_SIZE));
+  if(pg<1)pg=1; if(pg>totalPages)pg=totalPages;
+  doSrch._page=pg;
+  // Re-render current page only
+  var srStart=(pg-1)*PAGE_SIZE;
+  var srPageData=res.slice(srStart,srStart+PAGE_SIZE);
+  document.getElementById('srTB').innerHTML=srPageData.length
+    ?srPageData.map(function(c,i){return mRow(c,srStart+i+1,false);}).join('')
+    :'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No results</td></tr>';
+  document.getElementById('srCnt').textContent='Results: '+res.length+' | Page '+pg+'/'+totalPages+' ('+(srStart+1)+'-'+Math.min(srStart+PAGE_SIZE,res.length)+')';
+  var spEl=document.getElementById('searchPagination');
+  if(spEl){
+    var sb='';
+    sb+='<button onclick="srchPgGo(1)" '+((pg===1)?'disabled':'')+' style="'+pgBtnStyle(pg===1)+'">«</button>';
+    sb+='<button onclick="srchPgGo('+(pg-1)+')" '+((pg===1)?'disabled':'')+' style="'+pgBtnStyle(pg===1)+'">‹</button>';
+    var ss2=Math.max(1,pg-2),se2=Math.min(totalPages,pg+2);
+    for(var si2=ss2;si2<=se2;si2++){sb+='<button onclick="srchPgGo('+si2+')" style="'+pgBtnStyle(false,si2===pg)+'">'+si2+'</button>';}
+    sb+='<button onclick="srchPgGo('+(pg+1)+')" '+((pg===totalPages)?'disabled':'')+' style="'+pgBtnStyle(pg===totalPages)+'">›</button>';
+    sb+='<button onclick="srchPgGo('+totalPages+')" '+((pg===totalPages)?'disabled':'')+' style="'+pgBtnStyle(pg===totalPages)+'">»</button>';
+    sb+='<span style="font-size:.72rem;color:var(--mt);padding:0 6px">/ '+totalPages+'</span>';
+    spEl.innerHTML=sb;
+  }
+  var tb=document.getElementById('srTB');
+  if(tb) tb.closest('.twrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function clrSrch(){doSrch._page=1;doSrch._res=[];
   ['sq','sCN','sDF','sDT','sOldReg','sOldDiv','sOldKab','sOldShh'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(id=>msClearAll(id));
   msSetOptions('ms-sSt',[]);msSetOptions('ms-sDv',[]);msSetOptions('ms-sDi',[]);
@@ -3432,10 +3565,10 @@ async function saveCase(){
       tAshiyaProcess:document.getElementById('tAshiyaProcess')?document.getElementById('tAshiyaProcess').value:'',
       tAshiyaProcessNo:document.getElementById('tAshiyaProcessNo')?document.getElementById('tAshiyaProcessNo').value.trim():'',tMd:document.getElementById('tMd').value.trim(),tMq:document.getElementById('tMq').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tHkm:document.getElementById('tHkm').value,tJm:document.getElementById('tJm').value,tawnSt:document.getElementById('tawnSt')?document.getElementById('tawnSt').value:'open',tNaf:document.getElementById('tNaf').value,tWaj:document.getElementById('tWaj').value,tTot:document.getElementById('tTot').value,tPd:document.getElementById('tPd').value,tRm:document.getElementById('tRm').value,tInsts:JSON.parse(JSON.stringify(tInsts)),tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
-    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
+    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
     else{
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection('cases').add(data);
+      await db.collection('cases').add(data);reloadCases();
       toast('✅ Case saved!');
     }
     eId=null;
@@ -3443,7 +3576,7 @@ async function saveCase(){
     goPage('cases');
   }catch(e){toast('❌ '+e.message);}
 }
-async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
+async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();reloadCases();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
 function editC(id){
   const c=cc.find(x=>x.id===id);if(!c)return;
   eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';
@@ -4364,14 +4497,14 @@ function updateBulkBar(){
 async function bulkChangeStatus(status){
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   if(!confirm(selectedCases.size+' cases ka status "'+status+'" karein?'))return;
-  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));
+  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));reloadCases();
   selectedCases.clear();updateBulkBar();toast('✅ '+selectedCases.size+' cases updated!');await fbLoad();
 }
 async function bulkDelete(){
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   var cnt=selectedCases.size;
   if(!confirm(cnt+' cases DELETE karein? Undo nahi hoga!'))return;
-  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).delete();}));
+  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).delete();}));reloadCases();
   selectedCases.clear();updateBulkBar();toast('🗑️ '+cnt+' cases deleted!');await fbLoad();
 }
 
@@ -4484,7 +4617,7 @@ function detPDF(){
   }, 1000);
 }
 // ===== END DETAIL ENHANCEMENTS =====
-var _rfRunning = false; // Double refresh lock
+var _rfRunning = false;
 function rfHideOverlay(){
   var ov = document.getElementById('refreshOverlay');
   if(ov){ ov.style.opacity='0'; ov.style.pointerEvents='none'; }
@@ -4492,9 +4625,8 @@ function rfHideOverlay(){
 }
 function rfAll(){
   if(!cu){ return; }
-  if(_rfRunning){ return; } // Pehli refresh chal rahi hai — doosri block
+  if(_rfRunning){ return; }
   _rfRunning = true;
-  // Blur overlay
   var overlay = document.getElementById('refreshOverlay');
   if(!overlay){
     overlay = document.createElement('div');
@@ -4505,16 +4637,10 @@ function rfAll(){
   overlay.style.opacity = '1';
   overlay.style.pointerEvents = 'all';
   toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
-  // Safety timeout — 10 sec baad kisi bhi haal mein unlock karo
   var _safetyTimer = setTimeout(function(){ rfHideOverlay(); }, 10000);
   db.collection('cases').get().then(function(snap){
     clearTimeout(_safetyTimer);
-    cc = snap.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-    updStats();
-    if(_currentPg==='dash') rDash();
-    if(_currentPg==='cases') rCases();
-    if(_currentPg==='reports') rRep();
-    if(_currentPg==='search') doSrch();
+    _processCases(snap.docs);
     rfHideOverlay();
     toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
   }).catch(function(e){
