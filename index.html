@@ -6,9 +6,11 @@
 <title>SHARI'AH ADVISORY BOARD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Scheherazade+New:wght@400;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
+/* Force Scheherazade font preload */
+.font-preload{position:fixed;top:-999px;left:-999px;font-family:'Scheherazade New','Amiri',serif;opacity:0;pointer-events:none;font-size:1px;}
 :root{--blue:#1565c0;--blue2:#1976d2;--blue3:#42a5f5;--bd:#0d47a1;--sb:#0d1b3e;--sb2:#162456;--sbt:#8899cc;--red:#e53935;--yellow:#f9a825;--cyan:#00acc1;--pink:#e91e63;--green:#2e7d32;--orange:#ef6c00;--purple:#6a1b9a;--bg:#f0f4f8;--card:#fff;--bor:#e0e6f0;--tx:#1a2340;--mt:#607090;--r:12px;--rsm:8px;--sh:0 2px 12px rgba(21,101,192,0.08);--urdu-font:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;}
 
 /* ===== URDU / NASTALEEQ FONT — AUTO DETECT ===== */
@@ -59,7 +61,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx
 .sbtitle{color:#fff;font-size:.8rem;font-weight:700;overflow:hidden;white-space:nowrap;line-height:1.3;}
 .sbtitle span{color:var(--blue3);display:block;font-size:.66rem;font-weight:400;}
 .sbnav{flex:1;padding:8px 0;overflow-y:auto;}
-.sbi{display:flex;align-items:center;gap:10px;padding:10px 15px;color:var(--sbt);cursor:pointer;transition:all .2s;border-right:3px solid transparent;font-size:.83rem;white-space:nowrap;}
+.sbi{display:flex;align-items:center;gap:10px;padding:10px 15px;color:var(--sbt);cursor:pointer;transition:background .1s;border-right:3px solid transparent;font-size:.83rem;white-space:nowrap;}
 .sbi:hover{background:rgba(255,255,255,.06);color:#fff;}
 .sbi.on{background:rgba(21,101,192,.25);color:#fff;border-right-color:var(--blue3);}
 .sbi.hide{display:none;}
@@ -83,7 +85,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx
 .rfbtn{background:var(--bg);border:1px solid var(--bor);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:.76rem;color:var(--mt);}
 .rfbtn:hover{border-color:var(--blue);color:var(--blue);}
 .content{padding:18px 20px;flex:1;}
-.pg{display:none;}.pg.on{display:block;}
+.pg{display:none;}.pg.on{display:block;will-change:auto;}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin-bottom:18px;}
 .card{background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-top:4px solid var(--blue);}
 .card.red{border-top-color:var(--red);}
@@ -170,6 +172,8 @@ tbody td{padding:7px 7px;color:var(--tx);vertical-align:middle;}
 .fgr label{font-size:.69rem;color:var(--mt);font-weight:600;text-transform:uppercase;}
 .fgr input,.fgr select,.fgr textarea{padding:8px 10px;border:1.5px solid var(--bor);border-radius:var(--rsm);font-size:.8rem;outline:none;}
 .fgr input:focus,.fgr select:focus,.fgr textarea:focus{border-color:var(--blue);}
+input[type="date"]{cursor:pointer;position:relative;}
+input[type="date"]::-webkit-calendar-picker-indicator{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;}
 .fgr textarea{resize:vertical;min-height:68px;}
 .sbox{background:#f7f9ff;border:1px solid #c5d5f0;border-radius:10px;padding:13px;margin:10px 0;}
 .sbox-title{font-size:.76rem;font-weight:700;color:var(--bd);margin-bottom:9px;display:flex;align-items:center;gap:5px;direction:ltr!important;text-align:left!important;}
@@ -189,8 +193,8 @@ tbody td{padding:7px 7px;color:var(--tx);vertical-align:middle;}
 .ucards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:11px;}
 .ucard{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--sh);border:1px solid var(--bor);border-left:4px solid var(--blue);}
 .ucard.adm{border-left-color:var(--orange);}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bd);color:#fff;padding:9px 20px;border-radius:22px;font-size:.8rem;z-index:9999;transition:transform .3s;box-shadow:0 4px 16px rgba(0,0,0,.2);}
-.toast.show{transform:translateX(-50%) translateY(0);}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);background:rgba(13,27,62,.92);color:#fff;padding:14px 28px;border-radius:16px;font-size:1.4rem;z-index:99999;transition:transform .3s,opacity .3s;box-shadow:0 8px 32px rgba(0,0,0,.4);opacity:0;text-align:center;font-family:'Scheherazade New','Amiri','Noto Naskh Arabic','Jameel Noori Nastaleeq',serif;line-height:2.2;direction:rtl;max-width:80vw;letter-spacing:.5px;}
+.toast.show{transform:translate(-50%,-50%) scale(1);opacity:1;}
 .loading{text-align:center;padding:36px;color:var(--mt);}
 .spin{width:30px;height:30px;border:3px solid var(--bor);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 11px;}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -246,31 +250,46 @@ function applyUrduFont(el){
     el.style.textAlign = '';
     el.style.lineHeight = '';
     el.dir = '';
+    // Sirf pehla letter capital — baaki as-is
+    if(val && el.type !== 'email' && el.type !== 'password' && el.id !== 'lUsr' && el.id !== 'username' && !el.closest('#lwrap')){
+      var pos = el.selectionStart;
+      var fixed = val.charAt(0).toUpperCase() + val.slice(1);
+      if(fixed !== val){
+        el.value = fixed;
+        el.setSelectionRange(pos, pos);
+      }
+    }
   }
 }
 document.addEventListener('DOMContentLoaded', function(){
+  function bindOneField(el){
+    if(el._urduBound) return; // Already bound — duplicate listener se bacho
+    if(el.closest('#lw')||el.closest('.lwrap')) return; // Login fields skip
+    el._urduBound = true;
+    applyUrduFont(el);
+    el.addEventListener('input', function(){ applyUrduFont(this); });
+    el.addEventListener('paste', function(){ setTimeout(function(){ applyUrduFont(el); }, 10); });
+  }
   function bindUrduFields(){
-    document.querySelectorAll('input[type="text"],input:not([type]),textarea,input[type="tel"],input[type="search"]').forEach(function(el){
-      applyUrduFont(el);
-      el.addEventListener('input', function(){ applyUrduFont(this); });
-      el.addEventListener('paste', function(){ setTimeout(function(){ applyUrduFont(el); }, 10); });
-    });
+    document.querySelectorAll('input[type="text"],input:not([type]),textarea,input[type="tel"],input[type="search"]').forEach(bindOneField);
   }
   bindUrduFields();
-  // Naye dynamic fields ke liye
+  // Naye dynamic fields ke liye — debounce lagaya taaki baar baar fire na ho
+  var _obsTimer = null;
   var obs = new MutationObserver(function(mutations){
-    mutations.forEach(function(m){
-      m.addedNodes.forEach(function(node){
-        if(node.nodeType===1){
-          var inputs = node.querySelectorAll ? node.querySelectorAll('input[type="text"],input:not([type]),textarea,input[type="tel"]') : [];
-          inputs.forEach(function(el){
-            applyUrduFont(el);
-            el.addEventListener('input', function(){ applyUrduFont(this); });
-            el.addEventListener('paste', function(){ setTimeout(function(){ applyUrduFont(el); }, 10); });
-          });
-        }
+    clearTimeout(_obsTimer);
+    _obsTimer = setTimeout(function(){
+      mutations.forEach(function(m){
+        m.addedNodes.forEach(function(node){
+          if(node.nodeType===1){
+            var inputs = node.querySelectorAll ? node.querySelectorAll('input[type="text"],input:not([type]),textarea,input[type="tel"]') : [];
+            inputs.forEach(bindOneField);
+            // Node khud bhi input ho sakta hai
+            if(node.matches && node.matches('input[type="text"],input:not([type]),textarea,input[type="tel"]')) bindOneField(node);
+          }
+        });
       });
-    });
+    }, 200); // 200ms debounce — rapid DOM changes batch ho jayenge
   });
   obs.observe(document.body, { childList: true, subtree: true });
 });
@@ -335,6 +354,7 @@ async function hashPw(pw){
 </script>
 </head>
 <body>
+<div class="font-preload" aria-hidden="true">صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد</div>
 <div class="lwrap" id="lw">
   <div class="lbox">
     <div class="llogo" id="loginLogoWrap">
@@ -354,7 +374,7 @@ async function hashPw(pw){
 <div id="app" style="display:none;width:100%;display:none">
 
 <div class="sidebar" id="sb">
-  <div class="sbh">
+  <div class="sbh" onclick="rfAll()" title="Click to Refresh" style="cursor:pointer;transition:opacity .2s" onmouseenter="this.style.opacity='.8'" onmouseleave="this.style.opacity='1'">
     <div class="sblogo"><img id="sbLogo" src="" alt=""></div>
     <div class="sbtitle">SHARI'AH ADVISORY<span>Case Management</span></div>
   </div>
@@ -380,9 +400,7 @@ async function hashPw(pw){
     <div class="tbl"><button class="togbtn" onclick="toggleSB()">☰</button><span class="ptitle" id="ptitle">Dashboard</span></div>
     <div class="tbr">
       <div class="livebdg"><span class="dot" id="ldot"></span>Live</div>
-      <button class="rfbtn" onclick="rfAll()">🔄 Refresh</button>
-
-
+      <div id="dashYearTabs" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"></div>
     </div>
   </div>
   <div class="content">
@@ -487,10 +505,20 @@ async function hashPw(pw){
       <div class="sbox">
         <div class="sbox-title">📋 Case Information</div>
         <div class="fg">
-          <div class="fgr"><label>Case No <span style="color:var(--red)">*</span></label><input id="fCNo" placeholder="Case No daalen..." required style="border-color:var(--red)" oninput="triggerAutoSave()"></div>
+          <div class="fgr">
+            <label>Case No <span style="color:var(--red)">*</span></label>
+            <div style="position:relative">
+              <input id="fCNo" placeholder="Auto fill hoga..." required 
+                style="border-color:var(--red);width:100%;padding-right:32px" 
+                oninput="triggerAutoSave()"
+                onblur="checkDupCaseNo(this.value)">
+              <span id="cnoStatus" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:.85rem"></span>
+            </div>
+            <div id="cnoMsg" style="font-size:.7rem;margin-top:3px;display:none"></div>
+          </div>
           <div class="fgr"><label>Opening Date</label><input type="date" id="fOD" onchange="calcKT()"></div>
-          <div class="fgr"><label>Year</label><input id="fYr" placeholder="2025" onchange="toggleOldLoc(this.value)"></div>
-          <div class="fgr"><label>Investigator Name</label><select id="fMuf"><option value="">-- Select Investigator --</option></select></div>
+          <div class="fgr"><label>Year</label><input id="fYr" placeholder="2025" onchange="toggleOldLoc(this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var m=document.getElementById('fMuf');if(m)m.focus();}"></div>
+          <div class="fgr"><label>Investigator Name</label><select id="fMuf" tabindex="0"><option value="">-- Select Investigator --</option></select></div>
           <div class="fgr"><label>Referred By</label><select id="fSael"><option value="">Select...</option></select></div>
           <div class="fgr" id="fDeptWrap"><label>Department <span style="font-size:.65rem;color:var(--mt)">(Multiple select)</span></label>
             <!-- Selected chips display -->
@@ -1701,14 +1729,16 @@ async function fbGetU(){
   try{const s=await db.collection('users').get();uc=s.docs.map(d=>({id:d.id,...d.data()}));return uc;}catch(e){return[];}
 }
 let _msReady=false;
+var _casesUnsub=null; // Listener unsubscribe handle
 function startListener(){
-  db.collection('cases').onSnapshot(s=>{
+  // Pehle se active listener ho to band karo — duplicate se bacho
+  if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
+  var _dashUpdateTimer = null;
+  _casesUnsub = db.collection('cases').onSnapshot(function(s){
     cc=s.docs.map(d=>({id:d.id,...d.data()}));
     cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
-    // Apply data restriction for non-admin users (multi-select arrays)
     if(cu&&cu.role!=='admin'&&cu.role!=='superadmin'&&cu.username!=='admin'){
       var dr=cu.dataRestrict||{};
-      // SIMPLE CLEAN FILTER: Only region matters. If region set, show only those cases.
       if(dr.regions&&dr.regions.length>0){
         cc=cc.filter(function(c){
           var cReg=(c.region||'').trim().toLowerCase();
@@ -1719,12 +1749,19 @@ function startListener(){
         });
       }
     }
-        updStats();rDash();rCases();
-    if(!_msReady){initMultiSelects();_msReady=true;}
-    else{refreshMSOptions();}
-    if(document.getElementById('pg-search').classList.contains('on'))doSrch();
-    if(document.getElementById('pg-reports').classList.contains('on'))rRep();
-  },()=>setFS(false));
+    // Throttle — 800ms mein ek baar update
+    clearTimeout(_dashUpdateTimer);
+    _dashUpdateTimer = setTimeout(function(){
+      updStats();
+      // Sirf active page render karo
+      if(_currentPg==='dash') rDash();
+      if(_currentPg==='cases') rCases();
+      if(!_msReady){initMultiSelects();_msReady=true;}
+      else{refreshMSOptions();}
+      if(_currentPg==='search') doSrch();
+      if(_currentPg==='reports') rRep();
+    }, 800);
+  },function(){ setFS(false); });
 }
 // Sirf cc-based options refresh karo, selected state touch mat karo
 function refreshMSOptions(){
@@ -1814,7 +1851,7 @@ function launch(){
   fbGetU().then(rUsers);setTimeout(initSearchableSelects,400);
 }
 
-function doLogout(){_msReady=false;
+function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;
   localStorage.removeItem('sr_s');cu=null;
   document.getElementById('lw').classList.remove('hide');
   document.getElementById('app').style.display='none';
@@ -1825,8 +1862,22 @@ document.getElementById('lu').addEventListener('keydown',e=>{if(e.key==='Enter')
 document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 // Nav
+var _currentPg = '';
+var _pgEls = {};
+var _navEls = {};
+var _ALL_PAGES = ['dash','cases','newcase','search','tawan','reports','users','settings'];
+var _TS = {dash:'Dashboard',cases:'All Cases',newcase:'New Case',search:'Search',reports:'Reports',tawan:'💰 Tawan Sheet',users:'Users',settings:'Settings'};
+var _pgReady = {}; // Track which pages have been rendered at least once
+
+function _initPgCache(){
+  _ALL_PAGES.forEach(function(id){
+    _pgEls[id]  = document.getElementById('pg-'+id);
+    _navEls[id] = document.querySelector('[data-p="'+id+'"]');
+  });
+}
+document.addEventListener('DOMContentLoaded', _initPgCache);
+
 function goPage(pg,el,skipHistory){
-  // Block page if user lacks permission
   if(cu && pg!=='dash'){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
     var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',users:'users',settings:'settings'};
@@ -1836,15 +1887,52 @@ function goPage(pg,el,skipHistory){
       return;
     }
   }
-  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.sbi').forEach(i=>i.classList.remove('on'));
-  const p=document.getElementById('pg-'+pg);if(p)p.classList.add('on');
-  if(el)el.classList.add('on');else{const s=document.querySelector('[data-p="'+pg+'"]');if(s)s.classList.add('on');}
-  const ts={dash:'Dashboard',cases:'All Cases',newcase:'New Case',search:'Search',reports:'Reports',tawan:'💰 Tawan Sheet',users:'Users',settings:'Settings'};
-  document.getElementById('ptitle').textContent=ts[pg]||pg;
-  if(pg==='reports'){repClearFilters();rRep();}if(pg==='settings'){lmRenderTCategory();lmRenderTPurpose();lmLoadFirebaseRegions();}if(pg==='users'){fbGetU().then(rUsers);}if(pg==='newcase'){if(!eId){resetF();}setTimeout(initSearchableSelects,100);}if(pg==='tawan')renderTawan();if(pg==='search'){if(_pendingFilters){applyPendingFilters();}else{doSrch();}}
-  if(pg==='settings')setTimeout(lmLoadSettings,50);
-  if(!skipHistory)history.pushState({pg:pg},'',window.location.pathname+'?p='+pg);
+
+  var prevPg = _currentPg;
+  var isSamePage = (prevPg === pg);
+  _currentPg = pg;
+
+  // STEP 1: INSTANT UI — sirf class toggle, zero data work
+  // Naya page pehle show karo
+  if(_pgEls[pg])     _pgEls[pg].classList.add('on');
+  // Purana baad mein hide karo
+  if(prevPg && prevPg !== pg && _pgEls[prevPg]) _pgEls[prevPg].classList.remove('on');
+
+  // Nav highlight
+  if(_navEls[prevPg]) _navEls[prevPg].classList.remove('on');
+  if(_navEls[pg])     _navEls[pg].classList.add('on');
+  if(el) el.classList.add('on');
+
+  // Title
+  document.getElementById('ptitle').textContent = _TS[pg]||pg;
+
+  if(!skipHistory) history.pushState({pg:pg},'',window.location.pathname+'?p='+pg);
+
+  if(isSamePage && pg!=='newcase') return;
+
+  // STEP 2: DATA — next animation frame mein, UI already painted ho chuka
+  requestAnimationFrame(function(){
+    if(pg==='dash')         rDash();
+    else if(pg==='cases')   rCases();
+    else if(pg==='reports'){ repClearFilters(); rRep(); }
+    else if(pg==='settings'){
+      lmRenderTCategory(); lmRenderTPurpose(); lmLoadFirebaseRegions();
+      setTimeout(lmLoadSettings, 30);
+    }
+    else if(pg==='users')   fbGetU().then(rUsers);
+    else if(pg==='newcase'){
+      if(!eId){ eId=null; resetF(); }
+      setTimeout(function(){
+        initSearchableSelects();
+        if(!eId){ var s=document.getElementById('fStat'); if(s){ s.value='pending_z'; if(s._ssRefresh)s._ssRefresh(); }}
+      }, 100);
+    }
+    else if(pg==='tawan')   renderTawan();
+    else if(pg==='search'){
+      if(_pendingFilters) applyPendingFilters();
+      else doSrch();
+    }
+  });
 }
 window.addEventListener('popstate',function(e){
   var pg=(e.state&&e.state.pg)||'dash';
@@ -1872,7 +1960,7 @@ function initDD(){
   }
   // Status
   const fStat=document.getElementById('fStat');
-  if(fStat){const cur=fStat.value;fStat.innerHTML='';STATUSES.forEach(s=>{const o=document.createElement('option');o.value=s.v;o.textContent=s.l;fStat.appendChild(o);});if(cur)fStat.value=cur;}
+  if(fStat){const cur=fStat.value;fStat.innerHTML='';STATUSES.forEach(s=>{const o=document.createElement('option');o.value=s.v;o.textContent=s.l;fStat.appendChild(o);});if(cur)fStat.value=cur;if(!fStat.value||fStat.value===''){fStat.value=eId?'pending_z':'pending_z';}}
   const sStat=document.getElementById('sStat');
   if(sStat){const cur=sStat.value;sStat.innerHTML='<option value="">All</option>';STATUSES.forEach(s=>{const o=document.createElement('option');o.value=s.v;o.textContent=s.l;sStat.appendChild(o);});if(cur)sStat.value=cur;}
   // Rahnumai Type
@@ -2162,10 +2250,38 @@ function updRepYears(){
     yearSel.appendChild(o);
   });
 }
+// ===== DASHBOARD YEAR FILTER =====
+var dashYear = ''; // '' = all years
+
+function dashFilterYear(yr){
+  dashYear = yr || '';
+  updStats();
+  rDash();
+}
+
+function initDashYearFilter(){
+  var tabs = document.getElementById('dashYearTabs');
+  if(!tabs) return;
+  var years = [...new Set(cc.map(function(c){ return c.year||''; }).filter(Boolean))].sort().reverse();
+  var all = [''].concat(years);
+  var btns = all.map(function(y, i){
+    var active = dashYear === y;
+    var label = y ? y : '📅 All';
+    var radius = i===0 ? '6px 0 0 6px' : i===all.length-1 ? '0 6px 6px 0' : '0';
+    return '<button onclick="dashFilterYear(\''+y+'\')" style="padding:4px 11px;border-radius:'+radius+';font-size:.73rem;font-weight:600;cursor:pointer;border:1.5px solid var(--bor);border-right:'+(i===all.length-1?'1.5px':'0')+'px solid var(--bor);background:'+(active?'var(--blue)':'#fff')+';color:'+(active?'#fff':'var(--tx)')+';transition:all .2s">'+label+'</button>';
+  }).join('');
+  tabs.innerHTML = btns;
+}
+// ===== END DASHBOARD YEAR FILTER =====
+
 function updStats(){
   updRepYears();
+  // Year filter sirf pehli baar init karo
+  if(!document.getElementById('dashYearTabs').children.length) initDashYearFilter();
+  // Filter by selected year
+  var fcc_dash = dashYear ? cc.filter(function(m){ return m.year===dashYear; }) : cc;
   const c={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0};
-  cc.forEach(m=>{
+  fcc_dash.forEach(m=>{
     c[0]++;
     if(m.status==='pending_z')c[1]++;
     else if(m.status==='pending_f')c[2]++;
@@ -2186,7 +2302,7 @@ function updStats(){
   _ids.forEach(function(x){var el=document.getElementById(x[0]);if(el)el.textContent=x[1];});
   // Count closed cases with pending tawan/halfiya
   var tawnPend=0,tawnClosed=0,halfPend=0,halfClosed=0;
-  cc.forEach(function(m){
+  fcc_dash.forEach(function(m){
     var gs2=m.guides&&m.guides.length?m.guides:(m.guide?[m.guide]:[]);
     if(gs2.indexOf('tawan')>-1){
       if(m.tawnSt==='closed') tawnClosed++;
@@ -2233,11 +2349,13 @@ function mRow(c,i,sh){
   const rem=c.remarks?`<div style="${UF}max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.remarks}">${c.remarks}</div>`:'<span style="color:var(--mt)">—</span>';
   const dateInfo=`<div><small>${c.openDate||'-'}</small>${c.closeDate?'<br><small style="color:var(--mt)">→'+c.closeDate+'</small>':''}</div><div style="margin-top:2px">${calcDays(c)}</div>`;
   if(sh)return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
-  return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${gBdg(c.guides||c.guide)}</td><td>${rem}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
+  const rah=c.rahnumai?`<div style="font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:rtl;text-align:right;line-height:2;font-size:.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.rahnumai}">${c.rahnumai}</div>`:'<span style="color:var(--mt)">—</span>';
+  return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${rah}</td><td>${rem}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
 }
 function rDash(){
   setTH(document.getElementById('dTH'),THS);
-  var sorted = cc.slice().sort(function(a,b){
+  var src = dashYear ? cc.filter(function(c){ return c.year===dashYear; }) : cc;
+  var sorted = src.slice().sort(function(a,b){
     var x=a.caseNo||''; var y=b.caseNo||'';
     return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
   });
@@ -2245,13 +2363,26 @@ function rDash(){
   document.getElementById('dTB').innerHTML=r.length?r.map((c,i)=>mRow(c,i+1,true)).join(''):`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases. Add your first case!</td></tr>`;
   rRegCards();
 }
+var _rCasesHash = '';
 function rCases(){
+  var newHash = cc.length + '|' + (cc[0]&&cc[0].id||'') + '|' + (cc[cc.length-1]&&cc[cc.length-1].id||'');
+  var isVisible = _currentPg === 'cases';
+  // Background update + same data = skip. Visible pe hamesha render
+  if(newHash === _rCasesHash && !isVisible) return;
+  _rCasesHash = newHash;
   setTH(document.getElementById('cTH'),THF);
   var sorted = cc.slice().sort(function(a,b){
     var x=a.caseNo||''; var y=b.caseNo||'';
     return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
   });
-  document.getElementById('cTB').innerHTML=sorted.length?sorted.map((c,i)=>mRow(c,i+1,false)).join(''):`<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No cases</td></tr>`;
+  // DocumentFragment use karo — direct innerHTML se fast
+  var frag = document.createDocumentFragment();
+  var tmp = document.createElement('tbody');
+  tmp.innerHTML = sorted.length ? sorted.map(function(c,i){ return mRow(c,i+1,false); }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No cases</td></tr>';
+  while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+  var tb = document.getElementById('cTB');
+  tb.innerHTML = '';
+  tb.appendChild(frag);
   document.getElementById('cCnt').textContent='Total: '+cc.length;
 }
 function rRegCards(){
@@ -2259,7 +2390,8 @@ function rRegCards(){
   const tw={};  // tawan per region
   const hf={};  // halfiya per region
   const alias={'Bengaluru':'Bengaluru Region','Delhi':'Delhi Region','Mumbai':'Mumbai Region','Ajmer':'Ajmer Region','Kolkata':'Kolkata Region','Hyderabad':'Hyderabad Region'};
-  cc.forEach(c=>{
+  var src = dashYear ? cc.filter(function(c){ return c.year===dashYear; }) : cc;
+  src.forEach(c=>{
     if(!c.region)return;
     const rk=alias[c.region.trim()]||c.region.trim();
     if(!rs[rk])rs[rk]={t:0,pz:0,po:0,mt:0,'if':0,cl:0};
@@ -3124,7 +3256,10 @@ function rRep(){
     monthlyData[ym].total++;
     if(isClosed(c)) monthlyData[ym].closed++;
   });
-  var sortedMonths = Object.keys(monthlyData).sort().slice(-12); // last 12 months
+  var sortedMonths = Object.keys(monthlyData).filter(function(m){
+    // Sirf valid YYYY-MM format
+    return /^\d{4}-\d{2}$/.test(m);
+  }).sort().slice(-12);
   var maxM = Math.max.apply(null, sortedMonths.map(function(m){ return monthlyData[m].total; })) || 1;
   var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -3218,11 +3353,25 @@ function resetF(){
   // Clear autosave on new case
   localStorage.removeItem('caseAutoSave');
   toggleOldLoc(document.getElementById('fYr').value);
+  // Reset case no field styling
+  var cnoInp = document.getElementById('fCNo');
+  var cnoMsg = document.getElementById('cnoMsg');
+  var cnoIcon = document.getElementById('cnoStatus');
+  if(cnoInp){ cnoInp.style.borderColor=''; cnoInp.style.background=''; }
+  if(cnoMsg) cnoMsg.style.display='none';
+  if(cnoIcon) cnoIcon.textContent='';
+  // Auto fill case no
+  setTimeout(autoFillCaseNo, 100);
   ['fIdr','fReg','fSt','fDiv','fDist','fGd','fSael','tDO','tDC','tJm','tPM','hSt','halfiaSt','tawnSt','tfT','tfD','tbO','tbD','mazSt'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
   initDeptMS();
   setGuideValues([]);
   setPersons([{name:'',mobile:'',empCode:''}]);
   document.getElementById('fStat').value='pending_z';
+  // Ensure pending_z is set even if options load late
+  setTimeout(function(){ 
+    var s=document.getElementById('fStat'); 
+    if(s){ s.value='pending_z'; if(s._ssRefresh) s._ssRefresh(); }
+  }, 300);
   document.getElementById('fIdrBox').style.display='none';
   ['gTawan','gHalfia','gTafhim','gTabadla','tAmtBox'].forEach(id=>document.getElementById(id).style.display='none');
   // Reset tawan step-by-step fields
@@ -3285,17 +3434,13 @@ async function saveCase(){
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
     else{
-      // Check duplicate caseNo
-      const cno = (data.caseNo||'').trim().toLowerCase();
-      if(cno){
-        const dup = cc.find(function(x){return (x.caseNo||'').trim().toLowerCase()===cno;});
-        if(dup){toast('❌ Case No "'+data.caseNo+'" pehle se exist karta hai! ('+dup.name+')');return;}
-      }
-      data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+    data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('cases').add(data);
       toast('✅ Case saved!');
     }
-    eId=null;document.getElementById('formTit').textContent='➕ New Case';goPage('cases');
+    eId=null;
+    document.getElementById('formTit').textContent='➕ New Case';
+    goPage('cases');
   }catch(e){toast('❌ '+e.message);}
 }
 async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
@@ -3844,7 +3989,81 @@ async function chPass(){
 // Utils
 function cmo(id){document.getElementById(id).classList.remove('open');}
 
-// ===== AUTO SAVE =====
+// ===== AUTO CASE NO =====
+function autoFillCaseNo(){
+  if(eId) return; // Edit mode mein auto fill nahi
+  var inp = document.getElementById('fCNo');
+  if(!inp || inp.value.trim()) return; // Already filled
+  
+  // Find highest case no from current year
+  var yr = document.getElementById('fYr').value || new Date().getFullYear();
+  var pattern = '/'+String(yr).slice(-2)+'/';
+  var maxNum = 0;
+  
+  cc.forEach(function(c){
+    if(c.caseNo && c.caseNo.includes(pattern)){
+      var parts = c.caseNo.split('/');
+      var num = parseInt(parts[parts.length-1]) || 0;
+      if(num > maxNum) maxNum = num;
+    }
+  });
+  
+  var nextNum = String(maxNum + 1).padStart(4, '0');
+  // Get prefix from existing cases
+  var sample = cc.find(function(c){ return c.caseNo && c.caseNo.includes(pattern); });
+  var prefix = sample ? sample.caseNo.split(pattern)[0] : 'MSR/H';
+  
+  inp.value = prefix + pattern + nextNum;
+  triggerAutoSave();
+}
+
+// ===== REAL-TIME DUPLICATE CHECK =====
+function checkDupCaseNo(val){
+  var inp = document.getElementById('fCNo');
+  var msg = document.getElementById('cnoMsg');
+  var icon = document.getElementById('cnoStatus');
+  if(!val || !val.trim() || eId){ // Skip in edit mode
+    if(msg) msg.style.display='none';
+    return;
+  }
+  
+  var dup = cc.find(function(c){ 
+    return c.caseNo && c.caseNo.trim().toLowerCase() === val.trim().toLowerCase(); 
+  });
+  
+  if(dup){
+    // Duplicate found!
+    if(inp){
+      inp.style.borderColor = 'var(--red)';
+      inp.style.background = '#fff5f5';
+    }
+    if(icon) icon.textContent = '❌';
+    if(msg){
+      msg.style.display = 'block';
+      msg.style.color = 'var(--red)';
+      msg.innerHTML = '⚠️ Yeh Case No already exist karta hai! <b>'+dup.openDate+'</b> — '+dup.mufattish;
+    }
+  } else {
+    // All clear
+    if(inp){
+      inp.style.borderColor = 'var(--green)';
+      inp.style.background = '#f1fff4';
+    }
+    if(icon) icon.textContent = '✅';
+    if(msg){
+      msg.style.display = 'block';
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✅ Case No available hai';
+    }
+    // Clear green after 2 sec
+    setTimeout(function(){
+      if(inp){ inp.style.borderColor=''; inp.style.background=''; }
+      if(icon) icon.textContent='';
+      if(msg) msg.style.display='none';
+    }, 2000);
+  }
+}
+// ===== END CASE NO FEATURES =====
 var autoSaveTimer = null;
 function triggerAutoSave(){
   clearTimeout(autoSaveTimer);
@@ -4265,7 +4484,45 @@ function detPDF(){
   }, 1000);
 }
 // ===== END DETAIL ENHANCEMENTS =====
-function rfAll(){window.location.reload(true);}
+var _rfRunning = false; // Double refresh lock
+function rfHideOverlay(){
+  var ov = document.getElementById('refreshOverlay');
+  if(ov){ ov.style.opacity='0'; ov.style.pointerEvents='none'; }
+  _rfRunning = false;
+}
+function rfAll(){
+  if(!cu){ return; }
+  if(_rfRunning){ return; } // Pehli refresh chal rahi hai — doosri block
+  _rfRunning = true;
+  // Blur overlay
+  var overlay = document.getElementById('refreshOverlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'refreshOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;backdrop-filter:blur(4px);background:rgba(0,0,0,.3);z-index:9998;transition:opacity .3s;opacity:0;pointer-events:none';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
+  // Safety timeout — 10 sec baad kisi bhi haal mein unlock karo
+  var _safetyTimer = setTimeout(function(){ rfHideOverlay(); }, 10000);
+  db.collection('cases').get().then(function(snap){
+    clearTimeout(_safetyTimer);
+    cc = snap.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+    updStats();
+    if(_currentPg==='dash') rDash();
+    if(_currentPg==='cases') rCases();
+    if(_currentPg==='reports') rRep();
+    if(_currentPg==='search') doSrch();
+    rfHideOverlay();
+    toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
+  }).catch(function(e){
+    clearTimeout(_safetyTimer);
+    rfHideOverlay();
+    toast('❌ '+e.message);
+  });
+}
 function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),3500);}
 document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));
 loadLogo();
