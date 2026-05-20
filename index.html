@@ -892,7 +892,7 @@ async function hashPw(pw){
       </div>
       <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:14px">
         <button class="btn bpri" onclick="saveCase()">💾 Save Case</button>
-        <button class="btn bout" onclick="resetF()">✕ Reset</button>
+        <button class="btn bout" onclick="resetF._manual=true;resetF()">✕ Reset</button>
       </div>
     </div>
   </div>
@@ -1712,15 +1712,20 @@ async function autoFixRegions(){
 }
 async function fbInit(){
   try{
-    await db.collection('users').limit(1).get();
+    // Users aur settings parallel fetch karo
+    const [snap, _] = await Promise.all([
+      db.collection('users').limit(1).get(),
+      fbLoadSettings()
+    ]);
     setFS(true);
-    const us=await fbGetU();
-    if(!us.find(u=>u.username==='admin'))
-      (async function(){
-      var defHash = await hashPw('Admin@786#Secure');
-      await db.collection('users').doc('admin').set({username:'admin',password:defHash,fullname:'Super Admin',role:'admin',active:true,mustChangePw:true,note:'',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},createdAt:new Date().toISOString()});
-    })();
-    await fbLoadSettings();
+    // Admin check background mein
+    fbGetU().then(function(us){
+      if(!us.find(function(u){return u.username==='admin';})){
+        hashPw('Admin@786#Secure').then(function(defHash){
+          db.collection('users').doc('admin').set({username:'admin',password:defHash,fullname:'Super Admin',role:'admin',active:true,mustChangePw:true,note:'',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},createdAt:new Date().toISOString()});
+        });
+      }
+    });
   }catch(e){setFS(false);}
 }
 function setFS(ok){
@@ -1774,9 +1779,33 @@ function _processCases(docs){
 function startListener(){
   if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
   setFS(true);
-  db.collection('cases').get().then(function(s){
-    _processCases(s.docs);
-  }).catch(function(){ setFS(false); });
+
+  // PHASE 1: Dashboard ke liye sirf last 10 turant dikhao
+  db.collection('cases')
+    .orderBy('openDate','desc')
+    .limit(10)
+    .get()
+    .then(function(snap10){
+      // Sirf last 10 se dashboard render karo
+      var quick = snap10.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+      quick = _applyRestriction(quick);
+      // Dashboard Last 10 table turant dikhao
+      setTH(document.getElementById('dTH'),THS);
+      document.getElementById('dTB').innerHTML = quick.length
+        ? quick.map(function(c,i){ return mRow(c,i+1,true); }).join('')
+        : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases.</td></tr>';
+
+      // PHASE 2: Background mein poora data load karo
+      db.collection('cases').get().then(function(s){
+        _processCases(s.docs);
+      }).catch(function(){ setFS(false); });
+    })
+    .catch(function(){
+      // orderBy kaam nahi kiya (index nahi) — seedha full load
+      db.collection('cases').get().then(function(s){
+        _processCases(s.docs);
+      }).catch(function(){ setFS(false); });
+    });
 }
 
 function reloadCases(){
@@ -1865,12 +1894,14 @@ function launch(){
     if(navEl) navEl.style.display=(isA||(cu.perms&&cu.perms[navMap[pg]]))?'flex':'none';
   });
   loadAllSettings();initDD();loadLogo();
-  // Always fetch fresh cu from Firestore before starting listener (picks up new restrictions)
+  // Sab parallel chalao — wait mat karo
+  startListener(); // Turant start karo — dashboard fast dikhe
+  // Background mein fresh user data + users list
   db.collection('users').doc(cu.id).get().then(function(sn){
     if(sn.exists){ cu={id:sn.id,...sn.data()}; localStorage.setItem('sr_s',JSON.stringify({...cu,loginAt:Date.now()})); }
-    startListener();
-  }).catch(function(){ startListener(); });
-  fbGetU().then(rUsers);setTimeout(initSearchableSelects,400);
+  }).catch(function(){});
+  fbGetU().then(rUsers);
+  setTimeout(initSearchableSelects,400);
 }
 
 function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;
@@ -2277,20 +2308,25 @@ var dashYear = ''; // '' = all years
 
 function dashFilterYear(yr){
   dashYear = yr || '';
+  // Title update — year selected ho to dikhe
+  var titleEl = document.getElementById('ptitle');
+  if(titleEl) titleEl.textContent = dashYear ? 'Dashboard — ' + dashYear : 'Dashboard';
+  renderDashYearTabs(); // Tab highlight update karo
   updStats();
   rDash();
 }
 
-function initDashYearFilter(){
+function initDashYearFilter(){ renderDashYearTabs(); }
+function renderDashYearTabs(){
   var tabs = document.getElementById('dashYearTabs');
   if(!tabs) return;
   var years = [...new Set(cc.map(function(c){ return c.year||''; }).filter(Boolean))].sort().reverse();
   var all = [''].concat(years);
-  var btns = all.map(function(y, i){
-    var active = dashYear === y;
-    var label = y ? y : '📅 All';
-    var radius = i===0 ? '6px 0 0 6px' : i===all.length-1 ? '0 6px 6px 0' : '0';
-    return '<button onclick="dashFilterYear(\''+y+'\')" style="padding:4px 11px;border-radius:'+radius+';font-size:.73rem;font-weight:600;cursor:pointer;border:1.5px solid var(--bor);border-right:'+(i===all.length-1?'1.5px':'0')+'px solid var(--bor);background:'+(active?'var(--blue)':'#fff')+';color:'+(active?'#fff':'var(--tx)')+';transition:all .2s">'+label+'</button>';
+  var btns = all.map(function(y,i){
+    var active = (dashYear===y);
+    var label = y ? y : 'All';
+    var r = i===0?'6px 0 0 6px':i===all.length-1?'0 6px 6px 0':'0';
+    return '<button onclick="dashFilterYear(\''+y+'\')" style="padding:4px 12px;border-radius:'+r+';font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--blue)':'var(--bor)')+';border-right:'+(i===all.length-1?'1.5px':'0')+'px solid '+(active?'var(--blue)':'var(--bor)')+';background:'+(active?'var(--blue)':'#fff')+';color:'+(active?'#fff':'var(--mt)')+';transition:none">'+label+'</button>';
   }).join('');
   tabs.innerHTML = btns;
 }
@@ -2356,7 +2392,7 @@ function gBdg(g){const m={tawan:['bo','💰 Tawan'],halfia:['bpu','📜 Halfiya 
 function hp(p){return cu&&(cu.role==='admin'||!!(cu.perms&&cu.perms[p]));}
 
 // Tables
-const THS=['#','Case No','Date / Days','Location','Person','Subject','Status','Actions'];
+const THS=['#','Case No','Date / Days','Location','Person','Subject','Status'];
 function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.closeDate&&c.status==='closed')?new Date(c.closeDate):new Date();const d=Math.floor((e-s)/(86400000));if(d<0)return'0d';const col=d<=7?'var(--green)':d<=30?'var(--yellow)':d<=90?'var(--orange)':'var(--red)';return'<span style="font-weight:700;color:'+col+'">'+(d)+'d</span>'+(c.status==='closed'?'<br><span style="font-size:.6rem;color:var(--green)">✅closed</span>':'');}
 const THF=['#','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
 function setTH(el,hs){el.innerHTML=hs.map(h=>`<th>${h}</th>`).join('');}
@@ -2370,7 +2406,7 @@ function mRow(c,i,sh){
   const subj=c.subject?`<div style="${UF}max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.subject}">${c.subject}</div>`:'<span style="color:var(--mt)">—</span>';
   const rem=c.remarks?`<div style="${UF}max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.remarks}">${c.remarks}</div>`:'<span style="color:var(--mt)">—</span>';
   const dateInfo=`<div><small>${c.openDate||'-'}</small>${c.closeDate?'<br><small style="color:var(--mt)">→'+c.closeDate+'</small>':''}</div><div style="margin-top:2px">${calcDays(c)}</div>`;
-  if(sh)return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
+  if(sh)return`<tr style="cursor:pointer" title="Click to view details" onclick="rowClick(event,'${c.id}',true)"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${sBdg(c.status)}</td></tr>`;
   const rah=c.rahnumai?`<div style="font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:rtl;text-align:right;line-height:2;font-size:.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.rahnumai}">${c.rahnumai}</div>`:'<span style="color:var(--mt)">—</span>';
   return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${rah}</td><td>${rem}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
 }
@@ -3476,7 +3512,9 @@ function calcContactTotal(){
 function resetF(){
   eId=null;
   document.getElementById('formTit').textContent='➕ New Case';
-  ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher','fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt','tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fMuf','fKT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher','fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt','tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fMuf','fKT','fSael'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  // Region, State, Division, District bhi clear karo
+  ['fReg','fSt','fDiv','fDist'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
   clearRTE('rte-fSub'); clearRTE('rte-fRem'); clearRTE('rte-fRah');
   ['tTot','tPd','tRm','tNaf','tWaj','fCall','fMail','fWA','fCTotal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   tInsts=[];renderInstallments();
@@ -3515,7 +3553,21 @@ function resetF(){
   var tDRPrev=document.getElementById('tDRCustomPreview');if(tDRPrev){tDRPrev.style.display='none';tDRPrev.textContent='';}
   var tDRCust=document.getElementById('tDRCustom');if(tDRCust)tDRCust.value='';
   initDD();
-  toast('🔄 Form reset!');
+  // initDD curMuf/fSael restore karta hai — isliye initDD ke baad dobara clear karo
+  if(!eId){
+    // Sab dropdowns blank karo
+    ['fMuf','fSael','fReg','fIdr'].forEach(function(id){
+      var e=document.getElementById(id);
+      if(e){ e.selectedIndex=0; if(e._ssRefresh) e._ssRefresh(); }
+    });
+    // State/Div/Dist options bhi clear karo — fFS/fFD chain reset
+    ['fSt','fDiv','fDist'].forEach(function(id){
+      var e=document.getElementById(id);
+      if(e){ e.innerHTML='<option value="">Select...</option>'; if(e._ssRefresh) e._ssRefresh(); }
+    });
+  }
+  // Toast sirf manual reset button se — automatic call pe nahi
+  if(resetF._manual){ toast('🔄 Form reset!'); resetF._manual=false; }
 }
 
 function autoHalfiaSt(){
@@ -3655,7 +3707,7 @@ function editC(id){
     }, 100);
   },200);
 }
-function viewC(id){
+function viewC(id, readOnly){
   resetHideRows();
   const c=cc.find(x=>x.id===id);if(!c)return;
   const yn=v=>v==='yes'?'<span class="badge bg">✅ Yes</span>':v==='no'?'<span class="badge br">❌ No</span>':v==='refused'?'<span class="badge br">⛔ Refused</span>':v==='partial'?'<span class="badge bo">🔸 Partial</span>':'—';
@@ -3675,8 +3727,8 @@ function viewC(id){
   document.getElementById('detF').innerHTML=`
     <button class="btn bsm" style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7" onclick="detPDF()">🖨️ PDF</button>
     <button class="btn bsm" style="background:#e3f2fd;color:var(--blue);border:1px solid #90caf9" onclick="shareCase('${c.id}')">🔗 Share</button>
-    ${hp('edit')?`<button class="btn bpri bsm" onclick="editC('${c.id}');cmo('mDet')">✏️ Edit</button>`:''}
-    ${hp('del')?`<button class="btn bred bsm" onclick="delC('${c.id}');cmo('mDet')">🗑️ Delete</button>`:''}
+    ${!readOnly && hp('edit')?`<button class="btn bpri bsm" onclick="editC('${c.id}');cmo('mDet')">✏️ Edit</button>`:''}
+    ${!readOnly && hp('del')?`<button class="btn bred bsm" onclick="delC('${c.id}');cmo('mDet')">🗑️ Delete</button>`:''}
     <button class="btn bout bsm" onclick="cmo('mDet')">✕ Close</button>
   `;
   document.getElementById('mDet').classList.add('open');
@@ -4526,10 +4578,10 @@ document.addEventListener('DOMContentLoaded',function(){
   },1500);
 });
 
-function rowClick(e, id){
+function rowClick(e, id, readOnly){
   // Agar button ya link click hua to modal mat kholo
   if(e.target.closest('button') || e.target.closest('a')) return;
-  viewC(id);
+  viewC(id, readOnly);
 }
 
 function detCheckAll(val){
