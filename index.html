@@ -1970,6 +1970,9 @@ function _initPgCache(){
 document.addEventListener('DOMContentLoaded', _initPgCache);
 
 function goPage(pg,el,skipHistory){
+  // Ensure cache initialized
+  if(!_pgEls['dash']) _initPgCache();
+
   if(cu && pg!=='dash'){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
     var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',users:'users',settings:'settings'};
@@ -1984,15 +1987,15 @@ function goPage(pg,el,skipHistory){
   var isSamePage = (prevPg === pg);
   _currentPg = pg;
 
-  // STEP 1: INSTANT UI — sirf class toggle, zero data work
-  // Naya page pehle show karo
-  if(_pgEls[pg])     _pgEls[pg].classList.add('on');
-  // Purana baad mein hide karo
-  if(prevPg && prevPg !== pg && _pgEls[prevPg]) _pgEls[prevPg].classList.remove('on');
+  // Sab pages hide karo pehle
+  _ALL_PAGES.forEach(function(id){
+    if(_pgEls[id]) _pgEls[id].classList.remove('on');
+    if(_navEls[id]) _navEls[id].classList.remove('on');
+  });
 
-  // Nav highlight
-  if(_navEls[prevPg]) _navEls[prevPg].classList.remove('on');
-  if(_navEls[pg])     _navEls[pg].classList.add('on');
+  // Sirf target page show karo
+  if(_pgEls[pg]) _pgEls[pg].classList.add('on');
+  if(_navEls[pg]) _navEls[pg].classList.add('on');
   if(el) el.classList.add('on');
 
   // Title
