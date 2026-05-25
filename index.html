@@ -317,7 +317,13 @@ function initFirebase(){
     }
     if(!firebase.apps.length){
       firebase.initializeApp({
-        /* IMPORTANT: In production, restrict this key in Firebase Console > API restrictions */
+        /* 
+         * SECURITY NOTICE: 
+         * Firebase API key yahan visible hai. Zaroor Firebase Console mein:
+         * 1. API restrictions lagaao (sirf apna domain allow karo)
+         * 2. Firestore Security Rules set karo (unauthenticated access band karo)
+         * Without these rules, koi bhi aapke database ko access kar sakta hai.
+         */
         apiKey:"AIzaSyCei6zY-zagg8BSKPI96A_Ahw7ptzUtvEg",
         authDomain:"sharai-rehnumai-master-file.firebaseapp.com",
         projectId:"sharai-rehnumai-master-file",
@@ -434,7 +440,7 @@ async function hashPw(pw){
       </div>
 
       <div class="card cp" style="border-top-color:var(--blue);min-width:160px">
-        <div class="cl" style="margin-bottom:4px" onclick="fByG('tafhim')" style="cursor:pointer">🗣️ Tafhim</div>
+        <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('tafhim')">🗣️ Tafhim</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #bbdefb;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tafhim','')"><div style="font-size:1rem;font-weight:800;color:var(--blue)" id="sc8">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tafhim','pending')"><div style="font-size:1rem;font-weight:800;color:var(--red)" id="scTafhimOpen">0</div><div style="font-size:.6rem;color:var(--mt)">Pending</div></div>
@@ -442,7 +448,7 @@ async function hashPw(pw){
         </div>
       </div>
       <div class="card grn cp" style="min-width:160px">
-        <div class="cl" style="margin-bottom:4px" onclick="fByG('tabadla')" style="cursor:pointer">🔄 Transfer</div>
+        <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('tabadla')">🔄 Transfer</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #c8e6c9;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tabadla','')"><div style="font-size:1rem;font-weight:800;color:var(--green)" id="sc9">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tabadla','pending')"><div style="font-size:1rem;font-weight:800;color:var(--red)" id="scTransOpen">0</div><div style="font-size:.6rem;color:var(--mt)">Pending</div></div>
@@ -450,7 +456,7 @@ async function hashPw(pw){
         </div>
       </div>
       <div class="card cp" style="border-top-color:#795548;min-width:160px">
-        <div class="cl" style="margin-bottom:4px" onclick="fByG('mazratnama')" style="cursor:pointer">📝 Mazratnama</div>
+        <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('mazratnama')">📝 Mazratnama</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #d7ccc8;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('mazratnama','')"><div style="font-size:1rem;font-weight:800;color:#795548" id="sc12">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
           <div style="text-align:center;cursor:pointer" onclick="fByGS('mazratnama','pending')"><div style="font-size:1rem;font-weight:800;color:var(--red)" id="scMazOpen">0</div><div style="font-size:.6rem;color:var(--mt)">Pending</div></div>
@@ -519,7 +525,7 @@ async function hashPw(pw){
           </div>
           <div class="fgr"><label>Opening Date</label><input type="date" id="fOD" onchange="calcKT()"></div>
           <div class="fgr"><label>Year</label><input id="fYr" placeholder="2025" onchange="toggleOldLoc(this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var m=document.getElementById('fMuf');if(m)m.focus();}"></div>
-          <div class="fgr"><label>Investigator Name</label><select id="fMuf" tabindex="0"><option value="">-- Select Investigator --</option></select></div>
+          <div class="fgr"><label>Investigator Name</label><select id="fMuf" tabindex="0" ><option value="">-- Select Investigator --</option></select></div>
           <div class="fgr"><label>Referred By</label><select id="fSael"><option value="">Select...</option></select></div>
           <div class="fgr" id="fDeptWrap"><label>Department <span style="font-size:.65rem;color:var(--mt)">(Multiple select)</span></label>
             <!-- Selected chips display -->
@@ -744,7 +750,7 @@ async function hashPw(pw){
                     <input type="radio" name="tCollMethod" id="tCollInst" value="installment" onchange="onCollMethod()" style="accent-color:var(--blue)"> 💸 Installment (Thora Thora)
                   </label>
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;padding:6px 12px;border:1.5px solid #90caf9;border-radius:7px;background:#fff">
-                    <input type="radio" name="tCollMethod" id="tCollDirect" value="direct" onchange="onCollMethod()" style="accent-color:var(--blue)"> 🏦 Direct Account
+                    <input type="radio" name="tCollMethod" id="tCollDirect" value="direct" onchange="onCollMethod()" style="accent-color:var(--blue)"> 💯 Full & Final
                   </label>
                 </div>
 
@@ -768,24 +774,38 @@ async function hashPw(pw){
                     </div>
                     <button type="button" onclick="addInstallment()" style="padding:4px 12px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:.72rem;cursor:pointer">+ Payment Add</button>
                   </div>
-                  <div class="fg" style="margin-bottom:8px">
+                  <div id="tInstList">
+                    <div style="text-align:center;color:var(--mt);font-size:.74rem;padding:8px;background:#fff;border-radius:6px;border:1px dashed #a5d6a7">Koi payment nahi — upar "+ Payment Add" dabayein</div>
+                  </div>
+                  <div class="fg" style="margin-top:8px">
                     <div class="fgr"><label style="color:var(--green);font-weight:700">Total Received (₹)</label>
                       <input type="number" id="tPd" readonly style="background:#fff;font-weight:700;color:var(--green)"></div>
                     <div class="fgr"><label style="color:var(--red);font-weight:700">Remaining (₹)</label>
                       <input type="number" id="tRm" readonly style="background:#fff;font-weight:700;color:var(--red)"></div>
                   </div>
-                  <div id="tInstList">
-                    <div style="text-align:center;color:var(--mt);font-size:.74rem;padding:8px;background:#fff;border-radius:6px;border:1px dashed #a5d6a7">Koi payment nahi — upar "+ Payment Add" dabayein</div>
-                  </div>
                 </div>
 
                 <!-- Direct Account Fields -->
                 <div id="tCollDirectBox" style="display:none;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:8px;padding:12px">
+                  <div style="font-size:.73rem;font-weight:700;color:var(--green);margin-bottom:8px">💯 Full & Final Payment Details</div>
                   <div class="fg">
                     <div class="fgr"><label>Payment Date</label><input type="date" id="tDirectDate"></div>
-                    <div class="fgr"><label>Account / Reference No</label><input id="tDirectRef" placeholder="Account ya Ref No..."></div>
-                    <div class="fgr fw"><label>Notes</label><input id="tDirectNotes" placeholder="Koi aur details..."></div>
+                    <div class="fgr"><label>Amount Received (₹)</label><input type="number" id="tDirectAmt" placeholder="0" oninput="calcDirectTotal()"></div>
+                    <div class="fgr"><label>Account / Reference / UTR No</label><input id="tDirectRef" placeholder="e.g. T26052114..."></div>
+                    <div class="fgr"><label>Payment Mode</label>
+                      <select id="tDirectMode">
+                        <option value="">Select...</option>
+                        <option value="upi">📱 UPI (PhonePe / GPay / Paytm)</option>
+                        <option value="neft">🏦 NEFT / RTGS</option>
+                        <option value="imps">⚡ IMPS</option>
+                        <option value="cash">💵 Cash</option>
+                        <option value="cheque">📋 Cheque</option>
+                        <option value="other">🔹 Other</option>
+                      </select>
+                    </div>
+                    <div class="fgr fw"><label>Notes / Message</label><input id="tDirectNotes" placeholder="e.g. gsb nafela wala Paisa..."></div>
                   </div>
+                  <div id="tDirectSummary" style="margin-top:8px;font-size:.73rem;color:var(--green);font-weight:600"></div>
                 </div>
               </div>
             </div>
@@ -796,7 +816,6 @@ async function hashPw(pw){
               <div class="fg">
                 <div class="fgr fw"><label>Ashiya/Ajnas ka Bayan</label><input id="tAshiyaNaam" placeholder="Kya cheez hai..."></div>
                 <div class="fgr"><label>Wajiba</label><input id="tAshiyaWajiba" placeholder="Amount ya Item..."></div>
-                <div class="fgr"><label>Nafila</label><input id="tAshiyaNafila" placeholder="Amount ya Item..."></div>
                 <div class="fgr"><label>Maddat-e-Makhsusa</label><input id="tAshiyaMaddat" placeholder="Amount ya Item..."></div>
                 <div class="fgr"><label>Wasool Tarika</label>
                   <select id="tAshiyaWasool" onchange="onAshiyaWasool()">
@@ -931,7 +950,7 @@ async function hashPw(pw){
     </div>
     <div class="twrap">
       <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
-      <div id="srDebug" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px;margin:8px;font-size:.72rem;color:#333;line-height:1.7"></div>
+      <!-- srDebug removed in production -->
       <div style="overflow-x:auto"><table><thead><tr id="srTH"></tr></thead><tbody id="srTB"></tbody></table></div>
       <div id="searchPagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 14px;border-top:1px solid var(--bor);flex-wrap:wrap;"></div>
     </div>
@@ -1738,7 +1757,7 @@ async function fbGetU(){
 let _msReady=false;
 var _casesUnsub=null; // Listener unsubscribe handle
 // ===== PAGINATION SYSTEM =====
-var PAGE_SIZE = 50; // Ek baar mein 50 cases
+var PAGE_SIZE = 10; // Ek baar mein 10 cases
 
 // cc = sirf dashboard + stats + search ke liye full array (lightweight fetch)
 // casesPage = All Cases tab ki current page
@@ -1769,6 +1788,7 @@ function _processCases(docs){
   updStats();
   if(_currentPg==='dash') rDash();
   if(_currentPg==='cases'){ _casesPage=1; rCases(); }
+  if(_currentPg==='tawan') renderTawan();
   if(!_msReady){initMultiSelects();_msReady=true;}
   else{refreshMSOptions();}
   if(_currentPg==='search') doSrch();
@@ -1827,7 +1847,17 @@ function refreshMSOptions(){
 }
 
 // Login
+var _loginAttempts = 0;
+var _loginLockedUntil = 0;
 async function doLogin(){
+  // Brute-force protection
+  if(Date.now() < _loginLockedUntil){
+    const secs = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
+    const err=document.getElementById('lerr');
+    err.style.display='block';
+    err.textContent='⏳ Bahut zyada attempts. ' + secs + ' seconds baad try karein.';
+    return;
+  }
   const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value.trim();
   const err=document.getElementById('lerr'),btn=document.getElementById('lbtn');
   if(!u||!p){err.style.display='block';err.textContent='❌ Enter username and password';return;}
@@ -1844,9 +1874,17 @@ async function doLogin(){
         await db.collection('users').doc(s.docs[0].id).update({password:ph});
       }
     }
-    if(s.empty){err.style.display='block';err.textContent='❌ Invalid username or password';btn.textContent='🔐 Login';btn.disabled=false;return;}
+    if(s.empty){err.style.display='block';err.textContent='❌ Invalid username or password';
+      _loginAttempts++;
+      if(_loginAttempts >= 5){
+        _loginLockedUntil = Date.now() + 60000; // 60 second lockout
+        _loginAttempts = 0;
+        err.textContent='❌ Bahut zyada galat attempts. 60 seconds ke liye lock ho gaya.';
+      }
+      btn.textContent='🔐 Login';btn.disabled=false;return;}
     const ud={id:s.docs[0].id,...s.docs[0].data()};
     if(ud.active===false){err.style.display='block';err.textContent='❌ Account inactive';btn.textContent='🔐 Login';btn.disabled=false;return;}
+    _loginAttempts = 0; // Reset on success
     cu=ud;const sess={...ud,loginAt:Date.now()};localStorage.setItem('sr_s',JSON.stringify(sess));launch();
   }catch(e){console.error('Login error:',e);err.style.display='block';err.textContent='❌ Login failed. Please try again.';btn.textContent='🔐 Login';btn.disabled=false;}
 }
@@ -2036,15 +2074,54 @@ function initDD(){
   ['fSt','fDiv','fDist'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='<option value="">Select...</option>';});
   ['sSt','sDv','sDi'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='<option value="">All</option>';});
 }
-function fFS(){const r=document.getElementById('fReg').value,s=document.getElementById('fSt');s.innerHTML='<option value="">Select...</option>';document.getElementById('fDiv').innerHTML='<option value="">Select...</option>';document.getElementById('fDist').innerHTML='<option value="">Select...</option>';if(!r||!HIER[r])return;Object.keys(HIER[r].states).forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);});}
-function fFD(){const r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,s=document.getElementById('fDiv');s.innerHTML='<option value="">Select...</option>';document.getElementById('fDist').innerHTML='<option value="">Select...</option>';if(!r||!st||!HIER[r]||!HIER[r].states[st])return;Object.keys(HIER[r].states[st].divs).forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});}
+
+function fFS(){
+  var r=document.getElementById('fReg').value;
+  var s=document.getElementById('fSt');
+  var fDivEl=document.getElementById('fDiv');
+  var fDistEl=document.getElementById('fDist');
+  s.innerHTML='<option value="">Select State...</option>';
+  fDivEl.innerHTML='<option value="">Select Division...</option>';
+  fDistEl.innerHTML='<option value="">Select District...</option>';
+  if(s._ssSilent) s._ssSilent(''); else if(s._ssRefresh) s._ssRefresh();
+  if(fDivEl._ssSilent) fDivEl._ssSilent(''); else if(fDivEl._ssRefresh) fDivEl._ssRefresh();
+  if(fDistEl._ssSilent) fDistEl._ssSilent(''); else if(fDistEl._ssRefresh) fDistEl._ssRefresh();
+  if(!r) return;
+  if(!HIER[r]){
+    var savedSt = s.dataset ? s.dataset.savedVal : '';
+    if(savedSt){ var o=document.createElement('option');o.value=savedSt;o.textContent=savedSt;s.appendChild(o); }
+    if(s._ssRefresh) s._ssRefresh();
+    return;
+  }
+  Object.keys(HIER[r].states).forEach(function(st){
+    var o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);
+  });
+  if(s._ssRefresh) s._ssRefresh();
+}
+function fFD(){
+  var r=document.getElementById('fReg').value;
+  var st=document.getElementById('fSt').value;
+  var s=document.getElementById('fDiv');
+  var fDistEl=document.getElementById('fDist');
+  s.innerHTML='<option value="">Select Division...</option>';
+  fDistEl.innerHTML='<option value="">Select District...</option>';
+  if(s._ssSilent) s._ssSilent(''); else if(s._ssRefresh) s._ssRefresh();
+  if(fDistEl._ssSilent) fDistEl._ssSilent(''); else if(fDistEl._ssRefresh) fDistEl._ssRefresh();
+  if(!r||!st||!HIER[r]||!HIER[r].states[st])return;
+  Object.keys(HIER[r].states[st].divs).forEach(function(d){
+    var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);
+  });
+  if(s._ssRefresh) s._ssRefresh();
+}
 function fFDi(){
-  const r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,dv=document.getElementById('fDiv').value,s=document.getElementById('fDist');
-  s.innerHTML='<option value="">Select...</option>';
+  var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,dv=document.getElementById('fDiv').value,s=document.getElementById('fDist');
+  s.innerHTML='<option value="">Select District...</option>';
+  if(s._ssSilent) s._ssSilent(''); else if(s._ssRefresh) s._ssRefresh();
   if(!r||!st||!dv||!HIER[r]||!HIER[r].states[st])return;
-  const districts=HIER[r].states[st].divs[dv];
-  if(!districts||districts.length===0){s.innerHTML='<option value="">-- No districts --</option>';return;}
-  districts.forEach(function(d){const o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});
+  var districts=HIER[r].states[st].divs[dv];
+  if(!districts||districts.length===0){s.innerHTML='<option value="">-- No districts --</option>';if(s._ssRefresh)s._ssRefresh();return;}
+  districts.forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});
+  if(s._ssRefresh) s._ssRefresh();
 }
 
 
@@ -2094,6 +2171,57 @@ function onCollMethod(){
   document.getElementById('tCollDirectBox').style.display = method === 'direct' ? 'block' : 'none';
 }
 
+function calcDirectTotal(){
+  var amt = parseFloat(document.getElementById('tDirectAmt').value)||0;
+  var tot = parseFloat(document.getElementById('tTot').value)||0;
+  var summary = document.getElementById('tDirectSummary');
+  if(!summary) return;
+  if(amt > 0 && tot > 0){
+    var rem = Math.max(0, tot - amt);
+    summary.textContent = rem === 0 ? '✅ Poora amount cover ho gaya!' : '⚠️ Remaining: ₹'+rem.toLocaleString('en-IN');
+    summary.style.color = rem === 0 ? 'var(--green)' : 'var(--orange)';
+  } else {
+    summary.textContent = '';
+  }
+}
+
+function addDirectPayment(){
+  var date = document.getElementById('tDirectDate').value;
+  var amt  = document.getElementById('tDirectAmt').value;
+  var ref  = document.getElementById('tDirectRef').value.trim();
+  var mode = document.getElementById('tDirectMode').value;
+  var notes= document.getElementById('tDirectNotes').value.trim();
+  if(!amt || parseFloat(amt)<=0){ toast('⚠️ Amount likhein pehle'); return; }
+  var modeLabels = {upi:'📱 UPI',neft:'🏦 NEFT/RTGS',imps:'⚡ IMPS',cash:'💵 Cash',cheque:'📋 Cheque',other:'🔹 Other'};
+  var modeLabel = modeLabels[mode]||'🏦 Direct';
+  var id='inst_'+Date.now();
+  var txnNote = [ref, notes].filter(Boolean).join(' — ');
+  tInsts.push({id:id, date:date||'', amt:amt, mode:mode||'direct', txn:txnNote, modeLabel:modeLabel});
+  // Update direct list display
+  var listEl = document.getElementById('tDirectList');
+  if(listEl){
+    var html = tInsts.map(function(inst){
+      return '<div style="display:flex;gap:8px;align-items:center;background:#fff;padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:.74rem;border:1px solid #c8e6c9">'
+        +'<span style="color:var(--mt)">'+(inst.date||'—')+'</span>'
+        +'<strong style="color:var(--green)">₹'+parseFloat(inst.amt).toLocaleString('en-IN')+'</strong>'
+        +'<span>'+(inst.modeLabel||inst.mode||'')+'</span>'
+        +(inst.txn?'<span style="color:var(--mt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+inst.txn+'</span>':'')
+        +'<span onclick="removeInst(\''+inst.id+'\')" style="color:var(--red);cursor:pointer;margin-left:auto">✕</span>'
+        +'</div>';
+    }).join('');
+    listEl.innerHTML = html || '';
+  }
+  renderInstallments();
+  calcT();
+  // Clear form
+  document.getElementById('tDirectAmt').value='';
+  document.getElementById('tDirectRef').value='';
+  document.getElementById('tDirectNotes').value='';
+  document.getElementById('tDirectDate').value='';
+  document.getElementById('tDirectMode').value='';
+  document.getElementById('tDirectSummary').textContent='';
+  toast('✅ Payment record mein add ho gaya!');
+}
 function calcTawnTotal(){
   var waj = parseFloat(document.getElementById('tWaj').value)||0;
   var naf = parseFloat(document.getElementById('tNaf').value)||0;
@@ -2105,13 +2233,12 @@ function calcTawnTotal(){
 function onAshiyaMili(){ /* legacy */ }
 function onAshiyaWasool(){
   var val = document.getElementById('tAshiyaWasool').value;
-  // Set hidden tAshiyaMili based on wasool
   var miliEl = document.getElementById('tAshiyaMili');
   if(miliEl) miliEl.value = (val === 'direct_ashiya' || val === 'raqam_mein') ? 'yes' : 'no';
-  // Show Sharai Process only if wasool hua
+  // Sharai Process — dono wasool options pe dikhao
   var processWrap = document.getElementById('tAshiyaProcessWrap');
-  if(processWrap) processWrap.style.display = (val === 'direct_ashiya') ? '' : 'none';
-  if(val !== 'direct_ashiya'){
+  if(processWrap) processWrap.style.display = (val === 'direct_ashiya' || val === 'raqam_mein') ? '' : 'none';
+  if(val !== 'direct_ashiya' && val !== 'raqam_mein'){
     var proc = document.getElementById('tAshiyaProcess');
     if(proc) proc.value = '';
     var procNo = document.getElementById('tAshiyaProcessNoWrap');
@@ -2210,9 +2337,11 @@ function calcT(){
   const tot=parseFloat(document.getElementById('tTot').value)||0;
   const naf=parseFloat(document.getElementById('tNaf').value)||0;
   const waj=parseFloat(document.getElementById('tWaj').value)||0;
-  // Optional info - nafila+wajiba se total check (sirf info, koi block nahi)
+  const hasNafila = document.getElementById('tKismNafila') && document.getElementById('tKismNafila').checked;
+  const hasWajiba = document.getElementById('tKismWajiba') && document.getElementById('tKismWajiba').checked;
+  // Summary sirf tab dikhao jab dono selected hon
   const chk=document.getElementById('tBreakCheck');
-  if(chk&&tot>0&&(naf>0||waj>0)){
+  if(chk&&tot>0&&hasNafila&&hasWajiba&&(naf>0||waj>0)){
     const sum=naf+waj;
     chk.style.display='block';
     if(sum===tot){
@@ -2229,8 +2358,10 @@ function calcT(){
   // recalc received from installments
   const insts=getTInstallments();
   const pd=insts.reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
-  document.getElementById('tPd').value=pd||'';
-  document.getElementById('tRm').value=tot>0?Math.max(0,tot-pd):'';
+  const rm=tot>0?Math.max(0,tot-pd):0;
+  // Update both boxes
+  ['tPd','tPdDirect'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=pd||''; });
+  ['tRm','tRmDirect'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=tot>0?rm:''; });
   // update installment count badge
   const cnt=document.getElementById('tInstCount');
   if(cnt)cnt.textContent=insts.length;
@@ -2269,12 +2400,14 @@ function renderInstallments(){
         <input type="number" value="${inst.amt}" placeholder="0" oninput="updInst('${inst.id}','amt',this.value)" style="width:100%;padding:5px 7px;border:1.5px solid var(--bor);border-radius:6px;font-size:.75rem;outline:none"></div>
       <div><div style="font-size:.62rem;color:var(--mt);font-weight:700;margin-bottom:3px">💳 Payment Mode</div>
         <select onchange="updInst('${inst.id}','mode',this.value)" style="width:100%;padding:5px 7px;border:1.5px solid var(--bor);border-radius:6px;font-size:.75rem;outline:none">
-          <option value="" ${!inst.mode?'selected':''}>Select</option>
-          <option value="fin" ${inst.mode==='fin'?'selected':''}>Finance Office</option>
-          <option value="acc" ${inst.mode==='acc'?'selected':''}>Direct Account</option>
-          <option value="upi" ${inst.mode==='upi'?'selected':''}>UPI</option>
-          <option value="cash" ${inst.mode==='cash'?'selected':''}>Cash</option>
-          <option value="other" ${inst.mode==='other'?'selected':''}>Other</option>
+          <option value="" ${!inst.mode?'selected':''}>Select...</option>
+          <option value="cash" ${inst.mode==='cash'?'selected':''}>💵 Cash (Haath mein)</option>
+          <option value="upi" ${inst.mode==='upi'?'selected':''}>📱 UPI (PhonePe / GPay / Paytm)</option>
+          <option value="neft" ${inst.mode==='neft'?'selected':''}>🏦 NEFT / RTGS</option>
+          <option value="imps" ${inst.mode==='imps'?'selected':''}>⚡ IMPS</option>
+          <option value="cheque" ${inst.mode==='cheque'?'selected':''}>📋 Cheque</option>
+          <option value="fin" ${inst.mode==='fin'?'selected':''}>🏢 Finance Office</option>
+          <option value="other" ${inst.mode==='other'?'selected':''}>🔹 Other</option>
         </select></div>
       <div><div style="font-size:.62rem;color:var(--mt);font-weight:700;margin-bottom:3px">${inst.mode==='dept'?'📋 JV Number':'🔖 TXN / UTR / Ref No'}</div>
         <input type="text" value="${inst.txn}" placeholder="${inst.mode==='dept'?'JV Number daalen...':'TXN/UTR/Ref No (optional)...'}" onchange="updInst('${inst.id}','txn',this.value)" style="width:100%;padding:5px 7px;border:1.5px solid var(--bor);border-radius:6px;font-size:.75rem;outline:none"></div>
@@ -2534,15 +2667,14 @@ function rRegCards(){
   Object.keys(HIER).forEach(function(r){ if(_allRegions.indexOf(r)<0) _allRegions.push(r); });
   cc.forEach(function(c){ if(c.region && _allRegions.indexOf(c.region)<0) _allRegions.push(c.region); });
   var _dr = cu && cu.dataRestrict;
-  var _isAdmin = cu && (cu.role==='admin' || cu.role==='superadmin' || cu.username==='admin');
+  var _role = cu && (cu.role||'').toLowerCase();
+  var _isAdmin = cu && (_role==='admin' || _role==='superadmin' || (cu.username||'').toLowerCase()==='admin');
 
   var _allowedRegs;
   if(_isAdmin || !_dr || !_dr.regions || _dr.regions.length === 0){
     _allowedRegs = _allRegions;
   } else {
     _allowedRegs = _allRegions.filter(function(hierKey){
-      // hierKey = "Bengaluru Region", dr.regions = ["Bengaluru Region"]
-      // Strip "Region" from both, compare core name only
       var hierCore = hierKey.toLowerCase().replace(/\s*region\s*/gi,'').replace(/\s+/g,' ').trim();
       return _dr.regions.some(function(ar){
         var arCore = (ar||'').toLowerCase().replace(/\s*region\s*/gi,'').replace(/\s+/g,' ').trim();
@@ -2550,6 +2682,12 @@ function rRegCards(){
       });
     });
     if(_allowedRegs.length === 0) _allowedRegs = _allRegions;
+  }
+
+  // Agar koi region nahi mila HIER mein — cc ke unique regions se banao
+  if(_allowedRegs.length === 0){
+    var seen = {};
+    src.forEach(function(c){ if(c.region && !seen[c.region]){ seen[c.region]=true; _allowedRegs.push(c.region); }});
   }
   document.getElementById('regCards').innerHTML=_allowedRegs.map(r=>{
     const s=rs[r]||{t:0,pz:0,po:0,mt:0,'if':0,cl:0};
@@ -3664,6 +3802,9 @@ function editC(id){
     }
     document.getElementById('fReg').value = regFull;
     ssRef('fReg');
+    // fSt pe saved state store karo PEHLE fFS() call se (unknown region ke liye)
+    var fStEl = document.getElementById('fSt');
+    if(fStEl) fStEl.dataset.savedVal = c.state||'';
     fFS();
     setTimeout(function(){
       document.getElementById('fSt').value = c.state||'';
@@ -4549,15 +4690,17 @@ function updateBulkBar(){
 async function bulkChangeStatus(status){
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   if(!confirm(selectedCases.size+' cases ka status "'+status+'" karein?'))return;
-  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));reloadCases();
-  selectedCases.clear();updateBulkBar();toast('✅ '+selectedCases.size+' cases updated!');await fbLoad();
+  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));
+  var updCount = selectedCases.size;
+  reloadCases();
+  selectedCases.clear();updateBulkBar();toast('✅ '+updCount+' cases updated!');
 }
 async function bulkDelete(){
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   var cnt=selectedCases.size;
   if(!confirm(cnt+' cases DELETE karein? Undo nahi hoga!'))return;
   await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).delete();}));reloadCases();
-  selectedCases.clear();updateBulkBar();toast('🗑️ '+cnt+' cases deleted!');await fbLoad();
+  selectedCases.clear();updateBulkBar();toast('🗑️ '+cnt+' cases deleted!');
 }
 
 // ===== CASE SHARE LINK =====
@@ -4708,7 +4851,10 @@ loadLogo();
 
 // ===== TAWAN SHEET =====
 function getTawanCases(){
-  return cc.filter(c=>c.guide==='tawan');
+  return cc.filter(function(c){
+    var gs = c.guides && c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
+    return gs.indexOf('tawan') > -1;
+  });
 }
 
 function wusBadgeTW(v){
@@ -4732,6 +4878,12 @@ function twCardClick(type){
   if(tbody) tbody.closest('table').scrollIntoView({behavior:'smooth', block:'start'});
 }
 function renderTawan(){
+  // cc abhi load nahi hua — loading state dikhao
+  if(!cc || cc.length === 0){
+    var tb = document.getElementById('twBody');
+    if(tb) tb.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:22px;color:var(--mt)"><div class="loading"><div class="spin"></div>Loading cases...</div></td></tr>';
+    return;
+  }
   const tw = getTawanCases();
   const fMuf  = (document.getElementById('twFMuf')||{value:''}).value.toLowerCase();
   const fReg  = (document.getElementById('twFReg')||{value:''}).value.toLowerCase();
@@ -4967,9 +5119,24 @@ function makeSearchable(selectId, placeholder){
     const chosen = sel.options[sel.selectedIndex];
     if(chosen && chosen.value){
       disp.querySelector('.ss-val').textContent = chosen.text;
+      disp.querySelector('.ss-val').style.color = '';
     } else {
       disp.querySelector('.ss-val').textContent = placeholder||'Select...';
       disp.querySelector('.ss-val').style.color = 'var(--mt)';
+    }
+    buildList('');
+  };
+  // Silent set — dropdown nahi khulega
+  sel._ssSilent = function(val){
+    sel.value = val;
+    const chosen = val ? Array.from(sel.options).find(function(o){return o.value===val;}) : null;
+    const valEl = disp.querySelector('.ss-val');
+    if(chosen && chosen.value){
+      valEl.textContent = chosen.text;
+      valEl.style.color = '';
+    } else {
+      valEl.textContent = placeholder||'Select...';
+      valEl.style.color = 'var(--mt)';
     }
     buildList('');
   };
@@ -4980,10 +5147,11 @@ function initSearchableSelects(){
   makeSearchable('fMuf',  '-- Select Investigator --');
   makeSearchable('fSael', 'Select Referred By...');
   makeSearchable('fIdr',  'Institutional...');
-  makeSearchable('fReg',  'Region...');
-  makeSearchable('fSt',   'State...');
-  makeSearchable('fDiv',  'Division...');
-  makeSearchable('fDist', 'District...');
+  // Location dropdowns — searchable + chained
+  makeSearchable('fReg',  'Select Region...');
+  makeSearchable('fSt',   'Select State...');
+  makeSearchable('fDiv',  'Select Division...');
+  makeSearchable('fDist', 'Select District...');
   makeSearchable('fStat', 'Status...');
   makeSearchable('fGd',   'Rahnumai Type...');
   // Tawan sub-fields
@@ -5442,7 +5610,7 @@ function openResetPw(uid){
   var info = document.getElementById('resetUserInfo');
   if(info) info.innerHTML = '👤 <b>'+u.fullname+'</b> &nbsp;|&nbsp; @'+u.username+'&nbsp;|&nbsp;<span class="badge bb">'+u.role+'</span>';
   var inp = document.getElementById('resetNewPw');
-  if(inp){ inp.value=''; inp.type='text'; }
+  if(inp){ inp.value=''; inp.type='password'; }
   var msg = document.getElementById('resetMsg');
   if(msg) msg.style.display='none';
   document.getElementById('mResetPw').classList.add('open');
@@ -5458,7 +5626,7 @@ function resetGenPw(){
   // shuffle
   pw=pw.split('').sort(function(){return Math.random()-.5;}).join('');
   var inp=document.getElementById('resetNewPw');
-  if(inp){ inp.value=pw; inp.type='text'; }
+  if(inp){ inp.value=pw; }
 }
 
 async function doResetPw(){
@@ -5903,37 +6071,45 @@ function repDownloadPDF(){
 function onTawnKism(){
   var hasWajiba = document.getElementById('tKismWajiba').checked;
   var hasNafila = document.getElementById('tKismNafila').checked;
-  var donorSec = document.getElementById('tDonorSection');
-  var tawnFW = document.getElementById('tawnFieldsWrap');
-  var tDRWrap = document.getElementById('tDRWrap');
-  var tDCWrap = document.getElementById('tDCWrap');
-  var wajFld = document.getElementById('tWajRow');
-  var nafFld = document.getElementById('tNafRow');
-  var madFld = document.getElementById('tMaddatRow');
+  var donorSec  = document.getElementById('tDonorSection');
+  var tawnFW    = document.getElementById('tawnFieldsWrap');
+  var tDRWrap   = document.getElementById('tDRWrap');
+  var tDCWrap   = document.getElementById('tDCWrap');
+  var wajFld    = document.getElementById('tWajRow');
+  var nafFld    = document.getElementById('tNafRow');
+  var madFld    = document.getElementById('tMaddatRow');
 
+  // Kuch bhi select nahi — sab hide karo
   if(!hasWajiba && !hasNafila){
-    // Nothing selected
     if(donorSec) donorSec.style.display = 'none';
-    if(tawnFW) tawnFW.style.display = 'none';
+    if(tawnFW)   tawnFW.style.display   = 'none';
     return;
   }
 
+  // Wajiba hai (akela ya dono) → Donor section dikhao (Wajiba ke liye donor zaruri hai)
   if(hasWajiba){
-    // Wajiba selected — show donor section
     if(donorSec) donorSec.style.display = '';
-    // Reset donor if just selected
-    if(tDRWrap) tDRWrap.style.display = 'none';
-    if(tDCWrap) tDCWrap.style.display = 'none';
+    if(tDRWrap)  tDRWrap.style.display  = 'none';
+    if(tDCWrap)  tDCWrap.style.display  = 'none';
   } else {
-    // No Wajiba — hide donor section, show tawn fields directly
+    // Sirf Nafila → Donor section hide, seedha Tawn Fields dikhao
     if(donorSec) donorSec.style.display = 'none';
-    if(tawnFW) tawnFW.style.display = '';
+    if(tawnFW)   tawnFW.style.display   = '';
   }
 
-  // Show/hide individual amount fields based on selection
+  // Amount fields: sirf wahi dikhao jo select hua
   if(wajFld) wajFld.style.display = hasWajiba ? '' : 'none';
   if(nafFld) nafFld.style.display = hasNafila ? '' : 'none';
   if(madFld) madFld.style.display = (hasWajiba || hasNafila) ? '' : 'none';
+
+  // Agar Nafila sirf selected hai to Raqam type auto-select karo (Nafila sirf money hoti hai)
+  if(hasNafila && !hasWajiba){
+    var tTypeRaqam = document.getElementById('tTypeRaqam');
+    if(tTypeRaqam && !tTypeRaqam.checked){
+      tTypeRaqam.checked = true;
+      onTawnType();
+    }
+  }
 }
 function togTDC(){
   var v = document.getElementById('tDO').value;
@@ -6579,7 +6755,7 @@ function deptClose(){
       <div id="resetUserInfo" style="background:#e3f2fd;border:1px solid #90caf9;border-radius:9px;padding:10px;margin-bottom:14px;font-size:.8rem;color:var(--bd)"></div>
       <div class="fgr" style="margin-bottom:12px">
         <label style="font-size:.7rem;color:var(--mt);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px">Naya Password</label>
-        <input type="text" id="resetNewPw" placeholder="Naya password likhein..." style="width:100%;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.88rem;outline:none">
+        <input type="password" id="resetNewPw" placeholder="Naya password likhein..." style="width:100%;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.88rem;outline:none">
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <button class="btn bout bsm" onclick="resetGenPw()" style="font-size:.72rem">🎲 Auto Generate</button>
