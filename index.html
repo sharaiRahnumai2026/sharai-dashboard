@@ -1787,6 +1787,7 @@ function _processCases(docs){
   cc = _applyRestriction(cc);
   updStats();
   if(_currentPg==='dash') rDash();
+  else rRegCards(); // Dashboard pe na ho tab bhi region cards update karo
   if(_currentPg==='cases'){ _casesPage=1; rCases(); }
   if(_currentPg==='tawan') renderTawan();
   if(!_msReady){initMultiSelects();_msReady=true;}
@@ -2656,16 +2657,23 @@ function rRegCards(){
       if(halfClosed) hf[rk].cl++; else hf[rk].p++;
     }
   });
-  // Only show regions user has access to
-  // Include ALL regions from cc + HIER (Firebase mein add kiye naye regions bhi)
-  // Fixed order — purane regions pehle, naye baad mein
+  // Regions directly from cc data — HIER pe depend mat karo
   var _regionOrder = ['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region'];
   var _allRegions = [];
-  // Add in fixed order first
-  _regionOrder.forEach(function(r){ if(HIER[r] || cc.some(function(c){ return c.region===r; })) _allRegions.push(r); });
-  // Add remaining (new regions) at end
-  Object.keys(HIER).forEach(function(r){ if(_allRegions.indexOf(r)<0) _allRegions.push(r); });
-  cc.forEach(function(c){ if(c.region && _allRegions.indexOf(c.region)<0) _allRegions.push(c.region); });
+  var _seenReg = {};
+  // Pehle fixed order mein jo cc mein hain
+  _regionOrder.forEach(function(r){
+    if(!_seenReg[r] && (rs[r] || cc.some(function(c){ return (alias[c.region]||c.region)===r; }))){
+      _allRegions.push(r); _seenReg[r]=true;
+    }
+  });
+  // Phir baaki jo bhi cc mein hain
+  cc.forEach(function(c){
+    var rk = alias[(c.region||'').trim()]||(c.region||'').trim();
+    if(rk && !_seenReg[rk]){ _allRegions.push(rk); _seenReg[rk]=true; }
+  });
+  // HIER se bhi add karo (naye regions)
+  Object.keys(HIER).forEach(function(r){ if(!_seenReg[r]){ _allRegions.push(r); _seenReg[r]=true; } });
   var _dr = cu && cu.dataRestrict;
   var _role = cu && (cu.role||'').toLowerCase();
   var _isAdmin = cu && (_role==='admin' || _role==='superadmin' || (cu.username||'').toLowerCase()==='admin');
