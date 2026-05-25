@@ -406,7 +406,9 @@ async function hashPw(pw){
     <div class="tbl"><button class="togbtn" onclick="toggleSB()">☰</button><span class="ptitle" id="ptitle">Dashboard</span></div>
     <div class="tbr">
       <div class="livebdg"><span class="dot" id="ldot"></span>Live</div>
-      <div id="dashYearTabs" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"></div>
+      <select id="dashYearTabs" onchange="dashFilterYear(this.value)" style="padding:4px 10px;border:1.5px solid var(--bor);border-radius:7px;font-size:.76rem;outline:none;background:#fff;cursor:pointer;color:var(--tx);font-weight:600">
+        <option value="">All</option>
+      </select>
     </div>
   </div>
   <div class="content">
@@ -1786,6 +1788,7 @@ function _processCases(docs){
   cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
   cc = _applyRestriction(cc);
   updStats();
+  renderDashYearTabs();
   if(_currentPg==='dash') rDash();
   else rRegCards(); // Dashboard pe na ho tab bhi region cards update karo
   if(_currentPg==='cases'){ _casesPage=1; rCases(); }
@@ -2455,17 +2458,21 @@ function dashFilterYear(yr){
 
 function initDashYearFilter(){ renderDashYearTabs(); }
 function renderDashYearTabs(){
-  var tabs = document.getElementById('dashYearTabs');
-  if(!tabs) return;
+  var sel = document.getElementById('dashYearTabs');
+  if(!sel) return;
   var years = [...new Set(cc.map(function(c){ return c.year||''; }).filter(Boolean))].sort().reverse();
-  var all = [''].concat(years);
-  var btns = all.map(function(y,i){
-    var active = (dashYear===y);
-    var label = y ? y : 'All';
-    var r = i===0?'6px 0 0 6px':i===all.length-1?'0 6px 6px 0':'0';
-    return '<button onclick="dashFilterYear(\''+y+'\')" style="padding:4px 12px;border-radius:'+r+';font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--blue)':'var(--bor)')+';border-right:'+(i===all.length-1?'1.5px':'0')+'px solid '+(active?'var(--blue)':'var(--bor)')+';background:'+(active?'var(--blue)':'#fff')+';color:'+(active?'#fff':'var(--mt)')+';transition:none">'+label+'</button>';
-  }).join('');
-  tabs.innerHTML = btns;
+  // Agar cc se years nahi mile, try from openDate
+  if(!years.length){
+    years = [...new Set(cc.map(function(c){ return c.openDate?c.openDate.substring(0,4):''; }).filter(Boolean))].sort().reverse();
+  }
+  sel.innerHTML = '<option value="">All</option>';
+  years.forEach(function(y){
+    var o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    if(y === dashYear) o.selected = true;
+    sel.appendChild(o);
+  });
+  if(!dashYear) sel.value = '';
 }
 // ===== END DASHBOARD YEAR FILTER =====
 
