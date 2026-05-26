@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Scheherazade+New:wght@400;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 /* Force Scheherazade font preload */
@@ -3575,29 +3576,12 @@ function rRep(){
 
   var trendHTML = '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr">'
     + '<h3 style="font-size:.85rem;color:var(--bd);margin-bottom:12px;border-bottom:1px solid var(--bor);padding-bottom:6px">📈 Monthly Trend (Last 12 Months)</h3>'
-    + '<div style="display:flex;align-items:flex-end;gap:6px;height:160px;padding-bottom:20px;padding-top:22px;padding-left:2px;padding-right:2px;position:relative;box-sizing:border-box">';
-
-  sortedMonths.forEach(function(ym){
-    var d = monthlyData[ym];
-    var h = Math.round(d.total/maxM*100);
-    var hc = Math.round(d.closed/maxM*100);
-    var parts = ym.split('-');
-    var lbl = monthNames[parseInt(parts[1])-1]+' '+parts[0].slice(2);
-    trendHTML += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer" onclick="gtClickMonth(\''+ym+'\')" title="'+lbl+': '+d.total+' cases">'
-      + '<div style="font-size:.6rem;color:var(--bd);font-weight:700">'+d.total+'</div>'
-      + '<div style="width:100%;position:relative;height:100px;display:flex;align-items:flex-end;gap:1px">'
-      + '<div style="flex:1;background:var(--blue3);border-radius:3px 3px 0 0;height:'+h+'%;min-height:2px;opacity:.7"></div>'
-      + '<div style="flex:1;background:var(--green);border-radius:3px 3px 0 0;height:'+hc+'%;min-height:2px"></div>'
-      + '</div>'
-      + '<div style="font-size:.55rem;color:var(--mt);text-align:center;margin-top:2px">'+lbl+'</div>'
-      + '</div>';
-  });
-  trendHTML += '</div>'
-    + '<div style="display:flex;gap:14px;margin-top:4px;font-size:.68rem">'
-    + '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--blue3);border-radius:2px;display:inline-block;opacity:.7"></span> Total</span>'
-    + '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span> Closed</span>'
+    + '<div style="position:relative;height:160px;width:100%">'
+    + '<canvas id="monthlyTrendChart"></canvas>'
     + '</div>'
     + '</div>';
+
+
 
   // ===== MUFATTISH BREAKDOWN =====
   var mufData = {};
@@ -3630,6 +3614,63 @@ function rRep(){
   mufHTML += '</div>';
 
   document.getElementById('rpExtra').innerHTML = trendHTML + mufHTML;
+
+  // ===== CHART.JS MONTHLY TREND =====
+  var chartLabels = sortedMonths.map(function(ym){
+    var parts = ym.split('-');
+    return monthNames[parseInt(parts[1])-1]+' '+parts[0].slice(2);
+  });
+  var chartTotal = sortedMonths.map(function(ym){ return monthlyData[ym].total; });
+  var chartClosed = sortedMonths.map(function(ym){ return monthlyData[ym].closed; });
+
+  var ctx = document.getElementById('monthlyTrendChart');
+  if(ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [
+          {
+            label: 'Total',
+            data: chartTotal,
+            backgroundColor: 'rgba(66,165,245,0.7)',
+            borderRadius: 3,
+            order: 2
+          },
+          {
+            label: 'Closed',
+            data: chartClosed,
+            backgroundColor: 'rgba(46,125,50,0.85)',
+            borderRadius: 3,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { size: 10 }, boxWidth: 10, padding: 8 }
+          },
+          tooltip: { mode: 'index', intersect: false },
+          datalabels: false
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 9 }, maxRotation: 0 }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { font: { size: 9 }, stepSize: 20 }
+          }
+        }
+      }
+    });
+  }
 }
 
 // Case CRUD
