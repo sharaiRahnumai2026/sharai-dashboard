@@ -406,9 +406,7 @@ async function hashPw(pw){
     <div class="tbl"><button class="togbtn" onclick="toggleSB()">☰</button><span class="ptitle" id="ptitle">Dashboard</span></div>
     <div class="tbr">
       <div class="livebdg"><span class="dot" id="ldot"></span>Live</div>
-      <select id="dashYearTabs" onchange="dashFilterYear(this.value)" style="padding:4px 10px;border:1.5px solid var(--bor);border-radius:7px;font-size:.76rem;outline:none;background:#fff;cursor:pointer;color:var(--tx);font-weight:600">
-        <option value="">All</option>
-      </select>
+      <div id="dashYearTabs" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"></div>
     </div>
   </div>
   <div class="content">
@@ -1789,8 +1787,8 @@ function _processCases(docs){
   cc = _applyRestriction(cc);
   updStats();
   renderDashYearTabs();
+  rRegCards();
   if(_currentPg==='dash') rDash();
-  else rRegCards(); // Dashboard pe na ho tab bhi region cards update karo
   if(_currentPg==='cases'){ _casesPage=1; rCases(); }
   if(_currentPg==='tawan') renderTawan();
   if(!_msReady){initMultiSelects();_msReady=true;}
@@ -1973,9 +1971,6 @@ function _initPgCache(){
 document.addEventListener('DOMContentLoaded', _initPgCache);
 
 function goPage(pg,el,skipHistory){
-  // Ensure cache initialized
-  if(!_pgEls['dash']) _initPgCache();
-
   if(cu && pg!=='dash'){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
     var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',users:'users',settings:'settings'};
@@ -1990,15 +1985,15 @@ function goPage(pg,el,skipHistory){
   var isSamePage = (prevPg === pg);
   _currentPg = pg;
 
-  // Sab pages hide karo pehle
-  _ALL_PAGES.forEach(function(id){
-    if(_pgEls[id]) _pgEls[id].classList.remove('on');
-    if(_navEls[id]) _navEls[id].classList.remove('on');
-  });
+  // STEP 1: INSTANT UI — sirf class toggle, zero data work
+  // Naya page pehle show karo
+  if(_pgEls[pg])     _pgEls[pg].classList.add('on');
+  // Purana baad mein hide karo
+  if(prevPg && prevPg !== pg && _pgEls[prevPg]) _pgEls[prevPg].classList.remove('on');
 
-  // Sirf target page show karo
-  if(_pgEls[pg]) _pgEls[pg].classList.add('on');
-  if(_navEls[pg]) _navEls[pg].classList.add('on');
+  // Nav highlight
+  if(_navEls[prevPg]) _navEls[prevPg].classList.remove('on');
+  if(_navEls[pg])     _navEls[pg].classList.add('on');
   if(el) el.classList.add('on');
 
   // Title
@@ -2458,21 +2453,17 @@ function dashFilterYear(yr){
 
 function initDashYearFilter(){ renderDashYearTabs(); }
 function renderDashYearTabs(){
-  var sel = document.getElementById('dashYearTabs');
-  if(!sel) return;
+  var tabs = document.getElementById('dashYearTabs');
+  if(!tabs) return;
   var years = [...new Set(cc.map(function(c){ return c.year||''; }).filter(Boolean))].sort().reverse();
-  // Agar cc se years nahi mile, try from openDate
-  if(!years.length){
-    years = [...new Set(cc.map(function(c){ return c.openDate?c.openDate.substring(0,4):''; }).filter(Boolean))].sort().reverse();
-  }
-  sel.innerHTML = '<option value="">All</option>';
-  years.forEach(function(y){
-    var o = document.createElement('option');
-    o.value = y; o.textContent = y;
-    if(y === dashYear) o.selected = true;
-    sel.appendChild(o);
-  });
-  if(!dashYear) sel.value = '';
+  var all = [''].concat(years);
+  var btns = all.map(function(y,i){
+    var active = (dashYear===y);
+    var label = y ? y : 'All';
+    var r = i===0?'6px 0 0 6px':i===all.length-1?'0 6px 6px 0':'0';
+    return '<button onclick="dashFilterYear(\''+y+'\')" style="padding:4px 12px;border-radius:'+r+';font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--blue)':'var(--bor)')+';border-right:'+(i===all.length-1?'1.5px':'0')+'px solid '+(active?'var(--blue)':'var(--bor)')+';background:'+(active?'var(--blue)':'#fff')+';color:'+(active?'#fff':'var(--mt)')+';transition:none">'+label+'</button>';
+  }).join('');
+  tabs.innerHTML = btns;
 }
 // ===== END DASHBOARD YEAR FILTER =====
 
@@ -2645,12 +2636,13 @@ function rRegCards(){
   src.forEach(c=>{
     if(!c.region)return;
     const rk=alias[c.region.trim()]||c.region.trim();
-    if(!rs[rk])rs[rk]={t:0,pz:0,po:0,mt:0,'if':0,cl:0};
+    if(!rs[rk])rs[rk]={t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
     rs[rk].t++;
     if(c.status==='closed')rs[rk].cl++;
     if(c.status==='pending_z')rs[rk].pz++;
     if(c.status==='pending_o')rs[rk].po++;
     if(c.status==='meeting')rs[rk].mt++;
+    if(c.status==='office')rs[rk].of++;
     if(c.status==='ifta')rs[rk]['if']++;
     // Tawan
     const gs=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]);
@@ -2667,23 +2659,16 @@ function rRegCards(){
       if(halfClosed) hf[rk].cl++; else hf[rk].p++;
     }
   });
-  // Regions directly from cc data — HIER pe depend mat karo
-  var _regionOrder = ['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region'];
+  // Only show regions user has access to
+  // Include ALL regions from cc + HIER (Firebase mein add kiye naye regions bhi)
+  // Fixed order — purane regions pehle, naye baad mein
+  var _regionOrder = ['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
   var _allRegions = [];
-  var _seenReg = {};
-  // Pehle fixed order mein jo cc mein hain
-  _regionOrder.forEach(function(r){
-    if(!_seenReg[r] && (rs[r] || cc.some(function(c){ return (alias[c.region]||c.region)===r; }))){
-      _allRegions.push(r); _seenReg[r]=true;
-    }
-  });
-  // Phir baaki jo bhi cc mein hain
-  cc.forEach(function(c){
-    var rk = alias[(c.region||'').trim()]||(c.region||'').trim();
-    if(rk && !_seenReg[rk]){ _allRegions.push(rk); _seenReg[rk]=true; }
-  });
-  // HIER se bhi add karo (naye regions)
-  Object.keys(HIER).forEach(function(r){ if(!_seenReg[r]){ _allRegions.push(r); _seenReg[r]=true; } });
+  // Add in fixed order first
+  _regionOrder.forEach(function(r){ if(HIER[r] || cc.some(function(c){ return c.region===r; })) _allRegions.push(r); });
+  // Add remaining (new regions) at end
+  Object.keys(HIER).forEach(function(r){ if(_allRegions.indexOf(r)<0) _allRegions.push(r); });
+  cc.forEach(function(c){ if(c.region && _allRegions.indexOf(c.region)<0) _allRegions.push(c.region); });
   var _dr = cu && cu.dataRestrict;
   var _role = cu && (cu.role||'').toLowerCase();
   var _isAdmin = cu && (_role==='admin' || _role==='superadmin' || (cu.username||'').toLowerCase()==='admin');
@@ -2708,7 +2693,7 @@ function rRegCards(){
     src.forEach(function(c){ if(c.region && !seen[c.region]){ seen[c.region]=true; _allowedRegs.push(c.region); }});
   }
   document.getElementById('regCards').innerHTML=_allowedRegs.map(r=>{
-    const s=rs[r]||{t:0,pz:0,po:0,mt:0,'if':0,cl:0};
+    const s=rs[r]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
     const t=tw[r];
     const h=hf[r];
     const tawnRow=t?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid #ffe0b2;padding:4px 0;background:#fff8f5;border-radius:0 0 4px 4px;margin-top:2px">
@@ -2727,8 +2712,8 @@ function rRegCards(){
       <div class="rst" onclick="fByR('${r}','')" title="Total"><div class="n" style="color:var(--blue)">${s.t}</div><div class="l">Total</div></div>
       <div class="rst" onclick="fByR('${r}','pending_z')" title="Pending Zimmedar"><div class="n" style="color:var(--red)">${s.pz}</div><div class="l">Zimmedar</div></div>
       <div class="rst" onclick="fByR('${r}','meeting')" title="Meeting"><div class="n" style="color:#00838f">${s.mt}</div><div class="l">Meeting</div></div>
-      <div class="rst" onclick="fByR('${r}','pending_o')" title="Pending Office"><div class="n" style="color:var(--cyan)">${s.po}</div><div class="l">Office</div></div>
-      <div class="rst" onclick="fByR('${r}','ifta')" title="Sent to Ifta"><div class="n" style="color:var(--pink)">${s.if}</div><div class="l">Ifta</div></div>
+      <div class="rst" onclick="fByR('${r}','pending_o')" title="Pending Office"><div class="n" style="color:var(--cyan)">${(s.po||0)+(s.of||0)}</div><div class="l">Office</div></div>
+      <div class="rst" onclick="fByR('${r}','ifta')" title="Sent to Ifta"><div class="n" style="color:var(--pink)">${s['if']}</div><div class="l">Ifta</div></div>
       <div class="rst" onclick="fByR('${r}','closed')" title="Closed"><div class="n" style="color:var(--green)">${s.cl}</div><div class="l">Closed</div></div>
     </div>${tawnRow}${halfRow}</div>`;
   }).join('');
