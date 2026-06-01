@@ -2001,6 +2001,9 @@ function goPage(pg,el,skipHistory){
 
   if(!skipHistory) history.pushState({pg:pg},'',window.location.pathname+'?p='+pg);
 
+  // Scroll to top on every page change
+  window.scrollTo(0, 0);
+
   if(isSamePage && pg!=='newcase') return;
 
   // STEP 2: DATA — next animation frame mein, UI already painted ho chuka
@@ -3589,24 +3592,15 @@ function rRep(){
     var parts = ym.split('-');
     var lbl = monthNames[parseInt(parts[1])-1]+' '+parts[0].slice(2);
     var cx = padL + i * groupW + groupW / 2;
-
-    var hTotal = Math.round(d.total / maxM * chartH);
-    var hClosed = Math.round(d.closed / maxM * chartH);
-    if(hTotal < 2) hTotal = 2;
-    if(hClosed < 2) hClosed = 2;
-
+    var hTotal = Math.round(d.total / maxM * chartH); if(hTotal < 2) hTotal = 2;
+    var hClosed = Math.round(d.closed / maxM * chartH); if(hClosed < 2) hClosed = 2;
     var x1 = cx - barW - gap/2;
     var x2 = cx + gap/2;
     var yTotal  = padTop + chartH - hTotal;
     var yClosed = padTop + chartH - hClosed;
-
-    // Total bar (blue)
-    svgBars += '<rect x="'+x1+'" y="'+yTotal+'" width="'+barW+'" height="'+hTotal+'" rx="2" fill="#42a5f5" opacity=".8" style="cursor:pointer"/>';
-    // Closed bar (green)
-    svgBars += '<rect x="'+x2+'" y="'+yClosed+'" width="'+barW+'" height="'+hClosed+'" rx="2" fill="#2e7d32" opacity=".85" style="cursor:pointer"/>';
-    // Number label on top
+    svgBars += '<rect x="'+x1+'" y="'+yTotal+'" width="'+barW+'" height="'+hTotal+'" rx="2" fill="#42a5f5" opacity=".8"/>';
+    svgBars += '<rect x="'+x2+'" y="'+yClosed+'" width="'+barW+'" height="'+hClosed+'" rx="2" fill="#2e7d32" opacity=".85"/>';
     svgBars += '<text x="'+cx+'" y="'+(yTotal-4)+'" text-anchor="middle" font-size="8.5" font-weight="700" fill="#0d47a1">'+d.total+'</text>';
-    // Month label at bottom
     svgBars += '<text x="'+cx+'" y="'+(svgH-6)+'" text-anchor="middle" font-size="7.5" fill="#607090">'+lbl+'</text>';
   });
 
