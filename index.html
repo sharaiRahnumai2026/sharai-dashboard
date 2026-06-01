@@ -35,8 +35,7 @@ input[dir="rtl"], textarea[dir="rtl"] {
 }
 /* ===== END URDU FONT ===== */
 
-html{scroll-behavior:auto;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;overflow-y:auto;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;}
 .lwrap{position:fixed;inset:0;background:linear-gradient(135deg,#0d1b3e,#1565c0);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;}
 .lwrap.hide{display:none;}
 .lbox{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
@@ -413,7 +412,7 @@ async function hashPw(pw){
   <div class="content">
 
   <!-- DASHBOARD -->
-  <div id="pg-dash" class="pg">
+  <div id="pg-dash" class="pg on">
     <div class="cgrid">
       <div class="card cp" onclick="fByS('')"><div class="cn" id="sc0">0</div><div class="cl">Total Cases</div></div>
       <div class="card red cp" onclick="fByS('pending_z')"><div class="cn" id="sc1">0</div><div class="cl">🔴 Pending Zimmedar</div></div>
@@ -1935,8 +1934,6 @@ function launch(){
     if(navEl) navEl.style.display=(isA||(cu.perms&&cu.perms[navMap[pg]]))?'flex':'none';
   });
   loadAllSettings();initDD();loadLogo();
-  // Pehle dash set karo taaki _currentPg set ho
-  goPage('dash',null,true);
   // Sab parallel chalao — wait mat karo
   startListener(); // Turant start karo — dashboard fast dikhe
   // Background mein fresh user data + users list
@@ -2008,9 +2005,6 @@ function goPage(pg,el,skipHistory){
 
   // STEP 2: DATA — next animation frame mein, UI already painted ho chuka
   requestAnimationFrame(function(){
-    // Scroll to top
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
     if(pg==='dash')         rDash();
     else if(pg==='cases')   rCases();
     else if(pg==='reports'){ repClearFilters(); rRep(); }
@@ -2462,14 +2456,10 @@ function renderDashYearTabs(){
   var tabs = document.getElementById('dashYearTabs');
   if(!tabs) return;
   var years = [...new Set(cc.map(function(c){ return c.year||''; }).filter(Boolean))].sort().reverse();
-  var all = [''].concat(years);
-  var btns = all.map(function(y,i){
-    var active = (dashYear===y);
-    var label = y ? y : 'All';
-    var r = i===0?'6px 0 0 6px':i===all.length-1?'0 6px 6px 0':'0';
-    return '<button onclick="dashFilterYear(\''+y+'\')" style="padding:4px 12px;border-radius:'+r+';font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--blue)':'var(--bor)')+';border-right:'+(i===all.length-1?'1.5px':'0')+'px solid '+(active?'var(--blue)':'var(--bor)')+';background:'+(active?'var(--blue)':'#fff')+';color:'+(active?'#fff':'var(--mt)')+';transition:none">'+label+'</button>';
+  var opts = '<option value="">All</option>' + years.map(function(y){
+    return '<option value="'+y+'"'+(dashYear===y?' selected':'')+'>'+y+'</option>';
   }).join('');
-  tabs.innerHTML = btns;
+  tabs.innerHTML = '<select onchange="dashFilterYear(this.value)" style="padding:4px 10px;border-radius:7px;font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid var(--blue);background:#fff;color:var(--bd);outline:none;min-width:80px">'+opts+'</select>';
 }
 // ===== END DASHBOARD YEAR FILTER =====
 
@@ -3579,42 +3569,29 @@ function rRep(){
   var maxM = Math.max.apply(null, sortedMonths.map(function(m){ return monthlyData[m].total; })) || 1;
   var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // SVG-based chart — no CSS clipping issues
-  var svgW = 560, svgH = 180;
-  var padL = 8, padR = 8, padTop = 24, padBot = 28;
-  var chartW = svgW - padL - padR;
-  var chartH = svgH - padTop - padBot;
-  var n = sortedMonths.length;
-  var groupW = chartW / n;
-  var barW = Math.floor(groupW * 0.38);
-  var gap = Math.floor(groupW * 0.04);
-
-  var svgBars = '';
-  sortedMonths.forEach(function(ym, i){
-    var d = monthlyData[ym];
-    var parts = ym.split('-');
-    var lbl = monthNames[parseInt(parts[1])-1]+' '+parts[0].slice(2);
-    var cx = padL + i * groupW + groupW / 2;
-    var hTotal = Math.round(d.total / maxM * chartH); if(hTotal < 2) hTotal = 2;
-    var hClosed = Math.round(d.closed / maxM * chartH); if(hClosed < 2) hClosed = 2;
-    var x1 = cx - barW - gap/2;
-    var x2 = cx + gap/2;
-    var yTotal  = padTop + chartH - hTotal;
-    var yClosed = padTop + chartH - hClosed;
-    svgBars += '<rect x="'+x1+'" y="'+yTotal+'" width="'+barW+'" height="'+hTotal+'" rx="2" fill="#42a5f5" opacity=".8"/>';
-    svgBars += '<rect x="'+x2+'" y="'+yClosed+'" width="'+barW+'" height="'+hClosed+'" rx="2" fill="#2e7d32" opacity=".85"/>';
-    svgBars += '<text x="'+cx+'" y="'+(yTotal-4)+'" text-anchor="middle" font-size="8.5" font-weight="700" fill="#0d47a1">'+d.total+'</text>';
-    svgBars += '<text x="'+cx+'" y="'+(svgH-6)+'" text-anchor="middle" font-size="7.5" fill="#607090">'+lbl+'</text>';
-  });
-
   var trendHTML = '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr">'
     + '<h3 style="font-size:.85rem;color:var(--bd);margin-bottom:12px;border-bottom:1px solid var(--bor);padding-bottom:6px">📈 Monthly Trend (Last 12 Months)</h3>'
-    + '<svg viewBox="0 0 '+svgW+' '+svgH+'" style="width:100%;height:auto;display:block">'
-    + svgBars
-    + '</svg>'
-    + '<div style="display:flex;gap:14px;margin-top:6px;font-size:.68rem">'
-    + '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#42a5f5;border-radius:2px;display:inline-block;opacity:.8"></span> Total</span>'
-    + '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#2e7d32;border-radius:2px;display:inline-block"></span> Closed</span>'
+    + '<div style="display:flex;align-items:flex-end;gap:6px;height:150px;padding-bottom:20px;padding-top:20px;position:relative">';
+
+  sortedMonths.forEach(function(ym){
+    var d = monthlyData[ym];
+    var h = Math.round(d.total/maxM*100);
+    var hc = Math.round(d.closed/maxM*100);
+    var parts = ym.split('-');
+    var lbl = monthNames[parseInt(parts[1])-1]+' '+parts[0].slice(2);
+    trendHTML += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer" onclick="gtClickMonth(\''+ym+'\')" title="'+lbl+': '+d.total+' cases">'
+      + '<div style="font-size:.6rem;color:var(--bd);font-weight:700">'+d.total+'</div>'
+      + '<div style="width:100%;position:relative;height:100px;display:flex;align-items:flex-end;gap:1px">'
+      + '<div style="flex:1;background:var(--blue3);border-radius:3px 3px 0 0;height:'+h+'%;min-height:2px;opacity:.7"></div>'
+      + '<div style="flex:1;background:var(--green);border-radius:3px 3px 0 0;height:'+hc+'%;min-height:2px"></div>'
+      + '</div>'
+      + '<div style="font-size:.55rem;color:var(--mt);text-align:center;margin-top:2px">'+lbl+'</div>'
+      + '</div>';
+  });
+  trendHTML += '</div>'
+    + '<div style="display:flex;gap:14px;margin-top:4px;font-size:.68rem">'
+    + '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--blue3);border-radius:2px;display:inline-block;opacity:.7"></span> Total</span>'
+    + '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span> Closed</span>'
     + '</div>'
     + '</div>';
 
