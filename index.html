@@ -393,6 +393,7 @@ async function hashPw(pw){
     <div class="sbi" onclick="goPage('reports',this)" data-p="reports"><span class="ic">📊</span><span class="lb">Reports</span></div>
     <div class="sbi" onclick="goPage('tawan',this)" data-p="tawan"><span class="ic">💰</span><span class="lb">Tawan Sheet</span></div>
     <div class="sbi hide" id="nav-users" onclick="goPage('users',this)" data-p="users"><span class="ic">👥</span><span class="lb">Users</span></div>
+    <div class="sbi" onclick="goPage('clients',this)" data-p="clients" id="nav-clients"><span class="ic">🧑‍💼</span><span class="lb">Clients</span></div>
     <div class="sbi hide" id="nav-set" onclick="goPage('settings',this)" data-p="settings"><span class="ic">⚙️</span><span class="lb">Settings</span></div>
   </div>
   <div class="sbu">
@@ -1072,6 +1073,38 @@ async function hashPw(pw){
     <div id="rpC" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:start;direction:ltr"></div>
     <!-- Trend Chart & Mufattish Breakdown -->
     <div id="rpExtra" style="margin-top:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px"></div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div id="pg-clients" class="pg">
+    <div class="stitle" style="justify-content:space-between">
+      <h2>🧑‍💼 Client Management</h2>
+      <button class="btn bpri bsm" onclick="openClientForm()">➕ New Client</button>
+    </div>
+    <!-- Search bar -->
+    <div style="margin-bottom:14px">
+      <input id="clientSearch" type="text" placeholder="🔍 Naam, Phone, Email ya Employee Code se search..." oninput="renderClients()" style="width:100%;padding:9px 14px;border:1.5px solid var(--bor);border-radius:9px;font-size:.82rem;outline:none;box-sizing:border-box">
+    </div>
+    <div id="clientList"></div>
+    <!-- Client Form Modal -->
+    <div id="clientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+          <h3 id="clientFormTitle" style="font-size:.95rem;color:var(--bd)">➕ New Client</h3>
+          <button onclick="closeClientForm()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--mt)">✕</button>
+        </div>
+        <div style="display:grid;gap:12px">
+          <div><label style="font-size:.75rem;font-weight:600;color:var(--mt);display:block;margin-bottom:4px">Full Name *</label><input id="cNaam" placeholder="Client ka naam..." style="width:100%;padding:8px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.82rem;outline:none;box-sizing:border-box"></div>
+          <div><label style="font-size:.75rem;font-weight:600;color:var(--mt);display:block;margin-bottom:4px">Phone</label><input id="cPhone" type="tel" placeholder="Mobile number..." style="width:100%;padding:8px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.82rem;outline:none;box-sizing:border-box"></div>
+          <div><label style="font-size:.75rem;font-weight:600;color:var(--mt);display:block;margin-bottom:4px">Designation</label><input id="cDesig" placeholder="e.g. Nazim, Muhtamim..." style="width:100%;padding:8px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.82rem;outline:none;box-sizing:border-box"></div>
+          <div><label style="font-size:.75rem;font-weight:600;color:var(--mt);display:block;margin-bottom:4px">Employee Code</label><input id="cEmpCode" placeholder="Employee Code..." style="width:100%;padding:8px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.82rem;outline:none;box-sizing:border-box"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+          <button onclick="closeClientForm()" class="btn bout bsm">Cancel</button>
+          <button onclick="saveClient()" class="btn bpri bsm">💾 Save</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- USERS -->
@@ -1894,7 +1927,7 @@ async function doLogin(){
 (function(){
   var params=new URLSearchParams(window.location.search);
   var pg=params.get('p');
-  if(pg&&pg!=='dash')setTimeout(function(){goPage(pg,null,true);},600);
+  if(pg&&pg!=='dash') goPage(pg,null,true);
 })();
 async function restoreS(){
   const s=localStorage.getItem('sr_s');if(!s)return;
@@ -1934,8 +1967,10 @@ function launch(){
     if(navEl) navEl.style.display=(isA||(cu.perms&&cu.perms[navMap[pg]]))?'flex':'none';
   });
   loadAllSettings();initDD();loadLogo();
-  // Sab parallel chalao — wait mat karo
-  startListener(); // Turant start karo — dashboard fast dikhe
+  // URL mein jo page ho seedha wahan jao — koi delay nahi
+  var _urlPg = new URLSearchParams(window.location.search).get('p') || 'dash';
+  goPage(_urlPg, null, true);
+  startListener();
   // Background mein fresh user data + users list
   db.collection('users').doc(cu.id).get().then(function(sn){
     if(sn.exists){ cu={id:sn.id,...sn.data()}; localStorage.setItem('sr_s',JSON.stringify({...cu,loginAt:Date.now()})); }
@@ -1958,8 +1993,8 @@ document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')
 var _currentPg = '';
 var _pgEls = {};
 var _navEls = {};
-var _ALL_PAGES = ['dash','cases','newcase','search','tawan','reports','users','settings'];
-var _TS = {dash:'Dashboard',cases:'All Cases',newcase:'New Case',search:'Search',reports:'Reports',tawan:'💰 Tawan Sheet',users:'Users',settings:'Settings'};
+var _ALL_PAGES = ['dash','cases','newcase','search','tawan','reports','users','clients','settings'];
+var _TS = {dash:'Dashboard',cases:'All Cases',newcase:'New Case',search:'Search',reports:'Reports',tawan:'💰 Tawan Sheet',users:'Users',clients:'Clients',settings:'Settings'};
 var _pgReady = {}; // Track which pages have been rendered at least once
 
 function _initPgCache(){
@@ -2013,6 +2048,7 @@ function goPage(pg,el,skipHistory){
       setTimeout(lmLoadSettings, 30);
     }
     else if(pg==='users')   fbGetU().then(rUsers);
+    else if(pg==='clients') { loadClients(); }
     else if(pg==='newcase'){
       if(!eId){ eId=null; resetF(); }
       setTimeout(function(){
@@ -6290,24 +6326,29 @@ function nmAutoComplete(inp){
   var box = inp.parentNode.querySelector('.nm-sug');
   if(!box) return;
   if(q.length < 2){ box.style.display='none'; return; }
-  // Collect all unique names from existing cases
+  // Collect names from existing cases
   var names = [];
   var seen = {};
   (cc||[]).forEach(function(c){
     var persons = c.persons||[];
-    // Also check old single name field
     if(c.name && !seen[c.name.toLowerCase()]){
       seen[c.name.toLowerCase()] = true;
-      names.push({name:c.name, mobile:c.mobile||'', caseNo:c.caseNo||''});
+      names.push({name:c.name, mobile:c.mobile||'', empCode:'', caseNo:c.caseNo||'', src:'case'});
     }
     persons.forEach(function(p){
       if(p.name && !seen[p.name.toLowerCase()]){
         seen[p.name.toLowerCase()] = true;
-        names.push({name:p.name, mobile:p.mobile||'', caseNo:c.caseNo||''});
+        names.push({name:p.name, mobile:p.mobile||'', empCode:p.empCode||'', caseNo:c.caseNo||'', src:'case'});
       }
     });
   });
-  // Filter by query
+  // Also add from clients collection
+  (_clients||[]).forEach(function(c){
+    if(c.naam && !seen[c.naam.toLowerCase()]){
+      seen[c.naam.toLowerCase()] = true;
+      names.push({name:c.naam, mobile:c.phone||'', empCode:c.empCode||'', desig:c.desig||'', caseNo:'', src:'client'});
+    }
+  });
   var filtered = names.filter(function(n){ return n.name.toLowerCase().indexOf(q) > -1; }).slice(0, 8);
   if(!filtered.length){ box.style.display='none'; return; }
   box.innerHTML = '';
@@ -6316,23 +6357,35 @@ function nmAutoComplete(inp){
     item.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:.78rem;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center';
     item.dataset.name = n.name;
     item.dataset.mobile = n.mobile;
+    item.dataset.empcode = n.empCode;
+    item.dataset.desig = n.desig||'';
     item.innerHTML = '<span style="font-weight:600">'+escHtml(n.name)+'</span>'
-      +'<span style="color:var(--mt);font-size:.7rem">'+(n.mobile?'📱 '+escHtml(n.mobile):'')+' <span style="color:#90caf9">'+escHtml(n.caseNo)+'</span></span>';
+      +'<span style="color:var(--mt);font-size:.7rem">'
+      +(n.mobile?'📱 '+escHtml(n.mobile)+' ':'')
+      +(n.desig?'💼 '+escHtml(n.desig)+' ':'')
+      +(n.empCode?'🪪 '+escHtml(n.empCode)+' ':'')
+      +(n.src==='client'?'<span style="color:#4caf50">●client</span>':'<span style="color:#90caf9">'+escHtml(n.caseNo)+'</span>')
+      +'</span>';
     item.addEventListener('mouseover',function(){this.style.background='#e3f2fd';});
     item.addEventListener('mouseout',function(){this.style.background='';});
     item.addEventListener('mousedown',function(e){
       e.preventDefault();
-      nmPick(inp, this.dataset.name, this.dataset.mobile);
+      nmPick(inp, this.dataset.name, this.dataset.mobile, this.dataset.empcode, this.dataset.desig);
     });
     box.appendChild(item);
   });
   box.style.display = 'block';
 }
-function nmPick(inp, name, mobile){
+function nmPick(inp, name, mobile, empCode, desig){
   var box = inp.parentNode.querySelector('.nm-sug');
-  var mobInp = inp.closest('.person-row') ? inp.closest('.person-row').querySelector('.pMob') : null;
+  var row = inp.closest('.person-row');
+  var mobInp  = row ? row.querySelector('.pMob')    : null;
+  var ecInp   = row ? row.querySelector('.pEc')     : null;
+  var msInp   = row ? row.querySelector('.pMansab') : null;
   inp.value = name;
   if(mobInp && mobile && !mobInp.value) mobInp.value = mobile;
+  if(ecInp  && empCode && !ecInp.value)  ecInp.value  = empCode;
+  if(msInp  && desig   && !msInp.value)  msInp.value  = desig;
   if(box) box.style.display = 'none';
 }
 // Hide suggestions when clicking outside
@@ -6395,6 +6448,107 @@ function setPersons(arr){
 }
 function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 // ===== END MULTI-PERSON =====
+
+// ===== CLIENT MANAGEMENT =====
+var _clients = [];
+var _editClientId = null;
+
+function loadClients(){
+  db.collection('clients').orderBy('naam').onSnapshot(function(snap){
+    _clients = snap.docs.map(function(d){ return {id:d.id, ...d.data()}; });
+    renderClients();
+  });
+}
+
+function renderClients(){
+  var list = document.getElementById('clientList');
+  if(!list) return;
+  var q = (document.getElementById('clientSearch')||{value:''}).value.trim().toLowerCase();
+  var filtered = _clients.filter(function(c){
+    if(!q) return true;
+    return (c.naam||'').toLowerCase().includes(q)
+      || (c.phone||'').includes(q)
+      || (c.empCode||'').toLowerCase().includes(q);
+  });
+  if(!filtered.length){
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--mt);font-size:.85rem">Koi client nahi mila</div>';
+    return;
+  }
+  list.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'
+    + filtered.map(function(c){
+      return '<div style="background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--sh);border:1px solid var(--bor)">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+        + '<div style="font-size:.88rem;font-weight:700;color:var(--bd)">👤 '+escHtml(c.naam||'')+'</div>'
+        + '<div style="display:flex;gap:6px">'
+        + '<button onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">✏️ Edit</button>'
+        + '<button onclick="deleteClient(\''+c.id+'\',\''+escHtml(c.naam||'')+'\')" style="background:#ffebee;color:#c62828;border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">🗑️</button>'
+        + '</div></div>'
+        + (c.phone ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">📱 '+escHtml(c.phone)+'</div>' : '')
+        + (c.desig ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">💼 '+escHtml(c.desig)+'</div>' : '')
+        + (c.empCode ? '<div style="font-size:.78rem;color:var(--mt)">🪪 '+escHtml(c.empCode)+'</div>' : '')
+        + '</div>';
+    }).join('')
+    + '</div>';
+}
+
+function openClientForm(id){
+  _editClientId = null;
+  document.getElementById('cNaam').value = '';
+  document.getElementById('cPhone').value = '';
+  document.getElementById('cDesig').value = '';
+  document.getElementById('cEmpCode').value = '';
+  document.getElementById('clientFormTitle').textContent = '➕ New Client';
+  document.getElementById('clientModal').style.display = 'flex';
+}
+
+function editClient(id){
+  var c = _clients.find(function(x){ return x.id===id; });
+  if(!c) return;
+  _editClientId = id;
+  document.getElementById('cNaam').value = c.naam||'';
+  document.getElementById('cPhone').value = c.phone||'';
+  document.getElementById('cDesig').value = c.desig||'';
+  document.getElementById('cEmpCode').value = c.empCode||'';
+  document.getElementById('clientFormTitle').textContent = '✏️ Edit Client';
+  document.getElementById('clientModal').style.display = 'flex';
+}
+
+function closeClientForm(){
+  document.getElementById('clientModal').style.display = 'none';
+  _editClientId = null;
+}
+
+async function saveClient(){
+  var naam = document.getElementById('cNaam').value.trim();
+  if(!naam){ toast('⚠️ Naam zaroori hai!'); return; }
+  var data = {
+    naam: naam,
+    phone: document.getElementById('cPhone').value.trim(),
+    desig: document.getElementById('cDesig').value.trim(),
+    empCode: document.getElementById('cEmpCode').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+  try{
+    if(_editClientId){
+      await db.collection('clients').doc(_editClientId).update(data);
+      toast('✅ Client update ho gaya!');
+    } else {
+      data.createdAt = new Date().toISOString();
+      await db.collection('clients').add(data);
+      toast('✅ Client save ho gaya!');
+    }
+    closeClientForm();
+  } catch(e){ toast('❌ Error: '+e.message); }
+}
+
+async function deleteClient(id, naam){
+  if(!confirm(naam+' ko delete karna chahte ho?')) return;
+  try{
+    await db.collection('clients').doc(id).delete();
+    toast('🗑️ Client delete ho gaya!');
+  } catch(e){ toast('❌ '+e.message); }
+}
+// ===== END CLIENT MANAGEMENT =====
 
 function deptToggle(){
   var ms = document.getElementById('fDeptMS');
