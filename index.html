@@ -387,7 +387,7 @@ async function hashPw(pw){
   <div class="sbnav">
     <div class="sbi on" onclick="goPage('dash',this)" data-p="dash"><span class="ic">🏠</span><span class="lb">Dashboard</span></div>
     <div class="sbi" onclick="goPage('cases',this)" data-p="cases"><span class="ic">📋</span><span class="lb">All Cases</span></div>
-    <div class="sbi" onclick="goPage('newcase',this)" data-p="newcase" id="nav-nc"><span class="ic">➕</span><span class="lb">New Case</span></div>
+    <div class="sbi" onclick="eId=null;goPage('newcase',this)" data-p="newcase" id="nav-nc"><span class="ic">➕</span><span class="lb">New Case</span></div>
     <div class="sbi" onclick="goPage('search',this)" data-p="search"><span class="ic">🔍</span><span class="lb">Search</span></div>
     <div class="sbsep"></div>
     <div class="sbi" onclick="goPage('reports',this)" data-p="reports"><span class="ic">📊</span><span class="lb">Reports</span></div>
@@ -467,7 +467,7 @@ async function hashPw(pw){
     </div>
     <div class="stitle"><h2>🗺️ Region Overview</h2></div>
     <div class="rcards" id="regCards"></div>
-    <div class="stitle"><h2>📝 Recent Cases</h2><span id='dashNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="goPage('newcase')">➕ New Case</button></span></div>
+    <div class="stitle"><h2>📝 Recent Cases</h2><span id='dashNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="eId=null;goPage('newcase')">➕ New Case</button></span></div>
     <div class="twrap">
       <div class="thead"><h3>Last 10</h3></div>
       <div style="overflow-x:auto"><table><thead><tr id="dTH"></tr></thead><tbody id="dTB"><tr><td colspan="11"><div class="loading"><div class="spin"></div>Loading...</div></td></tr></tbody></table></div>
@@ -481,7 +481,7 @@ async function hashPw(pw){
         <button class="btn bout bsm" onclick="toggleColPanel()" title="Columns show/hide">⚙️ Columns</button>
         <button class="btn bsm" style="background:#1d6f42;color:#fff" onclick="exportCasesExcel()" title="Excel Export">📊 Excel</button>
         <button class="btn bout bsm" id="viewToggleBtn" onclick="toggleCasesView()" title="Table/Card view">🃏 Card View</button>
-        <span id='casesNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="goPage('newcase')">➕ New Case</button></span>
+        <span id='casesNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="eId=null;goPage('newcase')">➕ New Case</button></span>
       </div>
     </div>
     <!-- Column toggle panel -->
@@ -672,11 +672,12 @@ async function hashPw(pw){
 
           <!-- STEP 1: DONOR CONTACT (sirf Wajiba ke liye) -->
           <div id="tDonorSection" style="display:none;grid-column:1/-1">
-          <div class="fgr"><label>Mufti Sb ne Donor Rabita kaha?</label>
+          <div class="fgr"><label>Mufti Sb ne kya kaha?</label>
             <select id="tDO" onchange="togTDC()">
               <option value="">Select</option>
-              <option value="yes">✅ Yes</option>
-              <option value="no">❌ No</option>
+              <option value="yes">✅ Rabita Karo</option>
+              <option value="no">❌ Rabita Nahi Kiya</option>
+              <option value="direct">💰 Direct Jama Karo</option>
             </select>
           </div>
           <div class="fgr" id="tDCWrap" style="display:none"><label>Donor se Rabita Hua?</label>
@@ -910,6 +911,28 @@ async function hashPw(pw){
           <div class="fgr fw"><label>Details</label><input id="tbNt"></div>
         </div>
       </div>
+      <!-- MAZRATNAMA -->
+      <div id="gMazratnama" class="sbox" style="display:none;border-color:#795548;background:#fdf8f5">
+        <div class="sbox-title" style="color:#795548">📝 Mazratnama</div>
+        <div class="fg">
+          <div class="fgr"><label>Mazratnama Aaya?</label>
+            <select id="mazSt" onchange="autoMazSt()">
+              <option value="">Select</option>
+              <option value="yes">✅ Yes</option>
+              <option value="no">❌ No</option>
+              <option value="refused">⛔ Refused</option>
+            </select>
+          </div>
+          <div class="fgr" id="mazStBox" style="display:none"><label>Mazratnama Status</label>
+            <select id="mazratSt" style="border:1.5px solid #795548">
+              <option value="open">🔴 Open / Pending</option>
+              <option value="closed">✅ Closed / Complete</option>
+            </select>
+          </div>
+          <div class="fgr"><label>Date</label><input type="date" id="mazDt"></div>
+          <div class="fgr fw"><label>Notes</label><input id="mazNt"></div>
+        </div>
+      </div>
       <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:14px">
         <button class="btn bpri" onclick="saveCase()">💾 Save Case</button>
         <button class="btn bout" onclick="resetF._manual=true;resetF()">✕ Reset</button>
@@ -977,6 +1000,7 @@ async function hashPw(pw){
     <div class="sbar">
       <h3>🔍 Filter</h3>
       <div class="sgrid">
+        <div class="fi"><label>Case No</label><input id="twFCno" oninput="renderTawan()" placeholder="Case No..."></div>
         <div class="fi"><label>Mufattish</label><input id="twFMuf" oninput="renderTawan()" placeholder="Search..."></div>
         <div class="fi"><label>Region</label><input id="twFReg" oninput="renderTawan()" placeholder="Region..."></div>
         <div class="fi"><label>State</label><input id="twFSt" oninput="renderTawan()" placeholder="State..."></div>
@@ -986,8 +1010,8 @@ async function hashPw(pw){
           <select id="twFWus" onchange="renderTawan()">
             <option value="">Sab</option>
             <option value="yes">✅ Received</option>
-            <option value="partial">🔸 Juzvi</option>
-            <option value="no">❌ Nahi Hua</option>
+            <option value="partial">🔸 Pending</option>
+            <option value="no">❌ Not Received</option>
           </select>
         </div>
         <div class="fi"><label>Date Se</label><input type="date" id="twFDF" onchange="renderTawan()"></div>
@@ -1079,13 +1103,29 @@ async function hashPw(pw){
   <div id="pg-clients" class="pg">
     <div class="stitle" style="justify-content:space-between">
       <h2>🧑‍💼 Client Management</h2>
-      <button class="btn bpri bsm" onclick="openClientForm()">➕ New Client</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn bpri bsm" onclick="openClientForm()">➕ New Client</button>
+      </div>
     </div>
     <!-- Search bar -->
     <div style="margin-bottom:14px">
       <input id="clientSearch" type="text" placeholder="🔍 Naam, Phone, Email ya Employee Code se search..." oninput="renderClients()" style="width:100%;padding:9px 14px;border:1.5px solid var(--bor);border-radius:9px;font-size:.82rem;outline:none;box-sizing:border-box">
     </div>
     <div id="clientList"></div>
+
+    <!-- Client Cases Modal -->
+    <div id="clientCasesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1001;align-items:center;justify-content:center;padding:16px">
+      <div style="background:var(--card);border-radius:14px;width:100%;max-width:700px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.2)">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center;background:var(--bd)">
+          <div>
+            <div id="ccmName" style="font-size:1rem;font-weight:700;color:#fff"></div>
+            <div id="ccmMeta" style="font-size:.75rem;color:#90caf9;margin-top:2px"></div>
+          </div>
+          <button onclick="closeClientCases()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.8rem">✕ Close</button>
+        </div>
+        <div id="ccmBody" style="overflow-y:auto;padding:16px;flex:1"></div>
+      </div>
+    </div>
     <!-- Client Form Modal -->
     <div id="clientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin:16px">
@@ -2050,7 +2090,7 @@ function goPage(pg,el,skipHistory){
     else if(pg==='users')   fbGetU().then(rUsers);
     else if(pg==='clients') { loadClients(); }
     else if(pg==='newcase'){
-      if(!eId){ eId=null; resetF(); }
+      if(!eId){ resetF(); }
       setTimeout(function(){
         initSearchableSelects();
         if(!eId){ var s=document.getElementById('fStat'); if(s){ s.value='pending_z'; if(s._ssRefresh)s._ssRefresh(); }}
@@ -3706,7 +3746,7 @@ function resetF(){
   if(cnoIcon) cnoIcon.textContent='';
   // Auto fill case no
   setTimeout(autoFillCaseNo, 100);
-  ['fIdr','fReg','fSt','fDiv','fDist','fGd','fSael','tDO','tDC','tJm','tPM','hSt','halfiaSt','tawnSt','tfT','tfD','tbO','tbD','mazSt'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
+  ['fIdr','fReg','fSt','fDiv','fDist','fGd','fSael','tDO','tDC','tJm','tPM','hSt','halfiaSt','tawnSt','tfT','tfD','tbO','tbD','mazSt','mazratSt'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
   initDeptMS();
   setGuideValues([]);
   setPersons([{name:'',mobile:'',empCode:''}]);
@@ -3741,17 +3781,39 @@ function resetF(){
   }
   // Toast sirf manual reset button se — automatic call pe nahi
   if(resetF._manual){ toast('🔄 Form reset!'); resetF._manual=false; }
+
+  // Browser autocomplete se bachao — 500ms baad dobara clear karo
+  setTimeout(function(){
+    if(eId) return; // Edit mode mein mat clear karo
+    ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher',
+     'fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt',
+     'tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fKT'].forEach(function(id){
+      var e=document.getElementById(id);
+      if(e && !e.dataset.keepValue) e.value='';
+    });
+    // Person rows bhi clear karo
+    document.querySelectorAll('.pNm,.pMob,.pEc,.pMansab').forEach(function(e){
+      e.value='';
+    });
+  }, 500);
 }
 
 function autoHalfiaSt(){
   var v = document.getElementById('hSt').value;
   var st = document.getElementById('halfiaSt');
+  var box = document.getElementById('halfiaStBox');
   if(!st) return;
-  if(v==='yes'){
-    st.value = 'closed';
-  } else {
-    st.value = 'open';
-  }
+  if(v==='yes'){ st.value='closed'; if(box) box.style.display='block'; }
+  else { st.value='open'; if(box) box.style.display='none'; }
+}
+
+function autoMazSt(){
+  var v = document.getElementById('mazSt').value;
+  var st = document.getElementById('mazratSt');
+  var box = document.getElementById('mazStBox');
+  if(!st) return;
+  if(v==='yes'){ st.value='closed'; if(box) box.style.display='block'; }
+  else { st.value='open'; if(box) box.style.display='none'; }
 }
 async function saveCase(){
   const cn=document.getElementById('fCNo').value.trim();
@@ -3788,7 +3850,7 @@ async function saveCase(){
       tAshiyaWasool:document.getElementById('tAshiyaWasool')?document.getElementById('tAshiyaWasool').value:'',
       tAshiyaMili:document.getElementById('tAshiyaMili')?document.getElementById('tAshiyaMili').value:'',
       tAshiyaProcess:document.getElementById('tAshiyaProcess')?document.getElementById('tAshiyaProcess').value:'',
-      tAshiyaProcessNo:document.getElementById('tAshiyaProcessNo')?document.getElementById('tAshiyaProcessNo').value.trim():'',tMd:document.getElementById('tMd').value.trim(),tMq:document.getElementById('tMq').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tHkm:document.getElementById('tHkm').value,tJm:document.getElementById('tJm').value,tawnSt:document.getElementById('tawnSt')?document.getElementById('tawnSt').value:'open',tNaf:document.getElementById('tNaf').value,tWaj:document.getElementById('tWaj').value,tTot:document.getElementById('tTot').value,tPd:document.getElementById('tPd').value,tRm:document.getElementById('tRm').value,tInsts:JSON.parse(JSON.stringify(tInsts)),tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tAshiyaProcessNo:document.getElementById('tAshiyaProcessNo')?document.getElementById('tAshiyaProcessNo').value.trim():'',tMd:document.getElementById('tMd').value.trim(),tMq:document.getElementById('tMq').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tHkm:document.getElementById('tHkm').value,tJm:document.getElementById('tJm').value,tawnSt:document.getElementById('tawnSt')?document.getElementById('tawnSt').value:'open',tNaf:document.getElementById('tNaf').value,tWaj:document.getElementById('tWaj').value,tTot:document.getElementById('tTot').value,tPd:document.getElementById('tPd').value,tRm:document.getElementById('tRm').value,tInsts:JSON.parse(JSON.stringify(tInsts)),tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
     else{
@@ -3816,7 +3878,7 @@ function editC(id){
     // Restore persons
     if(c.persons&&c.persons.length) setPersons(c.persons);
     else setPersons([{name:c.name||'',mobile:c.mobile||'',empCode:c.empCode||''}]);
-    const sv={fIdr:'idarati',fSael:'sael',fStat:'status',tDO:'tDO',tDC:'tDC',tMd:'tMd',tMq:'tMq',tJm:'tJm',tPM:'tPM',hSt:'hSt',halfiaSt:'halfiaSt',tawnSt:'tawnSt',tfT:'tfT',tfD:'tfD',tbO:'tbO',tbD:'tbD',mazSt:'mazSt'};
+    const sv={fIdr:'idarati',fSael:'sael',fStat:'status',tDO:'tDO',tDC:'tDC',tMd:'tMd',tMq:'tMq',tJm:'tJm',tPM:'tPM',hSt:'hSt',halfiaSt:'halfiaSt',tawnSt:'tawnSt',tfT:'tfT',tfD:'tfD',tbO:'tbO',tbD:'tbD',mazSt:'mazSt',mazratSt:'mazratSt'};
     // Restore guide checkboxes
     setGuideValues(c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []));
     Object.entries(sv).forEach(([fi,k])=>{const e=document.getElementById(fi);if(e&&c[k])e.value=c[k];});
@@ -4892,10 +4954,12 @@ function getTawanCases(){
   });
 }
 
-function wusBadgeTW(v){
-  if(v==='yes') return '<span class="badge bg">✅ Received</span>';
-  if(v==='partial') return '<span class="badge bo">🔸 Juzvi (Partial)</span>';
-  if(v==='no') return '<span class="badge br">❌ Nahi Hua</span>';
+function wusBadgeTW(v, tPd, tTot){
+  var paid = parseFloat(tPd)||0;
+  if(v==='yes' && paid > 0) return '<span class="badge bg">✅ Received</span>';
+  if(v==='yes' && paid === 0) return '<span class="badge br">❌ Not Received</span>';
+  if(v==='partial') return '<span class="badge bo">🔸 Pending</span>';
+  if(v==='no') return '<span class="badge br">❌ Not Received</span>';
   return '<span class="badge bgr">—</span>';
 }
 
@@ -4920,6 +4984,7 @@ function renderTawan(){
     return;
   }
   const tw = getTawanCases();
+  const fCno  = (document.getElementById('twFCno')||{value:''}).value.toLowerCase();
   const fMuf  = (document.getElementById('twFMuf')||{value:''}).value.toLowerCase();
   const fReg  = (document.getElementById('twFReg')||{value:''}).value.toLowerCase();
   const fSt   = (document.getElementById('twFSt')||{value:''}).value.toLowerCase();
@@ -4930,15 +4995,17 @@ function renderTawan(){
   const fDT   = (document.getElementById('twFDT')||{value:''}).value;
 
   const filtered = tw.filter(c=>{
+    if(fCno && !(c.caseNo||'').toLowerCase().includes(fCno)) return false;
     if(fMuf && !(c.mufattish||'').toLowerCase().includes(fMuf)) return false;
     if(fReg && !(c.region||'').toLowerCase().includes(fReg)) return false;
     if(fSt  && !(c.state||'').toLowerCase().includes(fSt)) return false;
     if(fDist && !(c.district||'').toLowerCase().includes(fDist)) return false;
     if(fNm  && !(c.name||'').toLowerCase().includes(fNm)) return false;
     if(fWus){
-      if(fWus==='yes' && c.tJm!=='yes') return false;
+      var paid = parseFloat(c.tPd)||0;
+      if(fWus==='yes' && !(c.tJm==='yes' && paid > 0)) return false;
       if(fWus==='partial' && c.tJm!=='partial') return false;
-      if(fWus==='no' && c.tJm!=='no' && c.tJm!=='') return false;
+      if(fWus==='no' && !((c.tJm==='no'||c.tJm===''||!c.tJm) || (c.tJm==='yes' && paid===0))) return false;
     }
     if(fDF && c.openDate && c.openDate < fDF) return false;
     if(fDT && c.openDate && c.openDate > fDT) return false;
@@ -4985,7 +5052,7 @@ function renderTawan(){
       <td style="font-weight:700;color:#6a1b9a">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString('en-IN'):'—'}</td>
       <td style="font-weight:700;color:var(--green)">${c.tPd?'₹'+parseFloat(c.tPd).toLocaleString('en-IN'):'—'}</td>
       <td style="font-weight:700;color:var(--red)">${c.tRm?'₹'+parseFloat(c.tRm).toLocaleString('en-IN'):'—'}</td>
-      <td>${wusBadgeTW(c.tJm)}</td>
+      <td>${wusBadgeTW(c.tJm, c.tPd, c.tTot)}</td>
       <td>
         ${hp('edit')?`<button class="btn bsm" style="background:#e3f2fd;color:var(--blue);padding:3px 7px" onclick="editC('${c.id}')">✏️</button>`:''}
         ${hp('del')?`<button class="btn bred bsm" style="padding:3px 7px" onclick="delC('${c.id}')">🗑️</button>`:''}
@@ -4995,7 +5062,7 @@ function renderTawan(){
 }
 
 function clrTawanFilter(){
-  ['twFMuf','twFReg','twFSt','twFDist','twFNm','twFDF','twFDT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['twFCno','twFMuf','twFReg','twFSt','twFDist','twFNm','twFDF','twFDT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const w=document.getElementById('twFWus');if(w)w.value='';
   renderTawan();
 }
@@ -5003,7 +5070,7 @@ function clrTawanFilter(){
 function exportTawanCSV(){
   const tw = getTawanCases();
   const headers = ['Sr No','Investigator Name','Region Name','State Name','Division Name','District Name','City Name','Order Date','Case No','Zimmadari Ajeer','Ajeer Code','Mobile','MOBILE MAJLIS','Total Amount','Nafila Amount','Wajiba Amount','Tawan Received?','Tawan Category','Tawan Purpose','Donor / Center'];
-  const wusL = {yes:'Received Ho Gaya', partial:'Juzvi (Partial)', no:'Nahi Hua'};
+  const wusL = {yes:'Received', partial:'Pending', no:'Not Received'};
   const rows = tw.map((c,i)=>[
     i+1, c.mufattish, c.region, c.state, c.division, c.district, c.city,
     c.openDate, c.caseNo, c.name, c.empCode, c.mobile, c.sael,
@@ -5188,7 +5255,7 @@ function initSearchableSelects(){
   makeSearchable('fDiv',  'Select Division...');
   makeSearchable('fDist', 'Select District...');
   makeSearchable('fStat', 'Status...');
-  makeSearchable('fGd',   'Rahnumai Type...');
+  // fGd is handled by checkboxes — no searchable needed
   // Tawan sub-fields
   makeSearchable('tDO',   'Select...');
   makeSearchable('tDC',   'Select...');
@@ -5343,7 +5410,7 @@ async function fixCaseDepts(){
   if(btn){ btn.disabled=false; btn.textContent='🔄 Fix Case Departments'; }
 }
 
-function lmLoadSettings(){lmRenderRegions();lmPopRegSel();lmRenderDepts();}
+
 function lmChip(label,bg){
   const wrap=document.createElement('span');
   wrap.className='lm-chip';wrap.style.cssText='display:inline-flex;align-items:center;gap:2px;background:'+(bg||'#e3f2fd')+';border:1px solid #c5d5f0;border-radius:10px;padding:3px 9px;font-size:.72rem;font-weight:600;color:#1a2340;margin:2px';
@@ -5568,32 +5635,6 @@ function lmAddRType(){
 }
 
 // Bulk fix dept names in all cases
-async function fixCaseDepts(){
-  if(!confirm('Sab cases ke department names naye format mein update honge. Confirm?')) return;
-  const btn = document.getElementById('fixDeptsBtn');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Updating...'; }
-  try{
-    const snap = await db.collection('cases').get();
-    const batch = db.batch();
-    let count = 0;
-    snap.docs.forEach(function(doc){
-      const d = doc.data();
-      const oldDept = d.dept || '';
-      const newDept = normalizeDept(oldDept);
-      if(newDept && newDept !== oldDept){
-        batch.update(doc.ref, {dept: newDept});
-        count++;
-      }
-    });
-    if(count > 0){
-      await batch.commit();
-      toast('✅ ' + count + ' cases ke dept names update ho gaye!');
-    } else {
-      toast('ℹ️ Sab cases pehle se correct hain!');
-    }
-  } catch(e){ toast('❌ Error: '+e.message); }
-  if(btn){ btn.disabled=false; btn.textContent='🔄 Fix Case Departments'; }
-}
 
 function lmLoadSettings(){
   lmRenderRegions();lmPopRegSel();lmRenderDepts();
@@ -6152,20 +6193,23 @@ function togTDC(){
   var wrapDR = document.getElementById('tDRWrap');
   var tawnFW = document.getElementById('tawnFieldsWrap');
   if(v === 'yes'){
-    // Mufti ne kaha — show Donor se Rabita
+    // Rabita Karo → Donor se rabita hua?
     if(wrapDC) wrapDC.style.display = '';
-    // Reset below fields
     if(wrapDR) wrapDR.style.display = 'none';
     if(tawnFW) tawnFW.style.display = 'none';
     document.getElementById('tDC').value = '';
     document.getElementById('tDR').value = '';
   } else if(v === 'no'){
-    // Mufti ne nahi kaha — hide everything
+    // Rabita Nahi Kiya → hide all
     if(wrapDC){ wrapDC.style.display = 'none'; document.getElementById('tDC').value = ''; }
     if(wrapDR){ wrapDR.style.display = 'none'; document.getElementById('tDR').value = ''; }
     if(tawnFW) tawnFW.style.display = 'none';
+  } else if(v === 'direct'){
+    // Direct Jama → seedha Tawan fields
+    if(wrapDC){ wrapDC.style.display = 'none'; document.getElementById('tDC').value = ''; }
+    if(wrapDR){ wrapDR.style.display = 'none'; document.getElementById('tDR').value = ''; }
+    if(tawnFW) tawnFW.style.display = '';
   } else {
-    // Not selected yet
     if(wrapDC) wrapDC.style.display = 'none';
     if(wrapDR) wrapDR.style.display = 'none';
     if(tawnFW) tawnFW.style.display = 'none';
@@ -6453,6 +6497,8 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
 var _clients = [];
 var _editClientId = null;
 
+function isClosedCase(c){ return (c.status||'').toLowerCase() === 'closed'; }
+
 function loadClients(){
   db.collection('clients').orderBy('naam').onSnapshot(function(snap){
     _clients = snap.docs.map(function(d){ return {id:d.id, ...d.data()}; });
@@ -6476,22 +6522,90 @@ function renderClients(){
   }
   list.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'
     + filtered.map(function(c){
-      return '<div style="background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--sh);border:1px solid var(--bor)">'
+      // Count cases for this client
+      var clientCases = (cc||[]).filter(function(cs){
+        var persons = cs.persons||[];
+        return persons.some(function(p){ return (p.name||'').toLowerCase()===(c.naam||'').toLowerCase(); })
+          || (cs.name||'').toLowerCase()===(c.naam||'').toLowerCase();
+      });
+      var total = clientCases.length;
+      var closed = clientCases.filter(function(cs){ return isClosedCase(cs); }).length;
+      var pending = total - closed;
+      return '<div onclick="showClientCases(\''+c.id+'\')" style="background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--sh);border:1px solid var(--bor);cursor:pointer;transition:box-shadow .2s" onmouseover="this.style.boxShadow=\'0 4px 20px rgba(21,101,192,0.18)\'" onmouseout="this.style.boxShadow=\'var(--sh)\'">'
         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
         + '<div style="font-size:.88rem;font-weight:700;color:var(--bd)">👤 '+escHtml(c.naam||'')+'</div>'
-        + '<div style="display:flex;gap:6px">'
-        + '<button onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">✏️ Edit</button>'
+        + '<div style="display:flex;gap:6px" onclick="event.stopPropagation()">'
+        + '<button onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">✏️</button>'
         + '<button onclick="deleteClient(\''+c.id+'\',\''+escHtml(c.naam||'')+'\')" style="background:#ffebee;color:#c62828;border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">🗑️</button>'
         + '</div></div>'
         + (c.phone ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">📱 '+escHtml(c.phone)+'</div>' : '')
         + (c.desig ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">💼 '+escHtml(c.desig)+'</div>' : '')
-        + (c.empCode ? '<div style="font-size:.78rem;color:var(--mt)">🪪 '+escHtml(c.empCode)+'</div>' : '')
+        + (c.empCode ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:6px">🪪 '+escHtml(c.empCode)+'</div>' : '')
+        + '<div style="display:flex;gap:8px;margin-top:6px;padding-top:8px;border-top:1px solid var(--bor)">'
+        + '<span style="font-size:.72rem;background:#e3f2fd;color:var(--blue);padding:2px 8px;border-radius:10px;font-weight:700">📁 '+total+' Cases</span>'
+        + (closed ? '<span style="font-size:.72rem;background:#e8f5e9;color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700">✅ '+closed+' Closed</span>' : '')
+        + (pending ? '<span style="font-size:.72rem;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:10px;font-weight:700">⏳ '+pending+' Pending</span>' : '')
+        + '</div>'
         + '</div>';
     }).join('')
     + '</div>';
 }
 
-function openClientForm(id){
+function showClientCases(clientId){
+  var c = _clients.find(function(x){ return x.id===clientId; });
+  if(!c) return;
+  var clientCases = (cc||[]).filter(function(cs){
+    var persons = cs.persons||[];
+    return persons.some(function(p){ return (p.name||'').toLowerCase()===(c.naam||'').toLowerCase(); })
+      || (cs.name||'').toLowerCase()===(c.naam||'').toLowerCase();
+  }).sort(function(a,b){ return (b.openDate||'').localeCompare(a.openDate||''); });
+
+  var total = clientCases.length;
+  var closed = clientCases.filter(function(cs){ return isClosedCase(cs); }).length;
+  var pending = total - closed;
+
+  document.getElementById('ccmName').textContent = '👤 '+c.naam;
+  document.getElementById('ccmMeta').innerHTML =
+    '📁 '+total+' Total Cases &nbsp;|&nbsp; ✅ '+closed+' Closed &nbsp;|&nbsp; ⏳ '+pending+' Pending'
+    +(c.phone ? ' &nbsp;|&nbsp; 📱 '+c.phone : '')
+    +(c.desig ? ' &nbsp;|&nbsp; 💼 '+c.desig : '');
+
+  var body = document.getElementById('ccmBody');
+  if(!clientCases.length){
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--mt)">Koi case nahi mila</div>';
+  } else {
+    body.innerHTML = clientCases.map(function(cs){
+      var statusColor = isClosedCase(cs) ? 'var(--green)' : '#e65100';
+      var statusBg = isClosedCase(cs) ? '#e8f5e9' : '#fff3e0';
+      var statusLabel = isClosedCase(cs) ? '✅ Closed' : '⏳ Pending';
+      return '<div onclick="goPage(\'cases\');setTimeout(function(){openCase(\''+cs.id+'\')},400)" style="background:#f8faff;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid var(--bor);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'#f8faff\'">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        + '<span style="font-size:.82rem;font-weight:700;color:var(--blue)">'+escHtml(cs.caseNo||'')+'</span>'
+        + '<span style="font-size:.72rem;background:'+statusBg+';color:'+statusColor+';padding:2px 10px;border-radius:10px;font-weight:700">'+statusLabel+'</span>'
+        + '</div>'
+        + '<div style="display:flex;gap:16px;font-size:.75rem;color:var(--mt)">'
+        + '<span>📅 '+escHtml(cs.openDate||'')+'</span>'
+        + (cs.region ? '<span>📍 '+escHtml(cs.region)+'</span>' : '')
+        + (cs.dept || cs.depts ? '<span>🏢 '+escHtml(cs.dept||(cs.depts||[])[0]||'')+'</span>' : '')
+        + '</div>'
+        + (cs.detail ? '<div style="font-size:.75rem;color:var(--mt);margin-top:4px">📝 '+escHtml(cs.detail)+'</div>' : '')
+        + '</div>';
+    }).join('');
+  }
+  document.getElementById('clientCasesModal').style.display = 'flex';
+}
+
+function closeClientCases(){
+  document.getElementById('clientCasesModal').style.display = 'none';
+}
+
+// Close on backdrop click
+document.addEventListener('click', function(e){
+  var modal = document.getElementById('clientCasesModal');
+  if(modal && e.target === modal) closeClientCases();
+});
+
+function openClientForm(){
   _editClientId = null;
   document.getElementById('cNaam').value = '';
   document.getElementById('cPhone').value = '';
@@ -6547,6 +6661,77 @@ async function deleteClient(id, naam){
     await db.collection('clients').doc(id).delete();
     toast('🗑️ Client delete ho gaya!');
   } catch(e){ toast('❌ '+e.message); }
+}
+async function importClientsFromCases(){
+  if(!confirm('Saare cases ke persons ko Clients mein import karna chahte ho?\nDuplicate names skip ho jayenge!')) return;
+
+  // Existing clients ka naam set banao
+  var existingNames = {};
+  _clients.forEach(function(c){ existingNames[c.naam.trim().toLowerCase()] = true; });
+
+  // Cases se sab persons nikalo
+  var toImport = [];
+  (cc||[]).forEach(function(c){
+    var persons = c.persons || [];
+    // Old single person format bhi check karo
+    if(c.name && c.name.trim()){
+      var key = c.name.trim().toLowerCase();
+      if(!existingNames[key]){
+        existingNames[key] = true;
+        toImport.push({
+          naam: c.name.trim(),
+          phone: c.mobile||'',
+          desig: c.mansab||c.designation||'',
+          empCode: c.empCode||c.ec||'',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          importedFrom: 'cases'
+        });
+      }
+    }
+    persons.forEach(function(p){
+      if(p.name && p.name.trim()){
+        var key2 = p.name.trim().toLowerCase();
+        if(!existingNames[key2]){
+          existingNames[key2] = true;
+          toImport.push({
+            naam: p.name.trim(),
+            phone: p.mobile||p.mob||'',
+            desig: p.mansab||p.designation||'',
+            empCode: p.empCode||p.ec||'',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            importedFrom: 'cases'
+          });
+        }
+      }
+    });
+  });
+
+  if(!toImport.length){
+    toast('⚠️ Koi naya client nahi mila import karne ke liye!');
+    return;
+  }
+
+  toast('⏳ '+toImport.length+' clients import ho rahe hain...');
+
+  // Batch mein save karo
+  var batch = db.batch();
+  var count = 0;
+  for(var i = 0; i < toImport.length; i++){
+    var ref = db.collection('clients').doc();
+    batch.set(ref, toImport[i]);
+    count++;
+    // Firestore batch limit 500
+    if(count === 499){
+      await batch.commit();
+      batch = db.batch();
+      count = 0;
+    }
+  }
+  if(count > 0) await batch.commit();
+
+  toast('✅ '+toImport.length+' clients import ho gaye!');
 }
 // ===== END CLIENT MANAGEMENT =====
 
