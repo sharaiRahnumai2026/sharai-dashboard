@@ -348,6 +348,27 @@ window.addEventListener('DOMContentLoaded', function(){
   setTimeout(initFirebase, 50);
 });
 
+// ===== EMERGENCY PASSWORD RESET =====
+async function emergencyReset(){
+  var uname = prompt('Admin username daalo:');
+  if(!uname) return;
+  var newpw = prompt('Naya password daalo:');
+  if(!newpw) return;
+  var confirm_pw = prompt('Password dobara daalo (confirm):');
+  if(newpw !== confirm_pw){ alert('Passwords match nahi kiye!'); return; }
+  try{
+    var hash = await hashPw(newpw);
+    // Check if user exists
+    var snap = await db.collection('users').doc(uname).get();
+    if(!snap.exists){ alert('User "'+uname+'" nahi mila!'); return; }
+    await db.collection('users').doc(uname).update({ password: hash, mustChangePw: false });
+    alert('✅ Password reset ho gaya! Ab login karo: '+uname+' / '+newpw);
+  }catch(e){
+    alert('❌ Error: '+e.message);
+  }
+}
+// ===== END EMERGENCY RESET =====
+
 // ===== PASSWORD HASHING (SHA-256 via WebCrypto) =====
 async function hashPw(pw){
   if(!pw) return '';
@@ -374,6 +395,9 @@ async function hashPw(pw){
     <button class="lbtn" id="lbtn" onclick="doLogin()">🔐 Login</button>
     <div class="lerr" id="lerr"></div>
     <div class="fbst"><span class="dot" id="fbDot"></span><span id="fbTxt">Connecting...</span></div>
+    <div style="margin-top:12px;text-align:center">
+      <button type="button" onclick="emergencyReset()" style="background:none;border:none;color:#aaa;font-size:.7rem;cursor:pointer;text-decoration:underline">Password Reset (Admin Only)</button>
+    </div>
   </div>
 </div>
 
@@ -1088,7 +1112,7 @@ async function hashPw(pw){
         <button onclick="rRep()" style="padding:6px 12px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700">✅ Apply</button>
         <button onclick="repClearFilters()" style="padding:6px 12px;background:#fff;color:var(--red);border:1.5px solid var(--red);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600">✕ Clear</button>
         <div style="display:flex;gap:5px;margin-left:4px">
-          <button onclick="repDownloadExcel()" style="padding:6px 12px;background:#1d6f42;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>
+          <button onclick="repShowRegionSelect()" style="padding:6px 12px;background:#1d6f42;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>
           <button onclick="repDownloadPDF()" style="padding:6px 12px;background:#c0392b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>
         </div>
       </div>
@@ -1802,6 +1826,34 @@ async function autoFixRegions(){
     }
   } catch(e){ console.warn('autoFixRegions:', e); }
 }
+
+// ===== LOCAL CACHE — Firebase reads bachane ke liye =====
+var _CACHE_KEY = 'sab_cases_cache';
+var _CACHE_TS_KEY = 'sab_cases_ts';
+// No TTL — cache tab tak rehta hai jab tak case save/delete/manual refresh na ho
+
+function cacheLoad(){
+  try{
+    var ts = parseInt(localStorage.getItem(_CACHE_TS_KEY)||'0');
+    if(!ts) return null; // Kabhi save nahi hua
+    var raw = localStorage.getItem(_CACHE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+function cacheSave(cases){
+  try{
+    localStorage.setItem(_CACHE_KEY, JSON.stringify(cases));
+    localStorage.setItem(_CACHE_TS_KEY, String(Date.now()));
+  }catch(e){ console.warn('Cache save failed:', e); }
+}
+
+function cacheInvalidate(){
+  localStorage.removeItem(_CACHE_TS_KEY); // force refresh next time
+}
+// ===== END LOCAL CACHE =====
+
 async function fbInit(){
   try{
     // Users aur settings parallel fetch karo
@@ -1854,6 +1906,12 @@ function _applyRestriction(arr){
   return arr;
 }
 
+function _processCasesRaw(rawArr){
+  // Same as _processCases but takes plain objects instead of Firestore docs
+  var fakeDocs = rawArr.map(function(c){ return { id: c.id, data: function(){ return c; } }; });
+  _processCases(fakeDocs);
+}
+
 function _processCases(docs){
   cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
   cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
@@ -1868,6 +1926,8 @@ function _processCases(docs){
   else{refreshMSOptions();}
   if(_currentPg==='search') doSrch();
   if(_currentPg==='reports') rRep();
+  // New case page par cc load hone ke baad case no fill karo
+  if(_currentPg==='newcase' && !eId) autoFillCaseNo();
   setFS(true);
 }
 
@@ -1875,38 +1935,65 @@ function startListener(){
   if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
   setFS(true);
 
+  // CACHE CHECK: Agar fresh cache hai to Firebase se mat poocho
+  var _cached = cacheLoad();
+  if(_cached && _cached.length > 0){
+    console.log('Cache hit! ' + _cached.length + ' cases from localStorage');
+    _processCasesRaw(_cached);
+    // Background mein quietly refresh karo (Firebase reads bachane ke liye sirf 1 baar)
+    setTimeout(function(){
+      db.collection('cases').get({source:'cache'}).then(function(s){
+        if(s.docs.length > 0){
+          var fresh = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+          cacheSave(fresh);
+          _processCasesRaw(fresh);
+        }
+      }).catch(function(){});
+    }, 2000);
+    return;
+  }
+
   // PHASE 1: Dashboard ke liye sirf last 10 turant dikhao
   db.collection('cases')
     .orderBy('openDate','desc')
     .limit(10)
     .get()
     .then(function(snap10){
-      // Sirf last 10 se dashboard render karo
       var quick = snap10.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
       quick = _applyRestriction(quick);
-      // Dashboard Last 10 table turant dikhao
       setTH(document.getElementById('dTH'),THS);
       document.getElementById('dTB').innerHTML = quick.length
         ? quick.map(function(c,i){ return mRow(c,i+1,true); }).join('')
         : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases.</td></tr>';
 
-      // PHASE 2: Background mein poora data load karo
+      // PHASE 2: Poora data load karo aur cache mein save karo
       db.collection('cases').get().then(function(s){
+        var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+        cacheSave(allCases);
         _processCases(s.docs);
       }).catch(function(){ setFS(false); });
     })
     .catch(function(){
-      // orderBy kaam nahi kiya (index nahi) — seedha full load
       db.collection('cases').get().then(function(s){
+        var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+        cacheSave(allCases);
         _processCases(s.docs);
       }).catch(function(){ setFS(false); });
     });
 }
 
 function reloadCases(){
-  db.collection('cases').get().then(function(s){
+  // Cache invalidate ho chuka hai (save/delete ke baad) — server se fresh lo
+  db.collection('cases').get({source:'server'}).then(function(s){
+    var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+    cacheSave(allCases); // naya cache save karo
     _processCases(s.docs);
-  }).catch(function(e){ console.warn('reloadCases:',e); });
+  }).catch(function(){
+    // Server nahi mila — cache se try karo
+    db.collection('cases').get({source:'cache'}).then(function(s){
+      if(s.docs.length > 0) _processCases(s.docs);
+    }).catch(function(e){ console.warn('reloadCases:',e); });
+  });
 }
 // ===== END PAGINATION SYSTEM =====
 // Sirf cc-based options refresh karo, selected state touch mat karo
@@ -2045,7 +2132,9 @@ function _initPgCache(){
 }
 document.addEventListener('DOMContentLoaded', _initPgCache);
 
+var _lastPgBeforeNewCase = 'cases'; // default
 function goPage(pg,el,skipHistory){
+  if(pg==='newcase' && _currentPg && _currentPg!=='newcase') _lastPgBeforeNewCase = _currentPg;
   if(cu && pg!=='dash'){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
     var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',users:'users',settings:'settings'};
@@ -2336,9 +2425,18 @@ function resetTawnFields(){
   ['tRaqamSection','tAshiyaSection','tCollHRBox','tCollInstBox','tCollDirectBox'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   // Reset radios
   document.querySelectorAll('input[name="tCollMethod"]').forEach(function(r){ r.checked=false; });
+  // Reset raqam fields
+  ['tNaf','tWaj','tTot','tPd','tRm'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  // Reset Full & Final fields
+  ['tDirectAmt','tDirectDate','tDirectRef','tDirectNotes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var dm=document.getElementById('tDirectMode'); if(dm) dm.value='';
+  var ds=document.getElementById('tDirectSummary'); if(ds) ds.textContent='';
+  var dl=document.getElementById('tDirectList'); if(dl) dl.innerHTML='';
+  // Reset HR fields
+  ['tHRJV','tHRDate','tHRStart','tHREnd','tHRMonthly'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   // Reset ashiya fields
-  ['tAshiyaNaam','tAshiyaWajiba','tAshiyaNafila','tAshiyaMaddat','tAshiyaProcessNo','tHRJV','tDirectRef','tDirectNotes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  ['tAshiyaWasool','tAshiyaMili','tAshiyaProcess','tHRDate','tHRStart','tHREnd','tHRMonthly','tDirectDate'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['tAshiyaNaam','tAshiyaWajiba','tAshiyaNafila','tAshiyaMaddat','tAshiyaProcessNo'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['tAshiyaWasool','tAshiyaMili','tAshiyaProcess','tDirectDate'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var apw=document.getElementById('tAshiyaProcessWrap');if(apw)apw.style.display='none';
   ['tAshiyaProcessWrap','tAshiyaProcessNoWrap'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
 }
@@ -3228,23 +3326,27 @@ function clrSrch(){doSrch._page=1;doSrch._res=[];
 function clrSrchAndSearch(){clrSrch();doSrch();}
 function fByGS(g, subSt){
   clrSrch();
-  _pendingFilters = subSt ? {gd:g, subSt:subSt} : {gd:g};
+  var _yr = dashYear;
+  _pendingFilters = subSt ? {gd:g, subSt:subSt, customFilter:function(c){return !_yr||String(c.year||'')===_yr;}} : {gd:g, customFilter:function(c){return !_yr||String(c.year||'')===_yr;}};
   goPage('search');
 }
 function fByG(g){
   clrSrch();
-  _pendingFilters = {gd: g};
+  var _yr = dashYear;
+  _pendingFilters = {gd: g, customFilter: function(c){ return !_yr || String(c.year||'')===_yr; }};
   goPage('search');
 }
 function fByS(s){
   clrSrch();
-  _pendingFilters = s ? {stat: s} : {};
+  var _yr = dashYear;
+  _pendingFilters = s ? {stat: s, customFilter: function(c){ return !_yr || String(c.year||'')===_yr; }} : {customFilter: function(c){ return !_yr || String(c.year||'')===_yr; }};
   goPage('search');
 }
 function fByR(r,status){
   clrSrch();
   var short=HIER_KEY_MAP[r]||r;
-  _pendingFilters = {rg: short, stat: (status!==undefined?status:null)};
+  var _yr = dashYear;
+  _pendingFilters = {rg: short, stat: (status!==undefined?status:null), customFilter: function(c){ return !_yr || String(c.year||'')===_yr; }};
   goPage('search');
 }
 // Filter by Region + Guide type (tawan/halfia)
@@ -3254,13 +3356,15 @@ var _pendingFilters = null;
 function fByRG(r, guide){
   clrSrch();
   var short = HIER_KEY_MAP[r]||r;
-  _pendingFilters = {rg: short, gd: guide};
+  var _yr = dashYear;
+  _pendingFilters = {rg: short, gd: guide, customFilter: function(c){ return !_yr || String(c.year||'')===_yr; }};
   goPage('search');
 }
 function fByRGS(r, guide, subSt){
   clrSrch();
   var short = HIER_KEY_MAP[r]||r;
-  _pendingFilters = {rg: short, gd: guide, subSt: subSt};
+  var _yr = dashYear;
+  _pendingFilters = {rg: short, gd: guide, subSt: subSt, customFilter: function(c){ return !_yr || String(c.year||'')===_yr; }};
   goPage('search');
 }
 
@@ -3372,34 +3476,99 @@ function repGoSearch(regionEnc, filter){
   clrSrch();
   var short = region;
   var now = new Date();
-  var thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // ===== REPORT FILTER KA MONTH/YEAR NIKALO =====
+  var _rSelYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
+  var _rSelMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
+  var _rQuick    = (document.getElementById('repFilter')||{}).value || 'all';
+  var _rFromD = null, _rToD = null;
+
+  if(_rQuick==='thismonth'){
+    _rFromD = new Date(now.getFullYear(), now.getMonth(), 1);
+    _rToD   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  } else if(_rQuick==='lastmonth'){
+    var lmY = now.getMonth()===0 ? now.getFullYear()-1 : now.getFullYear();
+    var lmM = now.getMonth()===0 ? 11 : now.getMonth()-1;
+    _rFromD = new Date(lmY, lmM, 1);
+    _rToD   = new Date(lmY, lmM+1, 0);
+  } else if(_rQuick==='last3'){
+    _rFromD = new Date(now.getFullYear(), now.getMonth()-2, 1);
+    _rToD   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  } else if(_rQuick==='last6'){
+    _rFromD = new Date(now.getFullYear(), now.getMonth()-5, 1);
+    _rToD   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  } else if(_rQuick==='thisyear'){
+    _rFromD = new Date(now.getFullYear(), 0, 1);
+    _rToD   = new Date(now.getFullYear(), 11, 31);
+  } else if(_rQuick==='lastyear'){
+    _rFromD = new Date(now.getFullYear()-1, 0, 1);
+    _rToD   = new Date(now.getFullYear()-1, 11, 31);
+  } else {
+    if(_rSelYear && _rSelMonth){ _rFromD=new Date(_rSelYear,_rSelMonth-1,1); _rToD=new Date(_rSelYear,_rSelMonth,0); }
+    else if(_rSelYear){ _rFromD=new Date(_rSelYear,0,1); _rToD=new Date(_rSelYear,11,31); }
+    else if(_rSelMonth){ _rFromD=new Date(now.getFullYear(),_rSelMonth-1,1); _rToD=new Date(now.getFullYear(),_rSelMonth,0); }
+  }
+
+  // filter month start (sabiqa/moujuda ke liye)
+  var _fYear  = _rFromD ? _rFromD.getFullYear() : now.getFullYear();
+  var _fMonth = _rFromD ? _rFromD.getMonth()    : now.getMonth();
+  // Year-only: current month use karo (not Jan), taaki Jan-May cases sabiqa mein aayein
+  var _yearOnly2 = (_rSelYear && !_rSelMonth && _rQuick==='all');
+  if(_yearOnly2){ _fYear = _rSelYear; _fMonth = now.getMonth(); }
+  var _thisMonthStart = new Date(_fYear, _fMonth, 1);
+
+  // Date range check helper
+  function inRange(c){
+    if(!_rFromD && !_rToD) return true;
+    var ds = c.openDate||''; if(!ds) return true;
+    var d = new Date(ds); if(isNaN(d.getTime())) return true;
+    if(_rFromD && d < _rFromD) return false;
+    if(_rToD   && d > _rToD)   return false;
+    return true;
+  }
+  // ===== END FILTER =====
 
   if(filter === 'all'){
-    _pendingFilters = {rg: short};
+    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c); }};
   } else if(filter === 'pending'){
-    // Sab open cases — not closed
-    _pendingFilters = {rg: short, customFilter: function(c){ return c.status !== 'closed'; }};
+    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && c.status !== 'closed'; }};
   } else if(filter === 'closed'){
-    _pendingFilters = {rg: short, stat: 'closed'};
+    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && c.status === 'closed'; }};
   } else if(filter === 'sabiqa'){
-    // Open cases opened before this month
+    // Open cases opened before filter month start — sirf filter year ke andar
+    var _sabiqaYearOnly = (_rSelYear && !_rSelMonth && _rQuick==='all');
     _pendingFilters = {rg: short, customFilter: function(c){
       var od = c.openDate ? new Date(c.openDate) : null;
-      return c.status !== 'closed' && od && od < thisMonthStart;
+      if(c.status === 'closed' || !od) return false;
+      // Year-only filter: c.year field se check karo
+      if(_sabiqaYearOnly){
+        return String(c.year||'') === String(_rSelYear) && od < _thisMonthStart;
+      }
+      // Date range filter: fromD se pehle nahi, monthStart se pehle hona chahiye
+      if(_rFromD && od < _rFromD) return false;
+      return od < _thisMonthStart;
     }};
   } else if(filter === 'moujuda'){
-    // Cases opened this month
+    // Cases opened in filter month
     _pendingFilters = {rg: short, customFilter: function(c){
       var od = c.openDate ? new Date(c.openDate) : null;
-      return od && od >= thisMonthStart;
+      return od && od.getFullYear()===_fYear && od.getMonth()===_fMonth;
     }};
-  } else if(filter === 'tawan_all'){ _pendingFilters = {rg: short, gd: 'tawan'}; }
-  else if(filter === 'tawan_pending'){ _pendingFilters = {rg: short, gd: 'tawan', subSt: 'pending'}; }
-  else if(filter === 'tawan_closed'){ _pendingFilters = {rg: short, gd: 'tawan', subSt: 'closed'}; }
-  else if(filter === 'halfia_all'){ _pendingFilters = {rg: short, gd: 'halfia'}; }
-  else if(filter === 'halfia_pending'){ _pendingFilters = {rg: short, gd: 'halfia', subSt: 'pending'}; }
-  else if(filter === 'halfia_closed'){ _pendingFilters = {rg: short, gd: 'halfia', subSt: 'closed'}; }
-  else { _pendingFilters = {rg: short}; }
+  } else if(filter === 'tawan_all'){
+    _pendingFilters = {rg: short, gd: 'tawan', customFilter: function(c){ return inRange(c); }};
+  } else if(filter === 'tawan_pending'){
+    _pendingFilters = {rg: short, gd: 'tawan', customFilter: function(c){ return inRange(c) && c.tawnSt !== 'closed'; }};
+  } else if(filter === 'tawan_closed'){
+    _pendingFilters = {rg: short, gd: 'tawan', customFilter: function(c){ return inRange(c) && c.tawnSt === 'closed'; }};
+  } else if(filter === 'halfia_all'){
+    _pendingFilters = {rg: short, gd: 'halfia', customFilter: function(c){ return inRange(c); }};
+  } else if(filter === 'halfia_pending'){
+    _pendingFilters = {rg: short, gd: 'halfia', customFilter: function(c){ return inRange(c) && c.halfiaSt !== 'closed'; }};
+  } else if(filter === 'halfia_closed'){
+    _pendingFilters = {rg: short, gd: 'halfia', customFilter: function(c){ return inRange(c) && c.halfiaSt === 'closed'; }};
+  } else {
+    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c); }};
+  }
   goPage('search');
 }
 function rRep(){
@@ -3411,7 +3580,25 @@ function rRep(){
   var fromD = null, toD = null;
   var filterLabel = 'Sab Waqt';
 
-  if(quickVal==='last3'){
+  if(quickVal==='thismonth'){
+    fromD = new Date(now.getFullYear(), now.getMonth(), 1);
+    toD   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+    filterLabel = months[now.getMonth()+1] + ' ' + now.getFullYear();
+  } else if(quickVal==='lastmonth'){
+    var lmY = now.getMonth()===0 ? now.getFullYear()-1 : now.getFullYear();
+    var lmM = now.getMonth()===0 ? 11 : now.getMonth()-1;
+    fromD = new Date(lmY, lmM, 1);
+    toD   = new Date(lmY, lmM+1, 0);
+    filterLabel = months[lmM+1] + ' ' + lmY;
+  } else if(quickVal==='lastyear'){
+    fromD = new Date(now.getFullYear()-1, 0, 1);
+    toD   = new Date(now.getFullYear()-1, 11, 31);
+    filterLabel = 'Saal ' + (now.getFullYear()-1);
+  } else if(quickVal==='thisyear'){
+    fromD = new Date(now.getFullYear(), 0, 1);
+    toD   = new Date(now.getFullYear(), 11, 31);
+    filterLabel = 'Saal ' + now.getFullYear();
+  } else if(quickVal==='last3'){
     fromD = new Date(now.getFullYear(), now.getMonth()-2, 1);
     toD   = new Date(now.getFullYear(), now.getMonth()+1, 0);
     filterLabel = 'Pichle 3 Mahine';
@@ -3423,7 +3610,7 @@ function rRep(){
     var repFrom = (document.getElementById('repFrom')||{}).value;
     var repTo   = (document.getElementById('repTo')||{}).value;
     if(repFrom) fromD = new Date(repFrom);
-    if(repTo)   toD   = new Date(repTo);
+    if(repTo){ toD = new Date(repTo); toD.setHours(23,59,59,999); }
     filterLabel = (repFrom||'?') + ' to ' + (repTo||'?');
     // Also apply year/month if no date range
     if(!repFrom && !repTo){
@@ -3448,12 +3635,20 @@ function rRep(){
   }
 
   // Filter cases
+  // Year-only filter: c.year field use karo (Dashboard ke saath consistent)
+  var _yearOnlyFilter = (selYear && !selMonth && quickVal==='all');
   var fcc = cc.filter(function(c){
+    // Year-only: year field se filter (same as Dashboard)
+    if(_yearOnlyFilter){
+      return String(c.year||'') === String(selYear);
+    }
     if(!fromD && !toD) return true;
     var ds = c.openDate||'';
     if(!ds) return true;
     if(ds.length===4) ds = ds+'-01-01';
-    var d = new Date(ds);
+    // Parse as local time to avoid timezone issues
+    var parts = ds.split('-');
+    var d = parts.length===3 ? new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2])) : new Date(ds);
     if(isNaN(d.getTime())) return true;
     if(fromD && d < fromD) return false;
     if(toD   && d > toD)   return false;
@@ -3481,40 +3676,128 @@ function rRep(){
   var mxD=Math.max.apply(null, Object.values(bD).concat([1]));
 
   // ===== REGION-WISE SUMMARY CARDS =====
+  // CORRECT LOGIC (as explained):
+  // سابقہ پینڈنگ = pichle mahine tak jo cases pending the (openDate < selected month start, status != closed)
+  // موجودہ مسائل = is mahine ke naye cases (openDate = selected month)
+  // کل مسائل     = sabiqa + moujuda
+  // کل حل شدہ   = is mahine mein close hue cases (closeDate = selected month)
+  // پینڈنگ       = kul - hal shuda
+
   var isClosed = function(c){ return c.status === 'closed'; };
 
-  // All regions — use exact c.region values (same as Dashboard)
+  // Selected month/year nikalo
+  var _selYear  = selYear  || now.getFullYear();
+  var _selMonth = selMonth ? selMonth-1 : now.getMonth(); // 0-indexed
+
+  // For year-only filter: use current month as the "selected month"
+  // For quick filters: use the last month of the range
+  if(quickVal==='thismonth'){
+    _selYear=now.getFullYear(); _selMonth=now.getMonth();
+  } else if(quickVal==='lastmonth'){
+    _selYear = now.getMonth()===0 ? now.getFullYear()-1 : now.getFullYear();
+    _selMonth = now.getMonth()===0 ? 11 : now.getMonth()-1;
+  } else if(quickVal==='custom'){
+    var _rcTo2=(document.getElementById('repTo')||{}).value;
+    if(_rcTo2){ var _rcTd2=new Date(_rcTo2); _selYear=_rcTd2.getFullYear(); _selMonth=_rcTd2.getMonth(); }
+  } else if(quickVal==='last3'||quickVal==='last6'){
+    _selYear=now.getFullYear(); _selMonth=now.getMonth();
+  } else if(quickVal==='thisyear'){
+    _selYear=now.getFullYear(); _selMonth=now.getMonth();
+  } else if(quickVal==='lastyear'){
+    _selYear=now.getFullYear()-1; _selMonth=11;
+  }
+
+  var _monthStart = new Date(_selYear, _selMonth, 1);     // selected month ka pehla din
+  var _monthEnd   = new Date(_selYear, _selMonth+1, 0);   // selected month ka aakhri din
+
+  // All regions
   var allRegions = [];
   cc.forEach(function(c){ if(c.region && allRegions.indexOf(c.region)<0) allRegions.push(c.region); });
-
   var regionStats = {};
-  allRegions.forEach(function(r){ regionStats[r]={sabiqa:0, moujuda:0, kulMasail:0, halShuda:0, pending:0}; });
+  allRegions.forEach(function(r){ regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0}; });
 
-  // Current month start
-  var now = new Date();
-  var thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Parse date as local time
+  function parseLocalDate(ds){
+    if(!ds) return null;
+    var parts = ds.split('-');
+    if(parts.length===3) return new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    return new Date(ds);
+  }
 
-  // Build all stats from cc directly
+  // ============================================================
+  // FINAL CORRECT LOGIC — ek hi rule sab filters ke liye:
+  //
+  // سابقہ پینڈنگ = range se PEHLE ke jo cases ABHI BHI pending hain
+  // موجودہ مسائل = range ke ANDAR aaye naye cases (openDate in range)
+  // کل مسائل     = سابقہ + موجودہ
+  // کل حل شدہ   = range ke ANDAR close hue cases (closeDate in range)
+  // پینڈنگ       = کل - حل شدہ
+  //
+  // "Range" = fromD to toD (jo bhi filter laga ho)
+  // Agar koi filter nahi (All) → range = beginning of time to today
+  // ============================================================
+
+  // Range boundaries
+  // fromD/toD already set upar se filter logic mein
+  // _monthStart/_monthEnd = range ka end month (moujuda ke liye)
+
+  // For "All" filter: range end = today, range start = null (no limit)
+  var _rangeEnd = toD || new Date(); // range ka aakhri din
+
+  // Step 1: موجودہ — range ke andar khule cases (openDate between fromD and toD)
   cc.forEach(function(c){
     var r = c.region||'Unknown';
     if(!regionStats[r]) regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
-    var od = c.openDate ? new Date(c.openDate) : null;
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var inRange = (!fromD || od >= fromD) && od <= _rangeEnd;
+    if(inRange) regionStats[r].moujuda++;
+  });
+
+  // Step 2: سابقہ — range se PEHLE ke jo cases range start tak PENDING the
+  // Matlab: openDate < fromD AND (closeDate >= fromD OR not closed)
+  // Agar Year select hai to sirf us saal ke cases
+  var _sabiqaYearBound = selYear ? new Date(selYear, 0, 1) : null;
+
+  cc.forEach(function(c){
+    var r = c.region||'Unknown';
+    if(!regionStats[r]) regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
+    if(!od) return;
+    // Range se pehle khula hona chahiye
+    if(!fromD || od >= fromD) return;
+    // Year bound: agar year select hai to us saal se pehle wale mat lo
+    if(_sabiqaYearBound && od < _sabiqaYearBound) return;
+    // Range start tak pending tha: ya to close nahi hua, ya close hua lekin range ke baad
+    var pendingAtRangeStart = !closed || (cd && cd >= fromD);
+    if(pendingAtRangeStart) regionStats[r].sabiqa++;
+  });
 
-    // کل مسائل — all cases ever
-    regionStats[r].kulMasail++;
+  // Step 3: کل = سابقہ + موجودہ
+  Object.keys(regionStats).forEach(function(r){
+    regionStats[r].kulMasail = regionStats[r].sabiqa + regionStats[r].moujuda;
+  });
 
-    // کل حل شدہ — all closed cases
-    if(closed) regionStats[r].halShuda++;
+  // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
+  // (sabiqa + moujuda mein se jo close hain)
+  cc.forEach(function(c){
+    var r = c.region||'Unknown';
+    if(!regionStats[r]) return;
+    if(!isClosed(c)) return;
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    // Case کل mein hona chahiye: ya to sabiqa (pehle ka pending) ya moujuda (range mein khula)
+    var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
+    var inSabiqa = fromD && od < fromD && (!_sabiqaYearBound || od >= _sabiqaYearBound);
+    if(inMoujuda || inSabiqa) regionStats[r].halShuda++;
+  });
 
-    // پینڈنگ مسائل — all non-closed cases
-    if(!closed) regionStats[r].pending++;
-
-    // موجودہ مسائل — cases opened this month
-    if(od && od >= thisMonthStart) regionStats[r].moujuda++;
-
-    // سابقہ پینڈنگ — open cases opened before this month
-    if(!closed && od && od < thisMonthStart) regionStats[r].sabiqa++;
+  // Step 5: پینڈنگ = کل - حل شدہ
+  Object.keys(regionStats).forEach(function(r){
+    var s = regionStats[r];
+    s.pending = Math.max(0, s.kulMasail - s.halShuda);
   });
 
   var regionColors=['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#c62828','#4527a0','#558b2f'];
@@ -3523,9 +3806,11 @@ function rRep(){
 
   var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
 
-  // Build per-region tawan/halfiya stats
+  // Build per-region tawan/halfiya stats — selected month ke cases se
   var regionTawn = {}, regionHalf = {};
   cc.forEach(function(c){
+    var od = c.openDate ? new Date(c.openDate) : null;
+    if(!od || od.getFullYear()!==_selYear || od.getMonth()!==_selMonth) return;
     var r = c.region||'Unknown';
     var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
     if(gs.indexOf('tawan')>-1){
@@ -3785,7 +4070,7 @@ function resetF(){
   // Browser autocomplete se bachao — 500ms baad dobara clear karo
   setTimeout(function(){
     if(eId) return; // Edit mode mein mat clear karo
-    ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher',
+    ['fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher',
      'fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt',
      'tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fKT'].forEach(function(id){
       var e=document.getElementById(id);
@@ -3850,23 +4135,47 @@ async function saveCase(){
       tAshiyaWasool:document.getElementById('tAshiyaWasool')?document.getElementById('tAshiyaWasool').value:'',
       tAshiyaMili:document.getElementById('tAshiyaMili')?document.getElementById('tAshiyaMili').value:'',
       tAshiyaProcess:document.getElementById('tAshiyaProcess')?document.getElementById('tAshiyaProcess').value:'',
-      tAshiyaProcessNo:document.getElementById('tAshiyaProcessNo')?document.getElementById('tAshiyaProcessNo').value.trim():'',tMd:document.getElementById('tMd').value.trim(),tMq:document.getElementById('tMq').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tHkm:document.getElementById('tHkm').value,tJm:document.getElementById('tJm').value,tawnSt:document.getElementById('tawnSt')?document.getElementById('tawnSt').value:'open',tNaf:document.getElementById('tNaf').value,tWaj:document.getElementById('tWaj').value,tTot:document.getElementById('tTot').value,tPd:document.getElementById('tPd').value,tRm:document.getElementById('tRm').value,tInsts:JSON.parse(JSON.stringify(tInsts)),tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tAshiyaProcessNo:document.getElementById('tAshiyaProcessNo')?document.getElementById('tAshiyaProcessNo').value.trim():'',tMd:document.getElementById('tMd').value.trim(),tMq:document.getElementById('tMq').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tHkm:document.getElementById('tHkm').value,tJm:document.getElementById('tJm').value,tawnSt:document.getElementById('tawnSt')?document.getElementById('tawnSt').value:'open',tNaf:document.getElementById('tNaf').value,tWaj:document.getElementById('tWaj').value,tTot:document.getElementById('tTot').value,tPd:(function(){
+  // Ashiya case mein tPd blank
+  var isAshiya = document.getElementById('tTypeAshiya') && document.getElementById('tTypeAshiya').checked;
+  var isRaqam  = document.getElementById('tTypeRaqam')  && document.getElementById('tTypeRaqam').checked;
+  if(isAshiya && !isRaqam) return '';
+  // Full & Final: tDirectAmt se tPd lo
+  var collMethod = (document.querySelector('input[name="tCollMethod"]:checked')||{}).value||'';
+  var directAmt = parseFloat(document.getElementById('tDirectAmt').value)||0;
+  if(collMethod==='direct' && directAmt>0) return String(directAmt);
+  return document.getElementById('tPd').value;
+})(),tRm:(function(){
+  // Ashiya case mein tRm blank hona chahiye — koi amount nahi hota
+  var isAshiya = document.getElementById('tTypeAshiya') && document.getElementById('tTypeAshiya').checked;
+  var isRaqam  = document.getElementById('tTypeRaqam')  && document.getElementById('tTypeRaqam').checked;
+  if(isAshiya && !isRaqam) return '';
+  var collMethod = (document.querySelector('input[name="tCollMethod"]:checked')||{}).value||'';
+  var directAmt = parseFloat(document.getElementById('tDirectAmt').value)||0;
+  var tot = parseFloat(document.getElementById('tTot').value)||0;
+  if(collMethod==='direct' && directAmt>0) return String(Math.max(0, tot-directAmt));
+  return document.getElementById('tRm').value;
+})(),tInsts:JSON.parse(JSON.stringify(tInsts)),tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
-    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
+    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
     else{
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection('cases').add(data);reloadCases();
+      await db.collection('cases').add(data);cacheInvalidate();reloadCases();
       toast('✅ Case saved!');
     }
     eId=null;
     document.getElementById('formTit').textContent='➕ New Case';
-    goPage('cases');
+    // Jis page se aaye the wahan wapas jao — All Cases, Search, ya current page
+    var _prevPg = _currentPg === 'newcase' ? (_lastPgBeforeNewCase || 'cases') : _currentPg;
+    goPage(_prevPg);
   }catch(e){toast('❌ '+e.message);}
 }
-async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();reloadCases();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
+async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();cacheInvalidate();reloadCases();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
 function editC(id){
   const c=cc.find(x=>x.id===id);if(!c)return;
   eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';
+  // Pehle sab tawan fields reset karo — purana data saaf ho jaye
+  resetTawnFields();
   setTimeout(()=>{
     const fv={fCNo:'caseNo',fOD:'openDate',fYr:'year',fMuf:'mufattish',fCity:'city',fOldRegion:'oldRegion',fOldDivision:'oldDivision',fOldKabina:'oldKabina',fOldSheher:'oldSheher',fIdN:'idaraName',fNm:'name',fMob:'mobile',fEC:'empCode',fSub:'subject',fDet:'detail',fCD:'closeDate',fRem:'remarks',fKT:'closingTime',fCall:'callCount',fMail:'mailCount',fWA:'waCount',fCTotal:'contactTotal',fRah:'rahnumai',tDR:'tDR',tDRCustom:'tDRCustom',tDonor:'tDonor',tHkm:'tHkm',tNaf:'tNaf',tWaj:'tWaj',tTot:'tTot',tPd:'tPd',tRm:'tRm',tCategory:'tCategory',tPurpose:'tPurpose',tDonor:'tDonor',tNt:'tNt',hDt:'hDt',hNt:'hNt',tfNt:'tfNt',tbPl:'tbPl',tbNt:'tbNt',mazDt:'mazDt',mazNt:'mazNt'};
     Object.entries(fv).forEach(([fi,k])=>{const e=document.getElementById(fi);if(e&&c[k]!==undefined)e.value=c[k]||'';});
@@ -4413,16 +4722,23 @@ async function chPass(){
 function cmo(id){document.getElementById(id).classList.remove('open');}
 
 // ===== AUTO CASE NO =====
-function autoFillCaseNo(){
+function autoFillCaseNo(retries){
   if(eId) return; // Edit mode mein auto fill nahi
   var inp = document.getElementById('fCNo');
   if(!inp || inp.value.trim()) return; // Already filled
-  
+
+  // cc abhi bhi load ho raha hai — retry karo
+  if(!cc || cc.length === 0){
+    retries = (retries||0) + 1;
+    if(retries < 20) setTimeout(function(){ autoFillCaseNo(retries); }, 300);
+    return;
+  }
+
   // Find highest case no from current year
   var yr = document.getElementById('fYr').value || new Date().getFullYear();
   var pattern = '/'+String(yr).slice(-2)+'/';
   var maxNum = 0;
-  
+
   cc.forEach(function(c){
     if(c.caseNo && c.caseNo.includes(pattern)){
       var parts = c.caseNo.split('/');
@@ -4430,12 +4746,11 @@ function autoFillCaseNo(){
       if(num > maxNum) maxNum = num;
     }
   });
-  
+
   var nextNum = String(maxNum + 1).padStart(4, '0');
-  // Get prefix from existing cases
   var sample = cc.find(function(c){ return c.caseNo && c.caseNo.includes(pattern); });
   var prefix = sample ? sample.caseNo.split(pattern)[0] : 'MSR/H';
-  
+
   inp.value = prefix + pattern + nextNum;
   triggerAutoSave();
 }
@@ -4930,11 +5245,14 @@ function rfAll(){
   overlay.style.pointerEvents = 'all';
   toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
   var _safetyTimer = setTimeout(function(){ rfHideOverlay(); }, 10000);
-  db.collection('cases').get().then(function(snap){
+  db.collection('cases').get({source:'server'}).then(function(snap){
     clearTimeout(_safetyTimer);
+    // Cache update karo
+    var allCases = snap.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+    cacheSave(allCases);
     _processCases(snap.docs);
     rfHideOverlay();
-    toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
+    toast('✅ Data refresh ho gaya!');
   }).catch(function(e){
     clearTimeout(_safetyTimer);
     rfHideOverlay();
@@ -4954,11 +5272,14 @@ function getTawanCases(){
   });
 }
 
-function wusBadgeTW(v, tPd, tTot){
+function wusBadgeTW(v, tPd, tTot, tawnSt){
   var paid = parseFloat(tPd)||0;
+  var tot  = parseFloat(tTot)||0;
+  // Agar tawnSt closed hai to Received — chahe tPd blank ho
+  if(tawnSt==='closed') return '<span class="badge bg">✅ Received</span>';
   if(v==='yes' && paid > 0) return '<span class="badge bg">✅ Received</span>';
   if(v==='yes' && paid === 0) return '<span class="badge br">❌ Not Received</span>';
-  if(v==='partial') return '<span class="badge bo">🔸 Pending</span>';
+  if(v==='partial') return '<span class="badge bo">🔸 Partial</span>';
   if(v==='no') return '<span class="badge br">❌ Not Received</span>';
   return '<span class="badge bgr">—</span>';
 }
@@ -5048,11 +5369,21 @@ function renderTawan(){
       <td style="font-size:.72rem"><div style="font-weight:600">${c.region||'—'}</div><div style="color:var(--mt)">${c.district||''} ${c.city?'· '+c.city:''}</div></td>
       <td style="font-size:.72rem"><div style="white-space:nowrap">${c.tHkm||c.openDate||'—'}</div><div style="font-weight:700;color:var(--bd)">${c.caseNo||'—'}</div></td>
       <td>${c.name||'—'}</td>
-      <td style="font-size:.72rem"><div dir="ltr">${c.mobile||'—'}</div><div style="color:var(--mt)">${c.sael||'—'}</div></td>
-      <td style="font-weight:700;color:#6a1b9a">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString('en-IN'):'—'}</td>
-      <td style="font-weight:700;color:var(--green)">${c.tPd?'₹'+parseFloat(c.tPd).toLocaleString('en-IN'):'—'}</td>
-      <td style="font-weight:700;color:var(--red)">${c.tRm?'₹'+parseFloat(c.tRm).toLocaleString('en-IN'):'—'}</td>
-      <td>${wusBadgeTW(c.tJm, c.tPd, c.tTot)}</td>
+      <td style="font-size:.72rem"><div dir="ltr">${c.mobile||'—'}</div><div style="color:var(--mt)">${c.dept||c.depts&&c.depts[0]||'—'}</div></td>
+      <td style="font-weight:700;color:#6a1b9a">${(function(){
+        // Ashiya case: tAshiyaNaam dikhao amount ki jagah
+        if(c.tTypeAshiya && !c.tTypeRaqam) return c.tAshiyaNaam ? '<span style="font-size:.78rem;color:#6a1b9a">📦 '+c.tAshiyaNaam+'</span>' : '—';
+        return c.tTot?'₹'+parseFloat(c.tTot).toLocaleString('en-IN'):'—';
+      })()}</td>
+      <td style="font-weight:700;color:var(--green)">${(function(){
+        if(c.tTypeAshiya && !c.tTypeRaqam) return c.tawnSt==='closed' ? '<span style="font-size:.78rem;color:var(--green)">📦 '+( c.tAshiyaNaam||'Ashiya')+'</span>' : '—';
+        return c.tPd?'₹'+parseFloat(c.tPd).toLocaleString('en-IN'):'—';
+      })()}</td>
+      <td style="font-weight:700;color:var(--red)">${(function(){
+        if(c.tTypeAshiya && !c.tTypeRaqam) return '—';
+        return c.tRm?'₹'+parseFloat(c.tRm).toLocaleString('en-IN'):'—';
+      })()}</td>
+      <td>${wusBadgeTW(c.tJm, c.tPd, c.tTot, c.tawnSt)}</td>
       <td>
         ${hp('edit')?`<button class="btn bsm" style="background:#e3f2fd;color:var(--blue);padding:3px 7px" onclick="editC('${c.id}')">✏️</button>`:''}
         ${hp('del')?`<button class="btn bred bsm" style="padding:3px 7px" onclick="delC('${c.id}')">🗑️</button>`:''}
@@ -5063,7 +5394,19 @@ function renderTawan(){
 
 function clrTawanFilter(){
   ['twFCno','twFMuf','twFReg','twFSt','twFDist','twFNm','twFDF','twFDT'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  const w=document.getElementById('twFWus');if(w)w.value='';
+  // twFWus is a makeSearchable dropdown — reset both select value and UI
+  var w = document.getElementById('twFWus');
+  if(w){
+    w.value = '';
+    // Update the custom dropdown display
+    var wrap = document.getElementById('twFWus_ss');
+    if(wrap){
+      var disp = wrap.querySelector('.ss-val');
+      if(disp){ disp.textContent = 'Received Status...'; disp.style.color = 'var(--mt)'; }
+      var opts = wrap.querySelectorAll('.ss-opt');
+      opts.forEach(function(o){ o.classList.remove('selected'); });
+    }
+  }
   renderTawan();
 }
 
@@ -5801,10 +6144,16 @@ function repClearFilters(){
   var f = document.getElementById('repFilter');
   var m = document.getElementById('repMonth');
   var y = document.getElementById('repYear');
+  var fr = document.getElementById('repFrom');
+  var to = document.getElementById('repTo');
   if(f) f.selectedIndex = 0;
   if(m) m.selectedIndex = 0;
   if(y) y.selectedIndex = 0;
-  // Reset highlight
+  if(fr) fr.value = '';
+  if(to) to.value = '';
+  // Custom range box hide karo
+  var crBox = document.getElementById('repCustomRange');
+  if(crBox) crBox.style.display = 'none';
   [f,m,y].forEach(function(el){if(el){el.style.border='1.5px solid var(--bor)';el.style.background='#fff';el.style.fontWeight='normal';}});
   rRep();
 }
@@ -5854,16 +6203,33 @@ function repGetFilteredCases(){
   else if(quickVal==='last6'){ fromD=new Date(now.getFullYear(),now.getMonth()-5,1); toD=new Date(now.getFullYear(),now.getMonth()+1,0); }
   else if(quickVal==='thisyear'){ fromD=new Date(now.getFullYear(),0,1); toD=new Date(now.getFullYear(),11,31); }
   else if(quickVal==='lastyear'){ fromD=new Date(now.getFullYear()-1,0,1); toD=new Date(now.getFullYear()-1,11,31); }
+  else if(quickVal==='custom'){
+    var _crF=(document.getElementById('repFrom')||{}).value;
+    var _crT=(document.getElementById('repTo')||{}).value;
+    if(_crF) fromD=new Date(_crF);
+    if(_crT){ toD=new Date(_crT); toD.setHours(23,59,59,999); } // end of day
+    // Fallback to year/month if no dates entered
+    if(!fromD&&!toD){
+      if(selYear&&selMonth){ fromD=new Date(selYear,selMonth-1,1); toD=new Date(selYear,selMonth,0); }
+      else if(selYear){ fromD=new Date(selYear,0,1); toD=new Date(selYear,11,31); }
+    }
+  }
   else{
     if(selYear&&selMonth){ fromD=new Date(selYear,selMonth-1,1); toD=new Date(selYear,selMonth,0); }
     else if(selYear){ fromD=new Date(selYear,0,1); toD=new Date(selYear,11,31); }
     else if(selMonth){ fromD=new Date(now.getFullYear(),selMonth-1,1); toD=new Date(now.getFullYear(),selMonth,0); }
   }
+  // Year-only: c.year field use karo (Dashboard ke saath match karo)
+  if(selYear && !selMonth && quickVal==='all'){
+    return cc.filter(function(c){ return String(c.year||'') === String(selYear); });
+  }
   return cc.filter(function(c){
     if(!fromD&&!toD) return true;
     var ds=c.openDate||''; if(!ds) return true;
     if(ds.length===4) ds=ds+'-01-01';
-    var d=new Date(ds); if(isNaN(d.getTime())) return true;
+    var parts=ds.split('-');
+    var d = parts.length===3 ? new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2])) : new Date(ds);
+    if(isNaN(d.getTime())) return true;
     if(fromD&&d<fromD) return false;
     if(toD&&d>toD) return false;
     return true;
@@ -5871,71 +6237,260 @@ function repGetFilteredCases(){
 }
 
 // ===== REGION STATS BUILDER =====
-function repBuildRegionStats(fcc){
-  var isPending=function(c){return c.status&&c.status!=='closed';};
+function repBuildRegionStats(fcc, filterYear, filterMonth){
   var isClosed=function(c){return c.status==='closed';};
   var now=new Date();
-  var thisMonthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  // Filter month use karo, fallback current month
+  var fYear = filterYear||now.getFullYear();
+  var fMonth = (filterMonth!==undefined&&filterMonth!==null) ? filterMonth : now.getMonth();
+  var thisMonthStart=new Date(fYear, fMonth, 1);
   var allRegions=Object.keys(HIER).map(function(k){return HIER_KEY_MAP[k]||k.replace(/\s*Region\s*/i,'').trim();});
   fcc.forEach(function(c){if(c.region&&allRegions.indexOf(c.region)<0)allRegions.push(c.region);});
   var stats={};
   allRegions.forEach(function(r){stats[r]={region:r,total:0,closed:0,pending:0,sabiqa:0,moujuda:0};});
+  // fcc = already filtered cases — kul/hal/pend inhi se
   fcc.forEach(function(c){
     var r=c.region||'Unknown';
     if(!stats[r])stats[r]={region:r,total:0,closed:0,pending:0,sabiqa:0,moujuda:0};
     stats[r].total++;
-    if(isClosed(c)){stats[r].closed++;}
-    else{
-      stats[r].pending++;
-      var od=c.openDate?new Date(c.openDate):null;
-      if(od&&od<thisMonthStart)stats[r].sabiqa++;
-      else stats[r].moujuda++;
-    }
+    if(isClosed(c)) stats[r].closed++;
+    else stats[r].pending++;
   });
+  // sabiqa/moujuda ke liye cc se compute
+  cc.forEach(function(c){
+    var r=c.region||'Unknown';
+    if(!stats[r]) return;
+    var od=c.openDate?new Date(c.openDate):null;
+    var closed=isClosed(c);
+    if(od&&od.getFullYear()===fYear&&od.getMonth()===fMonth) stats[r].moujuda++;
+    if(od&&od.getFullYear()===fYear&&od.getMonth()===fMonth) stats[r].moujuda++;
+  });
+  // sabiqa = total - moujuda
+  Object.values(stats).forEach(function(s){ s.sabiqa = s.total - s.moujuda; });
   return Object.values(stats).filter(function(s){return s.total>0;})
     .sort(function(a,b){return b.total-a.total;});
 }
 
+
+// ===== REGION SELECT MODAL FUNCTIONS =====
+var _activeRegions = ['Ajmer Region','Delhi Region','Mumbai Region','Bengaluru Region','Hyderabad Region','Kolkata Region'];
+
+var _regionUrduMap = {
+  'Ajmer Region':'Ajmer',
+  'Delhi Region':'Delhi',
+  'Mumbai Region':'Mumbai',
+  'Bengaluru Region':'Bengaluru',
+  'Hyderabad Region':'Hyderabad',
+  'Kolkata Region':'Kolkata',
+  'Bareilly Region':'Bareilly',
+  'Nagpur Region':'Nagpur'
+};
+var _regionFixedOrder = ['Ajmer Region','Delhi Region','Mumbai Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
+
+function repShowRegionSelect(){
+  var allR = _regionFixedOrder.slice();
+  cc.forEach(function(c){ if(c.region && allR.indexOf(c.region)<0) allR.push(c.region); });
+
+  var container = document.getElementById('regionCheckList');
+  container.innerHTML = '';
+
+  allR.forEach(function(r){
+    var checked = _activeRegions.indexOf(r) > -1;
+    var isBand = (r==='Bareilly Region' || r==='Nagpur Region');
+    var labelText = (isBand ? '⚠️ ' : '') + (_regionUrduMap[r] || r.replace(' Region','')) + (isBand ? ' (Band)' : '');
+
+    var lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px solid ' + (checked?'#1565c0':'#e0e6f0') + ';border-radius:8px;cursor:pointer;background:' + (checked?'#e8f0fe':'#fff') + ';transition:all .15s';
+    lbl.setAttribute('data-region', r);
+
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = checked;
+    cb.style.cssText = 'accent-color:#1565c0;width:15px;height:15px;pointer-events:none';
+
+    var sp = document.createElement('span');
+    sp.style.cssText = 'font-size:.78rem;font-weight:600;color:' + (isBand?'#c62828':'#1a2340');
+    sp.textContent = labelText;
+
+    lbl.appendChild(cb);
+    lbl.appendChild(sp);
+
+    lbl.addEventListener('click', function(){
+      repToggleRegion(this, r);
+    });
+
+    container.appendChild(lbl);
+  });
+
+  document.getElementById('mRegionSelect').style.display = 'flex';
+}
+// ===== END REGION SELECT MODAL FUNCTIONS =====
+
+function repToggleRegion(lbl, region){
+  var cb = lbl.querySelector('input[type=checkbox]');
+  var checked = !cb.checked;
+  cb.checked = checked;
+  lbl.style.borderColor = checked ? '#1565c0' : '#e0e6f0';
+  lbl.style.background   = checked ? '#e8f0fe' : '#fff';
+  if(checked){ if(_activeRegions.indexOf(region)<0) _activeRegions.push(region); }
+  else { _activeRegions = _activeRegions.filter(function(r){ return r!==region; }); }
+}
+
+function repRegionSelectAll(val){
+  var labels = document.querySelectorAll('#regionCheckList label');
+  labels.forEach(function(lbl){
+    var cb = lbl.querySelector('input[type=checkbox]');
+    cb.checked = val;
+    lbl.style.borderColor = val ? '#1565c0' : '#e0e6f0';
+    lbl.style.background   = val ? '#e8f0fe' : '#fff';
+  });
+  if(val){
+    _activeRegions = _regionFixedOrder.slice();
+    cc.forEach(function(c){ if(c.region && _activeRegions.indexOf(c.region)<0) _activeRegions.push(c.region); });
+  } else {
+    _activeRegions = [];
+  }
+}
+
+function repConfirmExcel(){
+  if(_activeRegions.length === 0){ toast('Kam se kam ek region select karein!'); return; }
+  document.getElementById('mRegionSelect').style.display = 'none';
+  repDownloadExcel(_activeRegions);
+}
+
+
 // ===== EXCEL EXPORT =====
-async function repDownloadExcel(){
+async function repDownloadExcel(selectedRegions){
   if(typeof ExcelJS === 'undefined'){ toast('❌ ExcelJS library load nahi hui'); return; }
   var now = new Date();
-  var thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   var monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var monthLabel = monthNames[now.getMonth()]+'-'+String(now.getFullYear()).slice(2);
+
+  // ===== FILTER SE MONTH/YEAR NIKALO =====
+  var selYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
+  var selMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
+  var quickVal = (document.getElementById('repFilter')||{}).value || 'all';
+
+  var filterYear = now.getFullYear();
+  var filterMonth = now.getMonth(); // 0-indexed
+  var monthLabel;
+
+  if(quickVal==='thismonth'){
+    filterYear = now.getFullYear(); filterMonth = now.getMonth();
+  } else if(quickVal==='lastmonth'){
+    if(now.getMonth()===0){ filterYear=now.getFullYear()-1; filterMonth=11; }
+    else { filterYear=now.getFullYear(); filterMonth=now.getMonth()-1; }
+  } else if(quickVal==='custom'){
+    // Custom range: label = from-to dates
+    var _crFrom = (document.getElementById('repFrom')||{}).value || '';
+    var _crTo   = (document.getElementById('repTo')||{}).value || '';
+    if(_crFrom) filterYear = new Date(_crFrom).getFullYear();
+    monthLabel = (_crFrom||'?') + ' to ' + (_crTo||'?');
+  } else if(selYear && selMonth){
+    filterYear=selYear; filterMonth=selMonth-1;
+  } else if(selYear){
+    filterYear=selYear; filterMonth=now.getMonth();
+  } else if(selMonth){
+    filterYear=now.getFullYear(); filterMonth=selMonth-1;
+  }
+
+  if(!monthLabel) monthLabel = monthNames[filterMonth]+'-'+String(filterYear).slice(2);
+
+  var thisMonthStart = new Date(filterYear, filterMonth, 1);
+  var thisMonthEnd   = new Date(filterYear, filterMonth+1, 0);
+  // ===== END FILTER =====
 
   // Build region stats
   var urduMap = {
     'Ajmer Region':'اجمیر','Mumbai Region':'ممبئی','Hyderabad Region':'حیدرآباد',
     'Bengaluru Region':'بنگلور','Delhi Region':'دہلی','Kolkata Region':'کلکتہ'
   };
-  var regionOrder = ['Ajmer Region','Mumbai Region','Hyderabad Region','Bengaluru Region','Delhi Region','Kolkata Region'];
+  // Sirf selected regions ka Excel banao
+  var _allRegionOrder = ['Ajmer Region','Delhi Region','Mumbai Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
+  var regionOrder = selectedRegions
+    ? _allRegionOrder.filter(function(r){ return selectedRegions.indexOf(r)>-1; })
+    : _allRegionOrder.filter(function(r){ return ['Bareilly Region','Nagpur Region'].indexOf(r)<0; });
   var rStats = {};
   regionOrder.forEach(function(r){ rStats[r]={sabiqa:0,moujuda:0,kul:0,hal:0,pend:0}; });
+  // CORRECT LOGIC — Excel:
+  // kul  = filter range ke saare cases (fcc)
+  // hal  = filter range mein close hue
+  // pend = abhi bhi open (kul - hal)
+  // moujuda = selected month mein naye aaye
+  // sabiqa  = filter start se pehle ke jo abhi bhi pending
+
+  function _exParseDate(ds){
+    if(!ds) return null;
+    var p=ds.split('-');
+    return p.length===3 ? new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])) : new Date(ds);
+  }
+
+  var _exMonthStart = new Date(filterYear, filterMonth, 1);
+  var _exMonthEnd   = new Date(filterYear, filterMonth+1, 0);
+  var _exFromBound  = thisMonthStart ? new Date(filterYear, 0, 1) : null; // Jan 1 of filter year
+
+  // SAME LOGIC AS REPORT CARDS:
+  // سابقہ = range se pehle ke pending; موجودہ = range mein naye; کل = sabiqa+moujuda
+  // حل شدہ = range mein close hue; پینڈنگ = کل - حل شدہ
+
+  var _exRangeEnd = toD || new Date();
+
+  // Step 1: موجودہ — range ke andar khule cases
   cc.forEach(function(c){
     var r = c.region||'Unknown';
-    if(!rStats[r]) rStats[r]={sabiqa:0,moujuda:0,kul:0,hal:0,pend:0};
-    var od = c.openDate ? new Date(c.openDate) : null;
-    var closed = c.status==='closed';
-    rStats[r].kul++;
-    if(closed) rStats[r].hal++;
-    else rStats[r].pend++;
-    if(od && od.getFullYear()===now.getFullYear() && od.getMonth()===now.getMonth()) rStats[r].moujuda++;
-    if(!closed && od && od < thisMonthStart) rStats[r].sabiqa++;
+    if(!rStats[r]) return;
+    var od = _exParseDate(c.openDate);
+    if(!od) return;
+    var inRange = (!fromD || od >= fromD) && od <= _exRangeEnd;
+    if(inRange) rStats[r].moujuda++;
   });
 
+  // Step 2: سابقہ — range se pehle ke jo range start tak pending the
+  var _exSabiqaYearBound = selYear ? new Date(selYear, 0, 1) : null;
+
+  cc.forEach(function(c){
+    var r = c.region||'Unknown';
+    if(!rStats[r]) return;
+    var od = _exParseDate(c.openDate);
+    var cd = _exParseDate(c.closeDate);
+    var closed = c.status==='closed';
+    if(!od) return;
+    if(!fromD || od >= fromD) return;
+    if(_exSabiqaYearBound && od < _exSabiqaYearBound) return;
+    // Range start tak pending tha
+    var pendingAtRangeStart = !closed || (cd && cd >= fromD);
+    if(pendingAtRangeStart) rStats[r].sabiqa++;
+  });
+
+  // Step 3: کل = سابقہ + موجودہ
+  Object.keys(rStats).forEach(function(r){
+    rStats[r].kul = rStats[r].sabiqa + rStats[r].moujuda;
+  });
+
+  // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
+  var _exSabYB2 = selYear ? new Date(selYear, 0, 1) : null;
+  cc.forEach(function(c){
+    var r = c.region||'Unknown';
+    if(!rStats[r]) return;
+    if(c.status!=='closed') return;
+    var od = _exParseDate(c.openDate);
+    if(!od) return;
+    var inMoujuda = (!fromD || od >= fromD) && od <= _exRangeEnd;
+    var inSabiqa  = fromD && od < fromD && (!_exSabYB2 || od >= _exSabYB2);
+    if(inMoujuda || inSabiqa) rStats[r].hal++;
+  });
+
+  // Step 5: پینڈنگ = کل - حل شدہ
+  Object.keys(rStats).forEach(function(r){
+    rStats[r].pend = Math.max(0, rStats[r].kul - rStats[r].hal);
+  });
+
+
   var dataRows = [];
+  // Sirf selected/approved regionOrder ke regions — koi extra nahi
   regionOrder.forEach(function(r){
     var s = rStats[r];
-    if(!s || s.kul===0) return;
+    if(!s || (s.kul===0 && s.sabiqa===0)) return;
     dataRows.push({urdu: urduMap[r]||r, sabiqa:s.sabiqa, moujuda:s.moujuda, kul:s.kul, hal:s.hal, pend:s.pend});
-  });
-  // Extra regions
-  Object.keys(rStats).forEach(function(r){
-    if(regionOrder.indexOf(r)<0 && rStats[r].kul>0){
-      var s=rStats[r];
-      dataRows.push({urdu:r.replace(' Region',''), sabiqa:s.sabiqa, moujuda:s.moujuda, kul:s.kul, hal:s.hal, pend:s.pend});
-    }
   });
 
   // Colors
@@ -6075,7 +6630,18 @@ function repDownloadPDF(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
   var fcc = repGetFilteredCases();
   var label = repGetFilterLabel();
-  var regionStats = repBuildRegionStats(fcc);
+  // Filter month/year nikalo PDF ke liye bhi
+  var now = new Date();
+  var _pdfSelYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
+  var _pdfSelMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
+  var _pdfQuick    = (document.getElementById('repFilter')||{}).value || 'all';
+  var _pdfFYear = now.getFullYear(), _pdfFMonth = now.getMonth();
+  if(_pdfQuick==='thismonth'){ _pdfFYear=now.getFullYear(); _pdfFMonth=now.getMonth(); }
+  else if(_pdfQuick==='lastmonth'){ if(now.getMonth()===0){_pdfFYear=now.getFullYear()-1;_pdfFMonth=11;}else{_pdfFYear=now.getFullYear();_pdfFMonth=now.getMonth()-1;} }
+  else if(_pdfSelYear&&_pdfSelMonth){ _pdfFYear=_pdfSelYear; _pdfFMonth=_pdfSelMonth-1; }
+  else if(_pdfSelYear){ _pdfFYear=_pdfSelYear; _pdfFMonth=now.getMonth(); }
+  else if(_pdfSelMonth){ _pdfFYear=now.getFullYear(); _pdfFMonth=_pdfSelMonth-1; }
+  var regionStats = repBuildRegionStats(fcc, _pdfFYear, _pdfFMonth);
 
   var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || jsPDF;
   var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
@@ -6500,7 +7066,7 @@ var _editClientId = null;
 function isClosedCase(c){ return (c.status||'').toLowerCase() === 'closed'; }
 
 function loadClients(){
-  db.collection('clients').orderBy('naam').onSnapshot(function(snap){
+  db.collection('clients').orderBy('naam').get().then(function(snap){
     _clients = snap.docs.map(function(d){ return {id:d.id, ...d.data()}; });
     renderClients();
   });
@@ -7121,5 +7687,29 @@ function deptClose(){
     </div>
   </div>
 </div>
+
+<!-- ===== REGION SELECT MODAL FOR EXCEL ===== -->
+<div id="mRegionSelect" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">
+    <div style="background:linear-gradient(135deg,#0d47a1,#1976d2);padding:15px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-weight:700;font-size:.95rem">📊 Excel ke liye Regions Chuniye</div>
+      <button onclick="document.getElementById('mRegionSelect').style.display='none'" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:.85rem">✕</button>
+    </div>
+    <div style="padding:18px 20px">
+      <div style="font-size:.78rem;color:#607090;margin-bottom:14px">Jo regions Excel mein chahiye unhe tick karein:</div>
+      <div id="regionCheckList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button onclick="repRegionSelectAll(true)" style="padding:5px 12px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:7px;cursor:pointer;font-size:.75rem;font-weight:600">✅ Sab Select</button>
+        <button onclick="repRegionSelectAll(false)" style="padding:5px 12px;background:#fce4ec;color:#c62828;border:1px solid #f48fb1;border-radius:7px;cursor:pointer;font-size:.75rem;font-weight:600">✕ Sab Hatao</button>
+      </div>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid #e0e6f0;display:flex;gap:8px;justify-content:flex-end;background:#f8faff">
+      <button onclick="document.getElementById('mRegionSelect').style.display='none'" style="padding:8px 18px;background:#fff;border:1.5px solid #e0e6f0;border-radius:8px;cursor:pointer;font-size:.82rem">Cancel</button>
+      <button onclick="repConfirmExcel()" style="padding:8px 18px;background:linear-gradient(135deg,#0d47a1,#1976d2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700">📥 Download Excel</button>
+    </div>
+  </div>
+</div>
+<!-- ===== END REGION SELECT MODAL ===== -->
+
 </body>
 </html>
