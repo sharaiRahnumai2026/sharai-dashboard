@@ -1907,27 +1907,63 @@ function _applyRestriction(arr){
 }
 
 function _processCasesRaw(rawArr){
-  // Same as _processCases but takes plain objects instead of Firestore docs
-  var fakeDocs = rawArr.map(function(c){ return { id: c.id, data: function(){ return c; } }; });
-  _processCases(fakeDocs);
+  // Direct processing — no fake docs, no double mapping
+  cc = rawArr.slice(); // already plain objects
+  cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
+  cc = _applyRestriction(cc);
+
+  if(!_msReady){initMultiSelects();_msReady=true;}
+  else{refreshMSOptions();}
+
+  if(_currentPg==='dash'){
+    updStats(); renderDashYearTabs(); rRegCards(); rDash();
+  } else if(_currentPg==='cases'){
+    _casesPage=1; rCases(); updStats();
+  } else if(_currentPg==='tawan'){
+    renderTawan();
+  } else if(_currentPg==='search'){
+    doSrch();
+  } else if(_currentPg==='reports'){
+    rRep();
+  } else if(_currentPg==='newcase'){
+    if(!eId) autoFillCaseNo();
+  } else {
+    updStats();
+  }
+  setFS(true);
 }
 
 function _processCases(docs){
   cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
   cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
   cc = _applyRestriction(cc);
-  updStats();
-  renderDashYearTabs();
-  rRegCards();
-  if(_currentPg==='dash') rDash();
-  if(_currentPg==='cases'){ _casesPage=1; rCases(); }
-  if(_currentPg==='tawan') renderTawan();
+
+  // MultiSelects — sirf ek baar init karo
   if(!_msReady){initMultiSelects();_msReady=true;}
   else{refreshMSOptions();}
-  if(_currentPg==='search') doSrch();
-  if(_currentPg==='reports') rRep();
-  // New case page par cc load hone ke baad case no fill karo
-  if(_currentPg==='newcase' && !eId) autoFillCaseNo();
+
+  // Sirf current page render karo — baaki pages ki rendering waste hai
+  if(_currentPg==='dash'){
+    updStats();
+    renderDashYearTabs();
+    rRegCards();
+    rDash();
+  } else if(_currentPg==='cases'){
+    _casesPage=1; rCases();
+    updStats();
+  } else if(_currentPg==='tawan'){
+    renderTawan();
+  } else if(_currentPg==='search'){
+    doSrch();
+  } else if(_currentPg==='reports'){
+    rRep();
+  } else if(_currentPg==='newcase'){
+    if(!eId) autoFillCaseNo();
+  } else {
+    // Default: sirf stats update karo
+    updStats();
+  }
+
   setFS(true);
 }
 
@@ -3609,8 +3645,8 @@ function rRep(){
   } else if(quickVal==='custom'){
     var repFrom = (document.getElementById('repFrom')||{}).value;
     var repTo   = (document.getElementById('repTo')||{}).value;
-    if(repFrom) fromD = new Date(repFrom);
-    if(repTo){ toD = new Date(repTo); toD.setHours(23,59,59,999); }
+    if(repFrom){ var _pf=repFrom.split('-'); fromD=new Date(parseInt(_pf[0]),parseInt(_pf[1])-1,parseInt(_pf[2]),0,0,0,0); }
+    if(repTo){ var _pt=repTo.split('-'); toD=new Date(parseInt(_pt[0]),parseInt(_pt[1])-1,parseInt(_pt[2]),23,59,59,999); }
     filterLabel = (repFrom||'?') + ' to ' + (repTo||'?');
     // Also apply year/month if no date range
     if(!repFrom && !repTo){
@@ -3719,8 +3755,11 @@ function rRep(){
   // Parse date as local time
   function parseLocalDate(ds){
     if(!ds) return null;
+    ds = String(ds).trim();
     var parts = ds.split('-');
     if(parts.length===3) return new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    // Sirf saal (4 digits): Jan 1 us saal
+    if(parts.length===1 && /^\d{4}$/.test(ds)) return new Date(parseInt(ds),0,1);
     return new Date(ds);
   }
 
@@ -3770,9 +3809,16 @@ function rRep(){
     if(!fromD || od >= fromD) return;
     // Year bound: agar year select hai to us saal se pehle wale mat lo
     if(_sabiqaYearBound && od < _sabiqaYearBound) return;
-    // Range start tak pending tha: ya to close nahi hua, ya close hua lekin range ke baad
-    var pendingAtRangeStart = !closed || (cd && cd >= fromD);
-    if(pendingAtRangeStart) regionStats[r].sabiqa++;
+    // Range start tak PENDING tha:
+    // - Abhi bhi open/pending hai → count karo
+    // - Close hua lekin closeDate range ke ANDAR ya baad hai → count karo (range start par pending tha)
+    // - Close hua aur closeDate range se PEHLE ya blank hai → MAT count karo (pehle hi hal ho chuka tha)
+    if(!closed) {
+      regionStats[r].sabiqa++; // abhi bhi pending
+    } else if(cd && cd >= fromD) {
+      regionStats[r].sabiqa++; // range ke baad close hua — range start par pending tha
+    }
+    // closed=true aur cd=null ya cd<fromD → range se pehle close → sabiqa nahi
   });
 
   // Step 3: کل = سابقہ + موجودہ
@@ -3781,17 +3827,26 @@ function rRep(){
   });
 
   // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
-  // (sabiqa + moujuda mein se jo close hain)
+  // Shart: closeDate range ke ANDAR hona chahiye (ya blank to openDate se judge karo)
   cc.forEach(function(c){
     var r = c.region||'Unknown';
     if(!regionStats[r]) return;
     if(!isClosed(c)) return;
     var od = parseLocalDate(c.openDate);
+    var cd = parseLocalDate(c.closeDate);
     if(!od) return;
-    // Case کل mein hona chahiye: ya to sabiqa (pehle ka pending) ya moujuda (range mein khula)
+    // Case کل mein hona chahiye: ya sabiqa ya moujuda
     var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
     var inSabiqa = fromD && od < fromD && (!_sabiqaYearBound || od >= _sabiqaYearBound);
-    if(inMoujuda || inSabiqa) regionStats[r].halShuda++;
+    if(!(inMoujuda || inSabiqa)) return;
+    // closeDate check: agar closeDate hai to woh range ke andar hona chahiye
+    // agar closeDate blank hai to status=closed ko hi trust karo (inMoujuda ya inSabiqa dono mein)
+    if(cd){
+      if(cd >= (fromD || new Date(0)) && cd <= _rangeEnd) regionStats[r].halShuda++;
+    } else {
+      // closeDate blank — closed status trust karo, inMoujuda ya inSabiqa dono ke liye count karo
+      if(inMoujuda || inSabiqa) regionStats[r].halShuda++;
+    }
   });
 
   // Step 5: پینڈنگ = کل - حل شدہ
@@ -3800,17 +3855,38 @@ function rRep(){
     s.pending = Math.max(0, s.kulMasail - s.halShuda);
   });
 
-  var regionColors=['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#c62828','#4527a0','#558b2f'];
-  var regionKeys = Object.keys(regionStats).filter(function(r){ return regionStats[r].kulMasail>0 || regionStats[r].sabiqa>0; })
-    .sort(function(a,b){ return (regionStats[b].kulMasail)-(regionStats[a].kulMasail); });
+  // Fixed colors per region name — position change hone par bhi color same rahe
+  var _fixedColorMap={
+    'Ajmer Region':'#2e7d32',
+    'Delhi Region':'#1565c0',
+    'Mumbai Region':'#e65100',
+    'Bengaluru Region':'#6a1b9a',
+    'Hyderabad Region':'#00838f',
+    'Kolkata Region':'#c62828'
+  };
+  var _defaultColors=['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#c62828','#4527a0','#558b2f'];
+  var regionColors=_defaultColors; // fallback
+  // Fixed order: HIER se region order lo (settings ka order), sort mat karo
+  var _hierRegions = Object.keys(HIER);
+  var regionKeys = [];
+  // Pehle HIER order ke regions add karo (jo data mein hain)
+  _hierRegions.forEach(function(r){
+    if(regionStats[r] && (regionStats[r].kulMasail>0 || regionStats[r].sabiqa>0)){
+      regionKeys.push(r);
+    }
+  });
+  // Phir koi bhi region jo HIER mein nahi lekin data mein hai
+  Object.keys(regionStats).forEach(function(r){
+    if((regionStats[r].kulMasail>0 || regionStats[r].sabiqa>0) && regionKeys.indexOf(r)<0){
+      regionKeys.push(r);
+    }
+  });
 
   var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
 
-  // Build per-region tawan/halfiya stats — selected month ke cases se
+  // Build per-region tawan/halfiya stats — same filtered cases (fcc) use karo
   var regionTawn = {}, regionHalf = {};
-  cc.forEach(function(c){
-    var od = c.openDate ? new Date(c.openDate) : null;
-    if(!od || od.getFullYear()!==_selYear || od.getMonth()!==_selMonth) return;
+  fcc.forEach(function(c){
     var r = c.region||'Unknown';
     var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
     if(gs.indexOf('tawan')>-1){
@@ -3829,7 +3905,7 @@ function rRep(){
 
   regionKeys.forEach(function(r, idx2){
     var s   = regionStats[r];
-    var col = regionColors[idx2 % regionColors.length];
+    var col = _fixedColorMap[r] || _defaultColors[idx2 % _defaultColors.length];
     var pct = s.kulMasail>0 ? Math.round(s.halShuda/s.kulMasail*100) : 0;
     var tw  = regionTawn[r]||{total:0,pending:0,closed:0};
     var hf  = regionHalf[r]||{total:0,pending:0,closed:0};
@@ -6420,8 +6496,11 @@ async function repDownloadExcel(selectedRegions){
 
   function _exParseDate(ds){
     if(!ds) return null;
+    ds = String(ds).trim();
     var p=ds.split('-');
-    return p.length===3 ? new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])) : new Date(ds);
+    if(p.length===3) return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+    if(p.length===1 && /^\d{4}$/.test(ds)) return new Date(parseInt(ds),0,1);
+    return new Date(ds);
   }
 
   var _exMonthStart = new Date(filterYear, filterMonth, 1);
@@ -6456,9 +6535,15 @@ async function repDownloadExcel(selectedRegions){
     if(!od) return;
     if(!fromD || od >= fromD) return;
     if(_exSabiqaYearBound && od < _exSabiqaYearBound) return;
-    // Range start tak pending tha
-    var pendingAtRangeStart = !closed || (cd && cd >= fromD);
-    if(pendingAtRangeStart) rStats[r].sabiqa++;
+    // Range start tak PENDING tha:
+    // - Abhi bhi open/pending → count karo
+    // - Close hua lekin closeDate range ke ANDAR ya baad → count karo
+    // - Close hua aur closeDate blank ya range se pehle → MAT count karo
+    if(!closed) {
+      rStats[r].sabiqa++;
+    } else if(cd && cd >= fromD) {
+      rStats[r].sabiqa++;
+    }
   });
 
   // Step 3: کل = سابقہ + موجودہ
@@ -6476,7 +6561,12 @@ async function repDownloadExcel(selectedRegions){
     if(!od) return;
     var inMoujuda = (!fromD || od >= fromD) && od <= _exRangeEnd;
     var inSabiqa  = fromD && od < fromD && (!_exSabYB2 || od >= _exSabYB2);
-    if(inMoujuda || inSabiqa) rStats[r].hal++;
+    var cd2 = _exParseDate(c.closeDate);
+    if(cd2){
+      if(cd2 >= (fromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
+    } else {
+      if(inMoujuda || inSabiqa) rStats[r].hal++;
+    }
   });
 
   // Step 5: پینڈنگ = کل - حل شدہ
