@@ -4351,7 +4351,7 @@ async function saveCase(){
       tHRJV:document.getElementById('tHRJV')?document.getElementById('tHRJV').value.trim():'',
       tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
-    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
+    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('cases').add(data);cacheInvalidate();reloadCases();
@@ -4366,6 +4366,7 @@ async function saveCase(){
 }
 async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();cacheInvalidate();reloadCases();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
 function editC(id){
+  window._savedScrollY = window.scrollY || 0;
   const c=cc.find(x=>x.id===id);if(!c)return;
   eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';
   // Pehle sab tawan fields reset karo — purana data saaf ho jaye
