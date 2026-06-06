@@ -173,7 +173,9 @@ tbody td{padding:7px 7px;color:var(--tx);vertical-align:middle;}
 .fgr input,.fgr select,.fgr textarea{padding:8px 10px;border:1.5px solid var(--bor);border-radius:var(--rsm);font-size:.8rem;outline:none;}
 .fgr input:focus,.fgr select:focus,.fgr textarea:focus{border-color:var(--blue);}
 input[type="date"]{cursor:pointer;position:relative;}
-input[type="date"]::-webkit-calendar-picker-indicator{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;}
+input[type="date"]::-webkit-calendar-picker-indicator{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;}
+/* Firefox/Edge fallback — full width clickable */
+input[type="date"]::-moz-calendar-picker-indicator{width:100%;height:100%;opacity:0;cursor:pointer;}
 .fgr textarea{resize:vertical;min-height:68px;}
 .sbox{background:#f7f9ff;border:1px solid #c5d5f0;border-radius:10px;padding:13px;margin:10px 0;}
 .sbox-title{font-size:.76rem;font-weight:700;color:var(--bd);margin-bottom:9px;display:flex;align-items:center;gap:5px;direction:ltr!important;text-align:left!important;}
@@ -395,8 +397,6 @@ async function hashPw(pw){
     <button class="lbtn" id="lbtn" onclick="doLogin()">🔐 Login</button>
     <div class="lerr" id="lerr"></div>
     <div class="fbst"><span class="dot" id="fbDot"></span><span id="fbTxt">Connecting...</span></div>
-    <div style="margin-top:12px;text-align:center">
-      <button type="button" onclick="emergencyReset()" style="background:none;border:none;color:#aaa;font-size:.7rem;cursor:pointer;text-decoration:underline">Password Reset (Admin Only)</button>
     </div>
   </div>
 </div>
@@ -770,13 +770,13 @@ async function hashPw(pw){
                 <div style="font-size:.74rem;font-weight:800;color:var(--blue);margin-bottom:8px">📥 Wasool ka Tarika</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;padding:6px 12px;border:1.5px solid #90caf9;border-radius:7px;background:#fff">
-                    <input type="radio" name="tCollMethod" id="tCollHR" value="hr" onchange="onCollMethod()" style="accent-color:var(--blue)"> 🏢 H.R. Entry
+                    <input type="checkbox" id="tCollHR" value="hr" onchange="onCollMethod()" style="accent-color:var(--blue);width:15px;height:15px"> 🏢 H.R. Entry
                   </label>
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;padding:6px 12px;border:1.5px solid #90caf9;border-radius:7px;background:#fff">
-                    <input type="radio" name="tCollMethod" id="tCollInst" value="installment" onchange="onCollMethod()" style="accent-color:var(--blue)"> 💸 Installment (Thora Thora)
+                    <input type="checkbox" id="tCollInst" value="installment" onchange="onCollMethod()" style="accent-color:var(--blue);width:15px;height:15px"> 💸 Installment (Thora Thora)
                   </label>
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;padding:6px 12px;border:1.5px solid #90caf9;border-radius:7px;background:#fff">
-                    <input type="radio" name="tCollMethod" id="tCollDirect" value="direct" onchange="onCollMethod()" style="accent-color:var(--blue)"> 💯 Full & Final
+                    <input type="checkbox" id="tCollDirect" value="direct" onchange="onCollMethod()" style="accent-color:var(--blue);width:15px;height:15px"> 💯 Full & Final
                   </label>
                 </div>
 
@@ -841,7 +841,7 @@ async function hashPw(pw){
               <div style="font-size:.76rem;font-weight:800;color:#7b1fa2;margin-bottom:12px">📦 Ashiya/Ajnas Details</div>
               <div class="fg">
                 <div class="fgr fw"><label>Ashiya/Ajnas ka Bayan</label><input id="tAshiyaNaam" placeholder="Kya cheez hai..."></div>
-                <div class="fgr"><label>Wajiba</label><input id="tAshiyaWajiba" placeholder="Amount ya Item..."></div>
+                <div class="fgr" id="tAshiyaWajibaRow"><label>Wajiba</label><input id="tAshiyaWajiba" placeholder="Amount ya Item..."></div>
                 <div class="fgr"><label>Maddat-e-Makhsusa</label><input id="tAshiyaMaddat" placeholder="Amount ya Item..."></div>
                 <div class="fgr"><label>Wasool Tarika</label>
                   <select id="tAshiyaWasool" onchange="onAshiyaWasool()">
@@ -942,19 +942,19 @@ async function hashPw(pw){
           <div class="fgr"><label>Mazratnama Aaya?</label>
             <select id="mazSt" onchange="autoMazSt()">
               <option value="">Select</option>
-              <option value="yes">✅ Yes</option>
-              <option value="no">❌ No</option>
-              <option value="refused">⛔ Refused</option>
+              <option value="yes">✅ Han — Aaya</option>
+              <option value="no">❌ Nahi Aaya</option>
+              <option value="refused">⛔ Inkaar Kar Diya</option>
             </select>
           </div>
-          <div class="fgr" id="mazStBox" style="display:none"><label>Mazratnama Status</label>
+          <div class="fgr" id="mazratStBox" style="display:none"><label>Mazratnama Status</label>
             <select id="mazratSt" style="border:1.5px solid #795548">
               <option value="open">🔴 Open / Pending</option>
               <option value="closed">✅ Closed / Complete</option>
             </select>
           </div>
-          <div class="fgr"><label>Date</label><input type="date" id="mazDt"></div>
-          <div class="fgr fw"><label>Notes</label><input id="mazNt"></div>
+          <div class="fgr"><label>📅 Date</label><input type="date" id="mazDt"></div>
+          <div class="fgr fw"><label>📝 Notes</label><input id="mazNt" placeholder="Koi zaroori baat..."></div>
         </div>
       </div>
       <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:14px">
@@ -981,7 +981,16 @@ async function hashPw(pw){
         <div class="fi"><label>Dept</label><div class="ms-wrap" id="ms-sDp"></div></div>
         <div class="fi"><label>Status</label><div class="ms-wrap" id="ms-sStat"></div></div>
         <div class="fi"><label>Rahnumai</label><div class="ms-wrap" id="ms-sGd"></div></div>
-        <div class="fi"><label>Date From</label><input type="date" id="sDF" onchange="doSrch()"></div>
+        <div class="fi">
+          <label style="display:flex;align-items:center;gap:6px">
+            Date From
+            <select id="sDateType" onchange="doSrch()" style="font-size:.68rem;padding:1px 4px;border:1px solid var(--bor);border-radius:4px;color:var(--mt)">
+              <option value="open">Opening</option>
+              <option value="close">Closing</option>
+            </select>
+          </label>
+          <input type="date" id="sDF" onchange="doSrch()">
+        </div>
         <div class="fi"><label>Date To</label><input type="date" id="sDT" onchange="doSrch()"></div>
         <!-- Purana Location Filter — 2022/2023 mein show hoga -->
         <div id="oldLocFilters" style="display:none;grid-column:1/-1;background:#fffde7;border:1.5px dashed #ffe082;border-radius:8px;padding:10px;margin-top:4px">
@@ -991,6 +1000,7 @@ async function hashPw(pw){
             <div class="fi"><label style="color:#9c7a00">Purana Division</label><input id="sOldDiv" oninput="doSrch()" placeholder="Purana Division..." style="background:#fffde7;border-color:#ffe082"></div>
             <div class="fi"><label style="color:#9c7a00">Kabina</label><input id="sOldKab" oninput="doSrch()" placeholder="Kabina..." style="background:#fffde7;border-color:#ffe082"></div>
             <div class="fi"><label style="color:#9c7a00">Sheher</label><input id="sOldShh" oninput="doSrch()" placeholder="Sheher..." style="background:#fffde7;border-color:#ffe082"></div>
+            <div class="fi"><label>🏫 Institutional</label><input id="sInst" oninput="doSrch()" placeholder="Institution name enter karo..."></div>
           </div>
         </div>
         <div class="fi" style="align-self:end"><button class="btn bout bsm" onclick="clrSrchAndSearch()">✕ Clear All</button></div>
@@ -1117,6 +1127,9 @@ async function hashPw(pw){
         </div>
       </div>
     </div>
+    <div id="repFutureWarn" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:#e65100;font-size:.85rem;font-weight:600">
+      ⚠️ Yeh mahina abhi aaya nahi hai — is liye koi data nahi hoga. Pichla mahina ya saal select karein.
+    </div>
     <div id="rpRC" style="margin-bottom:14px"></div>
     <div id="rpC" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:start;direction:ltr"></div>
     <!-- Trend Chart & Mufattish Breakdown -->
@@ -1131,9 +1144,22 @@ async function hashPw(pw){
         <button class="btn bpri bsm" onclick="openClientForm()">➕ New Client</button>
       </div>
     </div>
-    <!-- Search bar -->
-    <div style="margin-bottom:14px">
-      <input id="clientSearch" type="text" placeholder="🔍 Naam, Phone, Email ya Employee Code se search..." oninput="renderClients()" style="width:100%;padding:9px 14px;border:1.5px solid var(--bor);border-radius:9px;font-size:.82rem;outline:none;box-sizing:border-box">
+    <!-- Search bar — alag alag fields -->
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:14px;box-shadow:var(--sh);border:1px solid var(--bor)">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">👤 Name</label>
+          <input id="cSNaam" placeholder="Name search..." oninput="renderClients()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">📱 Phone</label>
+          <input id="cSPhone" placeholder="Phone search..." oninput="renderClients()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">🪪 Employee Code</label>
+          <input id="cSEmpCode" placeholder="Emp code..." oninput="renderClients()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">💼 Designation</label>
+          <input id="cSDesig" placeholder="Designation..." oninput="renderClients()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="renderClients()" class="btn bpri bsm">✅ Apply</button>
+        <button onclick="clearClientSearch()" class="btn bout bsm">✕ Clear</button>
+      </div>
     </div>
     <div id="clientList"></div>
 
@@ -1832,10 +1858,14 @@ var _CACHE_KEY = 'sab_cases_cache';
 var _CACHE_TS_KEY = 'sab_cases_ts';
 // No TTL — cache tab tak rehta hai jab tak case save/delete/manual refresh na ho
 
+var _CACHE_TTL = 5 * 60 * 1000; // 5 minutes — iske baad server se fresh data lega
+
 function cacheLoad(){
   try{
     var ts = parseInt(localStorage.getItem(_CACHE_TS_KEY)||'0');
-    if(!ts) return null; // Kabhi save nahi hua
+    if(!ts) return null;
+    // TTL check — agar cache purana hai to null return karo (server se fresh lo)
+    if((Date.now() - ts) > _CACHE_TTL) return null;
     var raw = localStorage.getItem(_CACHE_KEY);
     if(!raw) return null;
     return JSON.parse(raw);
@@ -1844,9 +1874,22 @@ function cacheLoad(){
 
 function cacheSave(cases){
   try{
-    localStorage.setItem(_CACHE_KEY, JSON.stringify(cases));
-    localStorage.setItem(_CACHE_TS_KEY, String(Date.now()));
-  }catch(e){ console.warn('Cache save failed:', e); }
+    var data = JSON.stringify(cases);
+    try{
+      localStorage.setItem(_CACHE_KEY, data);
+      localStorage.setItem(_CACHE_TS_KEY, String(Date.now()));
+    }catch(e){
+      if(e.name==='QuotaExceededError'||e.code===22){
+        // Storage full — purana cache clear karke retry karo
+        try{
+          localStorage.removeItem(_CACHE_KEY);
+          localStorage.removeItem(_CACHE_TS_KEY);
+          localStorage.setItem(_CACHE_KEY, data);
+          localStorage.setItem(_CACHE_TS_KEY, String(Date.now()));
+        }catch(e2){ /* silently ignore — cache nahi banega, lekin app chalti rahegi */ }
+      }
+    }
+  }catch(e){ /* ignore */ }
 }
 
 function cacheInvalidate(){
@@ -1912,6 +1955,9 @@ function _processCasesRaw(rawArr){
   cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
   cc = _applyRestriction(cc);
 
+  // Year dropdown hamesha cc load hone ke baad refresh karo
+  repInitYears();
+
   if(!_msReady){initMultiSelects();_msReady=true;}
   else{refreshMSOptions();}
 
@@ -1974,18 +2020,20 @@ function startListener(){
   // CACHE CHECK: Agar fresh cache hai to Firebase se mat poocho
   var _cached = cacheLoad();
   if(_cached && _cached.length > 0){
-    console.log('Cache hit! ' + _cached.length + ' cases from localStorage');
     _processCasesRaw(_cached);
-    // Background mein quietly refresh karo (Firebase reads bachane ke liye sirf 1 baar)
-    setTimeout(function(){
-      db.collection('cases').get({source:'cache'}).then(function(s){
-        if(s.docs.length > 0){
-          var fresh = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-          cacheSave(fresh);
-          _processCasesRaw(fresh);
-        }
-      }).catch(function(){});
-    }, 2000);
+    // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
+    var _cacheAge = Date.now() - parseInt(localStorage.getItem(_CACHE_TS_KEY)||'0');
+    if(_cacheAge > 4 * 60 * 1000){
+      setTimeout(function(){
+        db.collection('cases').get({source:'server'}).then(function(s){
+          if(s.docs.length > 0){
+            var fresh = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+            cacheSave(fresh);
+            _processCasesRaw(fresh);
+          }
+        }).catch(function(){});
+      }, 2000);
+    }
     return;
   }
 
@@ -2130,6 +2178,8 @@ function launch(){
     if(navEl) navEl.style.display=(isA||(cu.perms&&cu.perms[navMap[pg]]))?'flex':'none';
   });
   loadAllSettings();initDD();loadLogo();
+  // Clients background mein load karo — autocomplete ke liye
+  loadClients();
   // URL mein jo page ho seedha wahan jao — koi delay nahi
   var _urlPg = new URLSearchParams(window.location.search).get('p') || 'dash';
   goPage(_urlPg, null, true);
@@ -2170,6 +2220,10 @@ document.addEventListener('DOMContentLoaded', _initPgCache);
 
 var _lastPgBeforeNewCase = 'cases'; // default
 function goPage(pg,el,skipHistory){
+  // Clients page se nikal rahe hain — search clear karo
+  if(_currentPg === 'clients' && pg !== 'clients'){
+    clearClientSearch();
+  }
   if(pg==='newcase' && _currentPg && _currentPg!=='newcase') _lastPgBeforeNewCase = _currentPg;
   if(cu && pg!=='dash'){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
@@ -2201,7 +2255,7 @@ function goPage(pg,el,skipHistory){
 
   if(!skipHistory) history.pushState({pg:pg},'',window.location.pathname+'?p='+pg);
 
-  if(isSamePage && pg!=='newcase') return;
+  if(isSamePage && pg!=='newcase' && !(pg==='search' && _pendingFilters)) return;
 
   // STEP 2: DATA — next animation frame mein, UI already painted ho chuka
   requestAnimationFrame(function(){
@@ -2344,13 +2398,13 @@ function togGuideMulti(){
   setTimeout(initSearchableSelects, 50);
 }
 function getGuideValues(){
-  return ['tawan','halfia','tafhim','tabadla'].filter(function(v){
+  return ['tawan','halfia','tafhim','tabadla','mazratnama'].filter(function(v){
     var cb = document.getElementById('fGd_'+v);
     return cb && cb.checked;
   });
 }
 function setGuideValues(vals){
-  ['tawan','halfia','tafhim','tabadla'].forEach(function(v){
+  ['tawan','halfia','tafhim','tabadla','mazratnama'].forEach(function(v){
     var cb = document.getElementById('fGd_'+v);
     if(cb) cb.checked = Array.isArray(vals) ? vals.indexOf(v)>-1 : vals===v;
   });
@@ -2367,11 +2421,12 @@ function onTawnType(){
 }
 
 function onCollMethod(){
-  var val = document.querySelector('input[name="tCollMethod"]:checked');
-  var method = val ? val.value : '';
-  document.getElementById('tCollHRBox').style.display = method === 'hr' ? 'block' : 'none';
-  document.getElementById('tCollInstBox').style.display = method === 'installment' ? 'block' : 'none';
-  document.getElementById('tCollDirectBox').style.display = method === 'direct' ? 'block' : 'none';
+  var hr   = document.getElementById('tCollHR')   && document.getElementById('tCollHR').checked;
+  var inst = document.getElementById('tCollInst') && document.getElementById('tCollInst').checked;
+  var dir  = document.getElementById('tCollDirect')&& document.getElementById('tCollDirect').checked;
+  document.getElementById('tCollHRBox').style.display    = hr   ? 'block' : 'none';
+  document.getElementById('tCollInstBox').style.display  = inst ? 'block' : 'none';
+  document.getElementById('tCollDirectBox').style.display= dir  ? 'block' : 'none';
 }
 
 function calcDirectTotal(){
@@ -2455,26 +2510,30 @@ function onAshiyaProcess(){
 }
 
 function resetTawnFields(){
+  // Tawn persons rows bhi clear karo
+  var tpr = document.getElementById('tawnPersonRows');
+  if(tpr) tpr.innerHTML = '';
   // Reset type checkboxes
-  ['tTypeRaqam','tTypeAshiya'].forEach(function(id){ var el=document.getElementById(id); if(el) el.checked=false; });
-  // Reset sections
-  ['tRaqamSection','tAshiyaSection','tCollHRBox','tCollInstBox','tCollDirectBox'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+  ['tTypeRaqam','tTypeAshiya','tKismWajiba','tKismNafila'].forEach(function(id){ var el=document.getElementById(id); if(el) el.checked=false; });
+  // Reset ALL select fields
+  ['tDO','tDC','tDR','tMd','tMq','tJm','tPM','tawnSt','tAshiyaWasool','tAshiyaMili','tAshiyaProcess','tDirectMode'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  // Reset ALL text/number fields
+  ['tNaf','tWaj','tTot','tPd','tRm','tDRCustom','tDonor','tCategory','tPurpose','tNt',
+   'tDirectAmt','tDirectDate','tDirectRef','tDirectNotes',
+   'tHRJV','tHRDate','tHRStart','tHREnd','tHRMonthly',
+   'tAshiyaNaam','tAshiyaWajiba','tAshiyaNafila','tAshiyaMaddat','tAshiyaProcessNo',
+   'tHkm','tMaddat'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  // Reset hidden fields
+  ['tJm','tMd','tMq','tHkm'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  // Reset sections — sab hide karo
+  ['tRaqamSection','tAshiyaSection','tCollHRBox','tCollInstBox','tCollDirectBox',
+   'tDCWrap','tDRWrap','tawnFieldsWrap','tAshiyaProcessWrap','tAshiyaProcessNoWrap',
+   'tWajRow','tNafRow'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   // Reset radios
-  document.querySelectorAll('input[name="tCollMethod"]').forEach(function(r){ r.checked=false; });
-  // Reset raqam fields
-  ['tNaf','tWaj','tTot','tPd','tRm'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  // Reset Full & Final fields
-  ['tDirectAmt','tDirectDate','tDirectRef','tDirectNotes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  var dm=document.getElementById('tDirectMode'); if(dm) dm.value='';
+  ['tCollHR','tCollInst','tCollDirect'].forEach(function(id){var el=document.getElementById(id);if(el)el.checked=false;});
+  // Reset direct summary
   var ds=document.getElementById('tDirectSummary'); if(ds) ds.textContent='';
   var dl=document.getElementById('tDirectList'); if(dl) dl.innerHTML='';
-  // Reset HR fields
-  ['tHRJV','tHRDate','tHRStart','tHREnd','tHRMonthly'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  // Reset ashiya fields
-  ['tAshiyaNaam','tAshiyaWajiba','tAshiyaNafila','tAshiyaMaddat','tAshiyaProcessNo'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  ['tAshiyaWasool','tAshiyaMili','tAshiyaProcess','tDirectDate'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  var apw=document.getElementById('tAshiyaProcessWrap');if(apw)apw.style.display='none';
-  ['tAshiyaProcessWrap','tAshiyaProcessNoWrap'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
 }
 
 function onDonorRabita(val){
@@ -2686,7 +2745,7 @@ function updStats(){
     else if(m.status==='pending_f')c[2]++;
     else if(m.status==='pending_o')c[3]++;
     else if(m.status==='ifta')c[4]++;
-    else if(m.status==='closed')c[5]++;
+    else if((m.status||'').toLowerCase()==='closed')c[5]++;
     else if(m.status==='meeting')c[10]++;
     else if(m.status==='office')c[11]++;
     var gs=m.guides&&m.guides.length?m.guides:(m.guide?[m.guide]:[]);
@@ -2734,7 +2793,7 @@ function hp(p){return cu&&(cu.role==='admin'||!!(cu.perms&&cu.perms[p]));}
 
 // Tables
 const THS=['#','Case No','Date / Days','Location','Person','Subject','Status'];
-function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.closeDate&&c.status==='closed')?new Date(c.closeDate):new Date();const d=Math.floor((e-s)/(86400000));if(d<0)return'0d';const col=d<=7?'var(--green)':d<=30?'var(--yellow)':d<=90?'var(--orange)':'var(--red)';return'<span style="font-weight:700;color:'+col+'">'+(d)+'d</span>'+(c.status==='closed'?'<br><span style="font-size:.6rem;color:var(--green)">✅closed</span>':'');}
+function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.closeDate&&(c.status||'').toLowerCase()==='closed')?new Date(c.closeDate):new Date();const d=Math.floor((e-s)/(86400000));if(d<0)return'0d';const col=d<=7?'var(--green)':d<=30?'var(--yellow)':d<=90?'var(--orange)':'var(--red)';return'<span style="font-weight:700;color:'+col+'">'+(d)+'d</span>'+((c.status||'').toLowerCase()==='closed'?'<br><span style="font-size:.6rem;color:var(--green)">✅closed</span>':'');}
 const THF=['#','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
 function setTH(el,hs){el.innerHTML=hs.map(h=>`<th>${h}</th>`).join('');}
 function mRow(c,i,sh){
@@ -2844,7 +2903,7 @@ function rRegCards(){
     const rk=alias[c.region.trim()]||c.region.trim();
     if(!rs[rk])rs[rk]={t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
     rs[rk].t++;
-    if(c.status==='closed')rs[rk].cl++;
+    if((c.status||'').toLowerCase()==='closed')rs[rk].cl++;
     if(c.status==='pending_z')rs[rk].pz++;
     if(c.status==='pending_o')rs[rk].po++;
     if(c.status==='meeting')rs[rk].mt++;
@@ -3220,6 +3279,8 @@ function doSrch(){
   const rgs=msGet('ms-sRg'),sts=msGet('ms-sSt'),dvs=msGet('ms-sDv'),dis=msGet('ms-sDi');
   const dps=msGet('ms-sDp'),sss=msGet('ms-sStat'),gds=msGet('ms-sGd');
   const df=document.getElementById('sDF').value,dt=document.getElementById('sDT').value;
+  const dateType=(document.getElementById('sDateType')||{}).value||'open';
+  const cdf='',cdt='';
   // Purana location filters
   const sOldReg=(document.getElementById('sOldReg')||{}).value||'';
   const sOldDiv=(document.getElementById('sOldDiv')||{}).value||'';
@@ -3266,6 +3327,8 @@ function doSrch(){
     if(sOldDiv&&!(c.oldDivision||'').toLowerCase().includes(sOldDiv.toLowerCase()))return false;
     if(sOldKab&&!(c.oldKabina||'').toLowerCase().includes(sOldKab.toLowerCase()))return false;
     if(sOldShh&&!(c.oldSheher||'').toLowerCase().includes(sOldShh.toLowerCase()))return false;
+    var sInst=(document.getElementById('sInst')||{}).value||'';
+    if(sInst&&!(c.idaraName||'').toLowerCase().includes(sInst.toLowerCase()))return false;
     // Sub-status filters from dashboard clicks
     if(_halfSt==='pending' && c.halfiaSt==='closed') return false;
     if(_halfSt==='closed' && c.halfiaSt!=='closed') return false;
@@ -3279,8 +3342,13 @@ function doSrch(){
     if(_mazSt==='closed' && c.mazSt!=='closed') return false;
 
     if(_customFilter && !_customFilter(c)) return false;
-    if(df&&c.openDate&&c.openDate<df)return false;
-    if(dt&&c.openDate&&c.openDate>dt)return false;
+    if(dateType==='open'){
+      if(df&&c.openDate&&c.openDate<df)return false;
+      if(dt&&c.openDate&&c.openDate>dt)return false;
+    } else {
+      if(df&&(!c.closeDate||c.closeDate<df))return false;
+      if(dt&&(!c.closeDate||c.closeDate>dt))return false;
+    }
     return true;
   });
   // Sort by Case No descending (latest first)
@@ -3354,7 +3422,7 @@ function srchPgGo(pg){
   if(tb) tb.closest('.twrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function clrSrch(){doSrch._page=1;doSrch._res=[];
-  ['sq','sCN','sDF','sDT','sOldReg','sOldDiv','sOldKab','sOldShh'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['sq','sCN','sDF','sDT','sCDF','sCDT','sOldReg','sOldDiv','sOldKab','sOldShh','sInst'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(id=>msClearAll(id));
   msSetOptions('ms-sSt',[]);msSetOptions('ms-sDv',[]);msSetOptions('ms-sDi',[]);
   doSrch._halfSt=null; doSrch._tawnSt=null; doSrch._tafhimSt=null; doSrch._tabadlaSt=null; doSrch._mazSt=null; doSrch._customFilter=null;
@@ -3428,17 +3496,34 @@ function applyPendingFilters(){
 // Reports
 function repInitYears(){
   var yEl = document.getElementById('repYear');
-  if(!yEl || yEl.options.length > 1) return;
-  var years = new Set();
-  cc.forEach(function(c){ if(c.openDate) years.add(new Date(c.openDate).getFullYear()); });
+  if(!yEl) return;
+  // Hamesha fresh rebuild karo
+  var prevVal = yEl.value; // selected value yaad rakho
+  yEl.innerHTML = '<option value="">📆 Sab Saal</option>';
   var now = new Date().getFullYear();
-  for(var y = now; y >= now-5; y--) years.add(y);
+  var years = new Set();
+  cc.forEach(function(c){
+    if(c.openDate){
+      var y = parseInt(String(c.openDate).substring(0,4));
+      if(y > 1900) years.add(y);
+    }
+    if(c.year){
+      var yr = parseInt(c.year);
+      if(yr > 1900) years.add(yr);
+    }
+  });
+  years.add(now); // current year minimum
   Array.from(years).sort(function(a,b){return b-a;}).forEach(function(y){
     var o = document.createElement('option');
     o.value = y; o.textContent = y;
-    if(y === now) o.selected = true;
     yEl.appendChild(o);
   });
+  // Pehle wali selection restore karo, warna current year select karo
+  if(prevVal && yEl.querySelector('option[value="'+prevVal+'"]')){
+    yEl.value = prevVal;
+  } else {
+    yEl.value = now;
+  }
 }
 
 function getRepDateRange(){
@@ -3567,22 +3652,25 @@ function repGoSearch(regionEnc, filter){
   if(filter === 'all'){
     _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c); }};
   } else if(filter === 'pending'){
-    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && c.status !== 'closed'; }};
+    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && (c.status||'').toLowerCase() !== 'closed'; }};
   } else if(filter === 'closed'){
-    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && c.status === 'closed'; }};
+    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && (c.status||'').toLowerCase() === 'closed'; }};
   } else if(filter === 'sabiqa'){
-    // Open cases opened before filter month start — sirf filter year ke andar
+    // Open cases opened before filter month start
     var _sabiqaYearOnly = (_rSelYear && !_rSelMonth && _rQuick==='all');
+    var _sabiqaYearStart = _rSelYear ? new Date(_rSelYear, 0, 1) : null;
     _pendingFilters = {rg: short, customFilter: function(c){
       var od = c.openDate ? new Date(c.openDate) : null;
-      if(c.status === 'closed' || !od) return false;
+      if((c.status||'').toLowerCase() === 'closed' || !od) return false;
       // Year-only filter: c.year field se check karo
       if(_sabiqaYearOnly){
         return String(c.year||'') === String(_rSelYear) && od < _thisMonthStart;
       }
-      // Date range filter: fromD se pehle nahi, monthStart se pehle hona chahiye
-      if(_rFromD && od < _rFromD) return false;
-      return od < _thisMonthStart;
+      // Year bound: agar year select hai to us saal se pehle wale mat lo
+      if(_sabiqaYearStart && od < _sabiqaYearStart) return false;
+      // Sabiqa = range start (fromD) se PEHLE khula hona chahiye
+      if(_rFromD && od >= _rFromD) return false;
+      return true;
     }};
   } else if(filter === 'moujuda'){
     // Cases opened in filter month
@@ -3613,6 +3701,23 @@ function rRep(){
   var selYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
   var selMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
   var quickVal = (document.getElementById('repFilter')||{}).value || 'all';
+
+  // Future date warning
+  var _futureWarn = false;
+  if(selYear > now.getFullYear()){
+    _futureWarn = true;
+  } else if(selYear === now.getFullYear() && selMonth > now.getMonth()+1){
+    _futureWarn = true;
+  }
+  var _warnEl = document.getElementById('repFutureWarn');
+  if(_warnEl) _warnEl.style.display = _futureWarn ? 'block' : 'none';
+  if(_futureWarn){
+    // Content areas clear karo — purana data mat dikhao
+    var _rc = document.getElementById('rpRC'); if(_rc) _rc.innerHTML = '';
+    var _rp = document.getElementById('rpC');  if(_rp) _rp.innerHTML = '';
+    var _re = document.getElementById('rpExtra'); if(_re) _re.innerHTML = '';
+    return;
+  }
   var fromD = null, toD = null;
   var filterLabel = 'Sab Waqt';
 
@@ -3682,6 +3787,7 @@ function rRep(){
     var ds = c.openDate||'';
     if(!ds) return true;
     if(ds.length===4) ds = ds+'-01-01';
+    if(/^\d{4}-\d{1,2}$/.test(ds)) ds = ds+'-01'; // YYYY-MM -> YYYY-MM-01
     // Parse as local time to avoid timezone issues
     var parts = ds.split('-');
     var d = parts.length===3 ? new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2])) : new Date(ds);
@@ -3696,10 +3802,10 @@ function rRep(){
   var bS={}, bR={}, bSt={}, bD={};
   var tTot=0, tPd=0;
   fcc.forEach(function(c){
-    bS[c.status]=(bS[c.status]||0)+1;
+    bS[(c.status||'').toLowerCase()]=(bS[(c.status||'').toLowerCase()]||0)+1;
     if(c.region) bR[c.region]=(bR[c.region]||0)+1;
-    if(c.state)  bSt[c.state]=(bSt[c.state]||0)+1;
-    if(c.dept)   bD[c.dept]=(bD[c.dept]||0)+1;
+    bSt[c.state||'(State Nahi)']=(bSt[c.state||'(State Nahi)']||0)+1;
+    bD[c.dept||'(Dept Nahi)']=(bD[c.dept||'(Dept Nahi)']||0)+1;
     var cg = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
     if(cg.indexOf('tawan')>-1){ tTot+=parseFloat(c.tTot||0); tPd+=parseFloat(c.tPd||0); }
   });
@@ -3719,7 +3825,7 @@ function rRep(){
   // کل حل شدہ   = is mahine mein close hue cases (closeDate = selected month)
   // پینڈنگ       = kul - hal shuda
 
-  var isClosed = function(c){ return c.status === 'closed'; };
+  var isClosed = function(c){ return (c.status||'').toLowerCase() === 'closed'; };
 
   // Selected month/year nikalo
   var _selYear  = selYear  || now.getFullYear();
@@ -3760,6 +3866,9 @@ function rRep(){
     if(parts.length===3) return new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
     // Sirf saal (4 digits): Jan 1 us saal
     if(parts.length===1 && /^\d{4}$/.test(ds)) return new Date(parseInt(ds),0,1);
+    // YYYY-MM (2 parts, no day): month ka pehla din local time mein
+    if(parts.length===2 && /^\d{4}$/.test(parts[0]) && /^\d{1,2}$/.test(parts[1]))
+      return new Date(parseInt(parts[0]),parseInt(parts[1])-1,1);
     return new Date(ds);
   }
 
@@ -3844,8 +3953,9 @@ function rRep(){
     if(cd){
       if(cd >= (fromD || new Date(0)) && cd <= _rangeEnd) regionStats[r].halShuda++;
     } else {
-      // closeDate blank — closed status trust karo, inMoujuda ya inSabiqa dono ke liye count karo
-      if(inMoujuda || inSabiqa) regionStats[r].halShuda++;
+      // closeDate blank — sirf moujuda cases count karo (range ke andar khule)
+      // sabiqa cases ke liye closeDate zaroori hai, warna count nahi hoga
+      if(inMoujuda) regionStats[r].halShuda++;
     }
   });
 
@@ -3970,6 +4080,8 @@ function rRep(){
   regionCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
 
   var h = regionCards;
+  var _fw = document.getElementById('repFutureWarn');
+  if(_fw) _fw.style.display = 'none';
   document.getElementById('rpC').innerHTML='';
   document.getElementById('rpRC').innerHTML = h;
 
@@ -3979,9 +4091,9 @@ function rRep(){
 
   var cards = [
     {size: Object.keys(bS).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickStatus(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickRegion(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Math.min(Object.keys(bSt).length, 10) * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Math.min(Object.keys(bD).length, 10) * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(e[0])+'\',\'all\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bSt).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;tawan_all&quot;)" title="Tamam Tawan cases"><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_received&quot;)" title="Received Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_pending&quot;)" title="Pending Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;halfia_all&quot;)" title="Tamam Halfiya cases"><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_done&quot;)" title="Done cases"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_pending&quot;)" title="Pending cases"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>'}
   ];
@@ -4171,7 +4283,7 @@ function autoHalfiaSt(){
 function autoMazSt(){
   var v = document.getElementById('mazSt').value;
   var st = document.getElementById('mazratSt');
-  var box = document.getElementById('mazStBox');
+  var box = document.getElementById('mazratStBox');
   if(!st) return;
   if(v==='yes'){ st.value='closed'; if(box) box.style.display='block'; }
   else { st.value='open'; if(box) box.style.display='none'; }
@@ -4193,7 +4305,7 @@ async function saveCase(){
   const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:document.getElementById('fSub').value.trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:document.getElementById('fRem').value.trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:document.getElementById('fRah').value.trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
       tTypeAshiya:document.getElementById('tTypeAshiya')?document.getElementById('tTypeAshiya').checked:false,
-      tCollMethod:(function(){var r=document.querySelector('input[name="tCollMethod"]:checked');return r?r.value:'';}()),
+      tCollMethod:(function(){var methods=[];['tCollHR','tCollInst','tCollDirect'].forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)methods.push(el.value);});return methods.join(',');}()),
       tWaj:document.getElementById('tWaj').value,tNaf:document.getElementById('tNaf').value,
       tMaddat:document.getElementById('tMaddat')?document.getElementById('tMaddat').value:'',
       tHRDate:document.getElementById('tHRDate')?document.getElementById('tHRDate').value:'',
@@ -4217,21 +4329,27 @@ async function saveCase(){
   var isRaqam  = document.getElementById('tTypeRaqam')  && document.getElementById('tTypeRaqam').checked;
   if(isAshiya && !isRaqam) return '';
   // Full & Final: tDirectAmt se tPd lo
-  var collMethod = (document.querySelector('input[name="tCollMethod"]:checked')||{}).value||'';
+  var _cms=['tCollHR','tCollInst','tCollDirect'].filter(function(id){var el=document.getElementById(id);return el&&el.checked;}).map(function(id){return document.getElementById(id).value;});
   var directAmt = parseFloat(document.getElementById('tDirectAmt').value)||0;
-  if(collMethod==='direct' && directAmt>0) return String(directAmt);
+  if(_cms.includes('direct') && directAmt>0) return String(directAmt);
   return document.getElementById('tPd').value;
 })(),tRm:(function(){
   // Ashiya case mein tRm blank hona chahiye — koi amount nahi hota
   var isAshiya = document.getElementById('tTypeAshiya') && document.getElementById('tTypeAshiya').checked;
   var isRaqam  = document.getElementById('tTypeRaqam')  && document.getElementById('tTypeRaqam').checked;
   if(isAshiya && !isRaqam) return '';
-  var collMethod = (document.querySelector('input[name="tCollMethod"]:checked')||{}).value||'';
+  var _cms2=['tCollHR','tCollInst','tCollDirect'].filter(function(id){var el=document.getElementById(id);return el&&el.checked;}).map(function(id){return document.getElementById(id).value;});
   var directAmt = parseFloat(document.getElementById('tDirectAmt').value)||0;
   var tot = parseFloat(document.getElementById('tTot').value)||0;
-  if(collMethod==='direct' && directAmt>0) return String(Math.max(0, tot-directAmt));
+  if(_cms2.includes('direct') && directAmt>0) return String(Math.max(0, tot-directAmt));
   return document.getElementById('tRm').value;
-})(),tInsts:JSON.parse(JSON.stringify(tInsts)),tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+})(),tInsts:JSON.parse(JSON.stringify(tInsts)),
+      tHRDate:document.getElementById('tHRDate')?document.getElementById('tHRDate').value:'',
+      tHRStart:document.getElementById('tHRStart')?document.getElementById('tHRStart').value:'',
+      tHREnd:document.getElementById('tHREnd')?document.getElementById('tHREnd').value:'',
+      tHRMonthly:document.getElementById('tHRMonthly')?document.getElementById('tHRMonthly').value:'',
+      tHRJV:document.getElementById('tHRJV')?document.getElementById('tHRJV').value.trim():'',
+      tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,_savedScrollY);},50);}
     else{
@@ -4270,6 +4388,11 @@ function editC(id){
     tog('fIdrBox',c.idarati==='yes');togGuide();
     if(c.tJm==='yes'||c.tJm==='partial')document.getElementById('tAmtBox').style.display='block';
   loadInstallments(c.tInsts||[]);
+  // HR fields restore
+  ['tHRDate','tHRStart','tHREnd','tHRMonthly','tHRJV'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el && c[id]) el.value=c[id];
+  });
     // Map short region name back to full HIER key (e.g. "Bengaluru" → "Bengaluru Region")
     var regShort = c.region||'';
     var regFull = regShort;
@@ -4321,6 +4444,14 @@ function editC(id){
   if(wEl && c.tawnKismWajiba) wEl.checked=true;
   if(nEl && c.tawnKismNafila) nEl.checked=true;
   if(c.tawnKismWajiba||c.tawnKismNafila) onTawnKism();
+  // Restore collection methods — multiple ho sakte hain
+  var methods = (c.tCollMethod||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var methodMap = {hr:'tCollHR', installment:'tCollInst', direct:'tCollDirect'};
+  Object.keys(methodMap).forEach(function(val){
+    var el = document.getElementById(methodMap[val]);
+    if(el) el.checked = methods.includes(val);
+  });
+  onCollMethod();
   // Load tawn persons
   if(c.tawnPersons&&c.tawnPersons.length) setTawnPersons(c.tawnPersons); else document.getElementById('tawnPersonRows').innerHTML='';
           ssRef('hSt'); ssRef('halfiaSt'); ssRef('tawnSt');
@@ -4341,7 +4472,19 @@ function viewC(id, readOnly){
   if(guides.indexOf('tawan')>-1){
   const pmLbl={dept:'HR Tankhwa Katna',fin:'Finance Office',acc:'Direct Account',upi:'UPI',cash:'Cash',other:'Other'};
   const instHtml=(c.tInsts&&c.tInsts.length)?`<div style="margin-top:10px"><div style="font-size:.72rem;font-weight:800;color:var(--blue);margin-bottom:7px;text-transform:uppercase">📅 Payment Installments (${c.tInsts.length})</div>${c.tInsts.map((inst,i)=>`<div style="background:#fff;border:1px solid #c5d5ee;border-radius:7px;padding:8px 10px;margin-bottom:5px;display:flex;flex-wrap:wrap;gap:10px;font-size:.78rem"><span style="font-weight:700;color:var(--mt)">#${i+1}</span><span>📅 ${inst.date||'—'}</span><span style="font-weight:700;color:var(--green)">₹${parseFloat(inst.amt||0).toLocaleString()}</span><span>💳 ${pmLbl[inst.mode]||inst.mode||'—'}</span>${inst.txn?`<span style="color:var(--blue)">${inst.mode==='dept'?'📋 JV:':'🔖'} ${inst.txn}</span>`:''}</div>`).join('')}</div>`:'';
-  gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${c.tPd?'₹'+parseFloat(c.tPd).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${c.tRm?'₹'+parseFloat(c.tRm).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${instHtml}</div></div>`;
+  // HR Entry details
+  var hasHR = (c.tCollMethod||'').includes('hr');
+  const hrHtml = hasHR ? `<div style="margin-top:10px;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:8px;padding:10px">
+    <div style="font-size:.72rem;font-weight:800;color:#2e7d32;margin-bottom:8px">🏢 H.R. Entry Details</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.78rem">
+      ${c.tHRDate?`<span>📅 Approval: <strong>${c.tHRDate}</strong></span>`:''}
+      ${c.tHRStart?`<span>▶️ Start: <strong>${c.tHRStart}</strong></span>`:''}
+      ${c.tHREnd?`<span>⏹️ End: <strong>${c.tHREnd}</strong></span>`:''}
+      ${c.tHRMonthly?`<span style="color:#2e7d32;font-weight:700">💰 Monthly: ₹${parseFloat(c.tHRMonthly).toLocaleString('en-IN')}</span>`:''}
+      ${c.tHRJV?`<span style="color:var(--blue)">📋 JV/Ref: <strong>${c.tHRJV}</strong></span>`:''}
+    </div>
+  </div>` : '';
+  gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${c.tPd?'₹'+parseFloat(c.tPd).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${c.tRm?'₹'+parseFloat(c.tRm).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${hrHtml}${instHtml}</div></div>`;
 }
   if(guides.indexOf('halfia')>-1){gh=`<div class="sbox" style="border-color:#9c27b0;background:#fdf5ff;margin-top:11px"><div class="sbox-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center"><span>📜 Halfiya Bayan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.halfiaSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.halfiaSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.halfiaSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.halfiaSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.hSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.hDt||'—'}</div></div>${c.hNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.hNt}</div></div>`:''}</div></div>`;}
   if(guides.indexOf('tafhim')>-1){gh=`<div class="sbox" style="border-color:#1976d2;background:#f5f9ff;margin-top:11px"><div class="sbox-title" style="color:var(--blue)">🗣️ Tafhim</div><div class="detgrid"><div class="di"><div class="dl">Type</div><div class="dv">${tfL[c.tfT]||c.tfT||'—'}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tfD)}</div></div>${c.tfNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tfNt}</div></div>`:''}</div></div>`;}
@@ -4764,7 +4907,8 @@ async function saveUser(){
     if(eUId && cu && cu.id === eUId){
       cu = {...cu, ...d, id:eUId};
       localStorage.setItem('sr_s', JSON.stringify({...cu, loginAt:Date.now()}));
-      startListener(); // re-run restriction filter
+      cacheInvalidate(); // restriction change — fresh data zaroori
+      startListener();
     }
   }
   catch(e){toast('❌ '+e.message);}
@@ -4998,7 +5142,7 @@ function gtClick(type){
     // Saabiqah = pending cases jo is mahine se pehle khule
     var thisMonthStart = new Date(); thisMonthStart.setDate(1); thisMonthStart.setHours(0,0,0,0);
     doSrch._customFilter = function(c){
-      var closed = c.status==='closed';
+      var closed = (c.status||'').toLowerCase()==='closed';
       var od = c.openDate ? new Date(c.openDate) : null;
       return !closed && od && od < thisMonthStart;
     };
@@ -5400,9 +5544,16 @@ function renderTawan(){
     if(fNm  && !(c.name||'').toLowerCase().includes(fNm)) return false;
     if(fWus){
       var paid = parseFloat(c.tPd)||0;
-      if(fWus==='yes' && !(c.tJm==='yes' && paid > 0)) return false;
-      if(fWus==='partial' && c.tJm!=='partial') return false;
-      if(fWus==='no' && !((c.tJm==='no'||c.tJm===''||!c.tJm) || (c.tJm==='yes' && paid===0))) return false;
+      // Same logic as wusBadgeTW:
+      // Received = tawnSt==='closed' OR (tJm==='yes' AND paid > 0)
+      // Partial   = tJm==='partial'
+      // Not Received = baaki sab
+      var isReceived = c.tawnSt==='closed' || (c.tJm==='yes' && paid > 0);
+      var isPartial  = !isReceived && c.tJm==='partial';
+      var isNotReceived = !isReceived && !isPartial;
+      if(fWus==='yes'     && !isReceived)    return false;
+      if(fWus==='partial' && !isPartial)     return false;
+      if(fWus==='no'      && !isNotReceived) return false;
     }
     if(fDF && c.openDate && c.openDate < fDF) return false;
     if(fDT && c.openDate && c.openDate > fDT) return false;
@@ -5457,9 +5608,16 @@ function renderTawan(){
       })()}</td>
       <td style="font-weight:700;color:var(--red)">${(function(){
         if(c.tTypeAshiya && !c.tTypeRaqam) return '—';
+        // Agar tawnSt closed hai to remaining = 0
+        if(c.tawnSt==='closed') return '<span style="color:var(--green)">₹0</span>';
         return c.tRm?'₹'+parseFloat(c.tRm).toLocaleString('en-IN'):'—';
       })()}</td>
-      <td>${wusBadgeTW(c.tJm, c.tPd, c.tTot, c.tawnSt)}</td>
+      <td>${(function(){
+        var badge = wusBadgeTW(c.tJm, c.tPd, c.tTot, c.tawnSt);
+        var hasHR = (c.tCollMethod||'').includes('hr');
+        var hrBadge = hasHR ? ' <span style="background:#1565c0;color:#fff;font-size:.62rem;padding:1px 5px;border-radius:4px;font-weight:700;vertical-align:middle">🏢 HR</span>' : '';
+        return badge + hrBadge;
+      })()}</td>
       <td>
         ${hp('edit')?`<button class="btn bsm" style="background:#e3f2fd;color:var(--blue);padding:3px 7px" onclick="editC('${c.id}')">✏️</button>`:''}
         ${hp('del')?`<button class="btn bred bsm" style="padding:3px 7px" onclick="delC('${c.id}')">🗑️</button>`:''}
@@ -6314,7 +6472,7 @@ function repGetFilteredCases(){
 
 // ===== REGION STATS BUILDER =====
 function repBuildRegionStats(fcc, filterYear, filterMonth){
-  var isClosed=function(c){return c.status==='closed';};
+  var isClosed=function(c){return (c.status||'').toLowerCase()==='closed';};
   var now=new Date();
   // Filter month use karo, fallback current month
   var fYear = filterYear||now.getFullYear();
@@ -6338,7 +6496,6 @@ function repBuildRegionStats(fcc, filterYear, filterMonth){
     if(!stats[r]) return;
     var od=c.openDate?new Date(c.openDate):null;
     var closed=isClosed(c);
-    if(od&&od.getFullYear()===fYear&&od.getMonth()===fMonth) stats[r].moujuda++;
     if(od&&od.getFullYear()===fYear&&od.getMonth()===fMonth) stats[r].moujuda++;
   });
   // sabiqa = total - moujuda
@@ -6500,6 +6657,9 @@ async function repDownloadExcel(selectedRegions){
     var p=ds.split('-');
     if(p.length===3) return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
     if(p.length===1 && /^\d{4}$/.test(ds)) return new Date(parseInt(ds),0,1);
+    // YYYY-MM (2 parts): month ka pehla din local time mein
+    if(p.length===2 && /^\d{4}$/.test(p[0]) && /^\d{1,2}$/.test(p[1]))
+      return new Date(parseInt(p[0]),parseInt(p[1])-1,1);
     return new Date(ds);
   }
 
@@ -6531,7 +6691,7 @@ async function repDownloadExcel(selectedRegions){
     if(!rStats[r]) return;
     var od = _exParseDate(c.openDate);
     var cd = _exParseDate(c.closeDate);
-    var closed = c.status==='closed';
+    var closed = (c.status||'').toLowerCase()==='closed';
     if(!od) return;
     if(!fromD || od >= fromD) return;
     if(_exSabiqaYearBound && od < _exSabiqaYearBound) return;
@@ -6556,7 +6716,7 @@ async function repDownloadExcel(selectedRegions){
   cc.forEach(function(c){
     var r = c.region||'Unknown';
     if(!rStats[r]) return;
-    if(c.status!=='closed') return;
+    if((c.status||'').toLowerCase()!=='closed') return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
     var inMoujuda = (!fromD || od >= fromD) && od <= _exRangeEnd;
@@ -6565,7 +6725,8 @@ async function repDownloadExcel(selectedRegions){
     if(cd2){
       if(cd2 >= (fromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
     } else {
-      if(inMoujuda || inSabiqa) rStats[r].hal++;
+      // closeDate blank — sirf moujuda cases count karo
+      if(inMoujuda) rStats[r].hal++;
     }
   });
 
@@ -6833,6 +6994,9 @@ function onTawnKism(){
   if(wajFld) wajFld.style.display = hasWajiba ? '' : 'none';
   if(nafFld) nafFld.style.display = hasNafila ? '' : 'none';
   if(madFld) madFld.style.display = (hasWajiba || hasNafila) ? '' : 'none';
+  // Ashiya section mein bhi Wajiba row hide karo agar sirf Nafila
+  var ashWajRow = document.getElementById('tAshiyaWajibaRow');
+  if(ashWajRow) ashWajRow.style.display = hasWajiba ? '' : 'none';
 
   // Agar Nafila sirf selected hai to Raqam type auto-select karo (Nafila sirf money hoti hai)
   if(hasNafila && !hasWajiba){
@@ -7025,31 +7189,57 @@ function nmAutoComplete(inp){
   var q = (inp.value||'').trim().toLowerCase();
   var box = inp.parentNode.querySelector('.nm-sug');
   if(!box) return;
-  if(q.length < 2){ box.style.display='none'; return; }
-  // Collect names from existing cases
-  var names = [];
-  var seen = {};
-  (cc||[]).forEach(function(c){
-    var persons = c.persons||[];
-    if(c.name && !seen[c.name.toLowerCase()]){
-      seen[c.name.toLowerCase()] = true;
-      names.push({name:c.name, mobile:c.mobile||'', empCode:'', caseNo:c.caseNo||'', src:'case'});
+  // Agar field khali kar diya to baaki fields bhi clear karo
+  if(!q){
+    box.style.display='none';
+    var row = inp.closest('.person-row');
+    if(row){
+      row.querySelectorAll('input').forEach(function(f){ if(f!==inp) f.value=''; });
     }
-    persons.forEach(function(p){
-      if(p.name && !seen[p.name.toLowerCase()]){
-        seen[p.name.toLowerCase()] = true;
-        names.push({name:p.name, mobile:p.mobile||'', empCode:p.empCode||'', caseNo:c.caseNo||'', src:'case'});
+    return;
+  }
+  if(q.length < 2){ box.style.display='none'; return; }
+  // Kaunsa field hai — us hisaab se filter karo
+  var isMob  = inp.classList.contains('pMob')    || inp.classList.contains('tpMob');
+  var isEc   = inp.classList.contains('pEc')     || inp.classList.contains('tpEc');
+  var isMans = inp.classList.contains('pMansab') || inp.classList.contains('tpMansab');
+  // Pehle ek map banao — naam => best data
+  var nameMap = {};
+  // STEP 1: Cases se collect karo
+  (cc||[]).forEach(function(c){
+    var allP = c.persons&&c.persons.length ? c.persons : (c.name?[{name:c.name,mobile:c.mobile||'',empCode:c.empCode||'',mansab:c.mansab||''}]:[]);
+    allP.forEach(function(p){
+      if(!p.name) return;
+      var key = p.name.toLowerCase();
+      if(!nameMap[key]) nameMap[key] = {name:p.name,mobile:p.mobile||'',empCode:p.empCode||p.empcode||'',desig:p.mansab||p.desig||p.designation||'',caseNo:c.caseNo||'',src:'case'};
+      // Agar pehle se hai lekin desig blank hai to update karo
+      else {
+        if(!nameMap[key].desig && (p.mansab||p.desig||p.designation)) nameMap[key].desig = p.mansab||p.desig||p.designation||'';
+        if(!nameMap[key].empCode && (p.empCode||p.empcode)) nameMap[key].empCode = p.empCode||p.empcode||'';
+        if(!nameMap[key].mobile && p.mobile) nameMap[key].mobile = p.mobile;
       }
     });
   });
-  // Also add from clients collection
+  // STEP 2: Clients se override karo — unka data complete hota hai
   (_clients||[]).forEach(function(c){
-    if(c.naam && !seen[c.naam.toLowerCase()]){
-      seen[c.naam.toLowerCase()] = true;
-      names.push({name:c.naam, mobile:c.phone||'', empCode:c.empCode||'', desig:c.desig||'', caseNo:'', src:'client'});
+    if(!c.naam) return;
+    var key = c.naam.toLowerCase();
+    if(!nameMap[key]) nameMap[key] = {name:c.naam,mobile:c.phone||'',empCode:c.empCode||'',desig:c.desig||c.designation||'',caseNo:'',src:'client'};
+    else {
+      // Client data se missing fields fill karo
+      if(!nameMap[key].desig && (c.desig||c.designation)) nameMap[key].desig = c.desig||c.designation||'';
+      if(!nameMap[key].empCode && c.empCode) nameMap[key].empCode = c.empCode;
+      if(!nameMap[key].mobile && c.phone) nameMap[key].mobile = c.phone;
+      nameMap[key].src = 'client'; // client badge dikhao
     }
   });
-  var filtered = names.filter(function(n){ return n.name.toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+  var names = Object.values(nameMap);
+  var filtered = names.filter(function(n){
+    if(isMob)  return (n.mobile||'').includes(q);
+    if(isEc)   return (n.empCode||'').toLowerCase().indexOf(q)>-1;
+    if(isMans) return (n.desig||'').toLowerCase().indexOf(q)>-1;
+    return n.name.toLowerCase().indexOf(q)>-1||(n.mobile||'').includes(q)||(n.empCode||'').toLowerCase().indexOf(q)>-1||(n.desig||'').toLowerCase().indexOf(q)>-1;
+  }).slice(0,10);
   if(!filtered.length){ box.style.display='none'; return; }
   box.innerHTML = '';
   filtered.forEach(function(n){
@@ -7058,7 +7248,7 @@ function nmAutoComplete(inp){
     item.dataset.name = n.name;
     item.dataset.mobile = n.mobile;
     item.dataset.empcode = n.empCode;
-    item.dataset.desig = n.desig||'';
+    item.dataset.desig = n.desig||n.mansab||'';
     item.innerHTML = '<span style="font-weight:600">'+escHtml(n.name)+'</span>'
       +'<span style="color:var(--mt);font-size:.7rem">'
       +(n.mobile?'📱 '+escHtml(n.mobile)+' ':'')
@@ -7079,13 +7269,22 @@ function nmAutoComplete(inp){
 function nmPick(inp, name, mobile, empCode, desig){
   var box = inp.parentNode.querySelector('.nm-sug');
   var row = inp.closest('.person-row');
+  var nmInp   = row ? row.querySelector('.pNm')     : null;
   var mobInp  = row ? row.querySelector('.pMob')    : null;
   var ecInp   = row ? row.querySelector('.pEc')     : null;
   var msInp   = row ? row.querySelector('.pMansab') : null;
-  inp.value = name;
-  if(mobInp && mobile && !mobInp.value) mobInp.value = mobile;
-  if(ecInp  && empCode && !ecInp.value)  ecInp.value  = empCode;
-  if(msInp  && desig   && !msInp.value)  msInp.value  = desig;
+  // Sab fields fill karo — chahe koi bhi field se select kiya ho
+  if(nmInp  && name)    nmInp.value   = name;
+  if(mobInp && mobile)  mobInp.value  = mobile;
+  if(ecInp  && empCode) ecInp.value   = empCode;
+  if(msInp  && desig)   msInp.value   = desig;
+  // Current field bhi set karo (already done above but ensure)
+  inp.value = inp.classList.contains('pNm') ? name
+            : inp.classList.contains('pMob') ? mobile
+            : inp.classList.contains('pEc') ? empCode
+            : inp.classList.contains('pMansab') ? desig : inp.value;
+  // Sab suggestion boxes hide karo is row mein
+  if(row) row.querySelectorAll('.nm-sug').forEach(function(s){ s.style.display='none'; });
   if(box) box.style.display = 'none';
 }
 // Hide suggestions when clicking outside
@@ -7102,17 +7301,22 @@ function addPersonRow(){
   div.className = 'fg col4 person-row';
   div.dataset.row = idx;
   div.style.cssText = 'position:relative;margin-bottom:6px;padding:6px 8px;background:#f8f9ff;border:1px dashed var(--bor);border-radius:7px';
-  div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" oninput="nmAutoComplete(this)" autocomplete="off"><div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div></div>'
-    +'<div class="fgr"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile"></div>'
-    +'<div class="fgr"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..."></div>'
-    +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code">'
+  var sugBox = '<div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div>';
+  div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
+    +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
+    +'<div class="fgr" style="position:relative"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..." oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
+    +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox
     +'<button type="button" onclick="removePersonRow(this)" style="position:absolute;top:0;right:0;background:#ffebee;color:#c62828;border:none;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;line-height:1">×</button>'
     +'</div>';
   rows.appendChild(div);
 }
 function removePersonRow(btn){
   var row = btn.closest('.person-row');
-  if(row) row.remove();
+  if(!row) return;
+  // Pehle sab fields clear karo
+  row.querySelectorAll('input').forEach(function(inp){ inp.value=''; });
+  row.querySelectorAll('.nm-sug').forEach(function(s){ s.style.display='none'; s.innerHTML=''; });
+  row.remove();
 }
 function getPersons(){
   var rows = document.querySelectorAll('#fPersonRows .person-row');
@@ -7137,11 +7341,12 @@ function setPersons(arr){
     div.dataset.row = i;
     if(i>0) div.style.cssText = 'position:relative;margin-bottom:6px;padding:6px 8px;background:#f8f9ff;border:1px dashed var(--bor);border-radius:7px';
     else div.style.cssText = 'position:relative;margin-bottom:6px';
-    div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" value="'+escHtml(p.name||'')+'" oninput="nmAutoComplete(this)" autocomplete="off"><div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div></div>'
-      +'<div class="fgr"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile" value="'+escHtml(p.mobile||'')+'"></div>'
-      +'<div class="fgr"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..." value="'+escHtml(p.mansab||'')+'"></div>'
-      +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code" value="'+escHtml(p.empCode||p.empcode||'')+'">'
-      +(i>0?'<button type="button" onclick="removePersonRow(this)" style="position:absolute;top:0;right:0;background:#ffebee;color:#c62828;border:none;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;line-height:1">×</button>':'')
+    var sugBox2 = '<div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div>';
+    div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" value="'+escHtml(p.name||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
+      +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile" value="'+escHtml(p.mobile||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
+      +'<div class="fgr" style="position:relative"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..." value="'+escHtml(p.mansab||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
+      +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code" value="'+escHtml(p.empCode||p.empcode||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2
+      +(i>0?'<button type="button" onclick="removePersonRow(this)" style="position:absolute;top:0;right:0;background:#ffebee;color:#c62828;border:none;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;line-height:1">×</button>':'')  
       +'</div>';
     rows.appendChild(div);
   });
@@ -7156,21 +7361,31 @@ var _editClientId = null;
 function isClosedCase(c){ return (c.status||'').toLowerCase() === 'closed'; }
 
 function loadClients(){
+  // Agar already loaded hai to dobara Firebase read mat karo
+  if(_clients && _clients.length > 0){ renderClients(); return; }
   db.collection('clients').orderBy('naam').get().then(function(snap){
     _clients = snap.docs.map(function(d){ return {id:d.id, ...d.data()}; });
     renderClients();
   });
 }
 
+function clearClientSearch(){
+  ['cSNaam','cSPhone','cSEmpCode','cSDesig'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  renderClients();
+}
 function renderClients(){
   var list = document.getElementById('clientList');
   if(!list) return;
-  var q = (document.getElementById('clientSearch')||{value:''}).value.trim().toLowerCase();
+  var qNaam   = (document.getElementById('cSNaam')||{value:''}).value.trim().toLowerCase();
+  var qPhone  = (document.getElementById('cSPhone')||{value:''}).value.trim().toLowerCase();
+  var qEmp    = (document.getElementById('cSEmpCode')||{value:''}).value.trim().toLowerCase();
+  var qDesig  = (document.getElementById('cSDesig')||{value:''}).value.trim().toLowerCase();
   var filtered = _clients.filter(function(c){
-    if(!q) return true;
-    return (c.naam||'').toLowerCase().includes(q)
-      || (c.phone||'').includes(q)
-      || (c.empCode||'').toLowerCase().includes(q);
+    if(qNaam   && !(c.naam||'').toLowerCase().includes(qNaam))   return false;
+    if(qPhone  && !(c.phone||'').toLowerCase().includes(qPhone)) return false;
+    if(qEmp    && !(c.empCode||'').toLowerCase().includes(qEmp)) return false;
+    if(qDesig  && !((c.desig||c.designation||'').toLowerCase().includes(qDesig))) return false;
+    return true;
   });
   if(!filtered.length){
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--mt);font-size:.85rem">Koi client nahi mila</div>';
@@ -7192,7 +7407,6 @@ function renderClients(){
         + '<div style="font-size:.88rem;font-weight:700;color:var(--bd)">👤 '+escHtml(c.naam||'')+'</div>'
         + '<div style="display:flex;gap:6px" onclick="event.stopPropagation()">'
         + '<button onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">✏️</button>'
-        + '<button onclick="deleteClient(\''+c.id+'\',\''+escHtml(c.naam||'')+'\')" style="background:#ffebee;color:#c62828;border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">🗑️</button>'
         + '</div></div>'
         + (c.phone ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">📱 '+escHtml(c.phone)+'</div>' : '')
         + (c.desig ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">💼 '+escHtml(c.desig)+'</div>' : '')
@@ -7234,7 +7448,7 @@ function showClientCases(clientId){
       var statusColor = isClosedCase(cs) ? 'var(--green)' : '#e65100';
       var statusBg = isClosedCase(cs) ? '#e8f5e9' : '#fff3e0';
       var statusLabel = isClosedCase(cs) ? '✅ Closed' : '⏳ Pending';
-      return '<div onclick="goPage(\'cases\');setTimeout(function(){openCase(\''+cs.id+'\')},400)" style="background:#f8faff;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid var(--bor);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'#f8faff\'">'
+      return '<div onclick="cmo(\'clientCasesModal\');viewC(\''+cs.id+'\')" style="background:#f8faff;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid var(--bor);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'#f8faff\'">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
         + '<span style="font-size:.82rem;font-weight:700;color:var(--blue)">'+escHtml(cs.caseNo||'')+'</span>'
         + '<span style="font-size:.72rem;background:'+statusBg+';color:'+statusColor+';padding:2px 10px;border-radius:10px;font-weight:700">'+statusLabel+'</span>'
@@ -7731,6 +7945,12 @@ function deptClose(){
     buildToolbar('rte-fSub-tb','rte-fSub');
     buildToolbar('rte-fRem-tb','rte-fRem');
     buildToolbar('rte-fRah-tb','rte-fRah');
+    // Date inputs — kahi bhi click karo, calendar khule
+    document.addEventListener('click', function(e){
+      if(e.target && e.target.type === 'date'){
+        try{ e.target.showPicker(); } catch(ex){}
+      }
+    });
   });
 
 })();
