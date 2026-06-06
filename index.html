@@ -981,6 +981,7 @@ async function hashPw(pw){
         <div class="fi"><label>Dept</label><div class="ms-wrap" id="ms-sDp"></div></div>
         <div class="fi"><label>Status</label><div class="ms-wrap" id="ms-sStat"></div></div>
         <div class="fi"><label>Rahnumai</label><div class="ms-wrap" id="ms-sGd"></div></div>
+        <div class="fi"><label>🏫 Institution</label><input id="sInst" oninput="doSrch()" placeholder="Institution name..."></div>
         <div class="fi">
           <label style="display:flex;align-items:center;gap:6px">
             Date From
@@ -1000,7 +1001,6 @@ async function hashPw(pw){
             <div class="fi"><label style="color:#9c7a00">Purana Division</label><input id="sOldDiv" oninput="doSrch()" placeholder="Purana Division..." style="background:#fffde7;border-color:#ffe082"></div>
             <div class="fi"><label style="color:#9c7a00">Kabina</label><input id="sOldKab" oninput="doSrch()" placeholder="Kabina..." style="background:#fffde7;border-color:#ffe082"></div>
             <div class="fi"><label style="color:#9c7a00">Sheher</label><input id="sOldShh" oninput="doSrch()" placeholder="Sheher..." style="background:#fffde7;border-color:#ffe082"></div>
-            <div class="fi"><label>🏫 Institutional</label><input id="sInst" oninput="doSrch()" placeholder="Institution name enter karo..."></div>
           </div>
         </div>
         <div class="fi" style="align-self:end"><button class="btn bout bsm" onclick="clrSrchAndSearch()">✕ Clear All</button></div>
@@ -2134,12 +2134,7 @@ async function doLogin(){
     cu=ud;const sess={...ud,loginAt:Date.now()};localStorage.setItem('sr_s',JSON.stringify(sess));launch();
   }catch(e){console.error('Login error:',e);err.style.display='block';err.textContent='❌ Login failed. Please try again.';btn.textContent='🔐 Login';btn.disabled=false;}
 }
-// Restore page from URL on load
-(function(){
-  var params=new URLSearchParams(window.location.search);
-  var pg=params.get('p');
-  if(pg&&pg!=='dash') goPage(pg,null,true);
-})();
+// URL se page restore — sirf launch() ke baad hoga, yahan nahi
 async function restoreS(){
   const s=localStorage.getItem('sr_s');if(!s)return;
   try{
@@ -2229,10 +2224,15 @@ function goPage(pg,el,skipHistory){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
     var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',users:'users',settings:'settings'};
     var _needed=_permMap[pg];
-    if(_needed && !_isAdm && !(cu.perms&&cu.perms[_needed])){
+    if(_needed && !_isAdm && !(cu&&cu.perms&&cu.perms[_needed])){
       toast('⛔ Aap ke paas is page ka access nahi hai');
       return;
     }
+  } else if(!cu){
+    // Session expire — login page pe bhejo
+    document.getElementById('app').style.display='none';
+    var _lw=document.getElementById('lw'); if(_lw) _lw.classList.remove('hide');
+    return;
   }
 
   var prevPg = _currentPg;
@@ -3694,6 +3694,7 @@ function repGoSearch(regionEnc, filter){
     _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c); }};
   }
   goPage('search');
+  setTimeout(function(){ doSrch(); }, 200);
 }
 function rRep(){
   var now = new Date();
@@ -3755,14 +3756,14 @@ function rRep(){
     filterLabel = (repFrom||'?') + ' to ' + (repTo||'?');
     // Also apply year/month if no date range
     if(!repFrom && !repTo){
-      if(selYear && selMonth){ fromD=new Date(selYear,selMonth-1,1); toD=new Date(selYear,selMonth,0); filterLabel=months[selMonth]+' '+selYear; }
-      else if(selYear){ fromD=new Date(selYear,0,1); toD=new Date(selYear,11,31); filterLabel='Saal '+selYear; }
-      else if(selMonth){ fromD=new Date(now.getFullYear(),selMonth-1,1); toD=new Date(now.getFullYear(),selMonth,0); filterLabel=months[selMonth]+' '+now.getFullYear(); }
+      if(selYear && selMonth){ fromD=new Date(selYear,selMonth-1,1,0,0,0,0); toD=new Date(selYear,selMonth,0,23,59,59,999); filterLabel=months[selMonth]+' '+selYear; }
+      else if(selYear){ fromD=new Date(selYear,0,1,0,0,0,0); toD=new Date(selYear,11,31,23,59,59,999); filterLabel='Saal '+selYear; }
+      else if(selMonth){ fromD=new Date(now.getFullYear(),selMonth-1,1,0,0,0,0); toD=new Date(now.getFullYear(),selMonth,0,23,59,59,999); filterLabel=months[selMonth]+' '+now.getFullYear(); }
     }
   } else {
     if(selYear && selMonth){
-      fromD = new Date(selYear, selMonth-1, 1);
-      toD   = new Date(selYear, selMonth, 0);
+      fromD = new Date(selYear, selMonth-1, 1, 0,0,0,0);
+      toD   = new Date(selYear, selMonth, 0, 23,59,59,999);
       filterLabel = months[selMonth] + ' ' + selYear;
     } else if(selYear){
       fromD = new Date(selYear, 0, 1);
@@ -3785,13 +3786,13 @@ function rRep(){
     }
     if(!fromD && !toD) return true;
     var ds = c.openDate||'';
-    if(!ds) return true;
+    if(!ds) return false; // openDate blank — date filter mein include mat karo
     if(ds.length===4) ds = ds+'-01-01';
     if(/^\d{4}-\d{1,2}$/.test(ds)) ds = ds+'-01'; // YYYY-MM -> YYYY-MM-01
     // Parse as local time to avoid timezone issues
     var parts = ds.split('-');
     var d = parts.length===3 ? new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2])) : new Date(ds);
-    if(isNaN(d.getTime())) return true;
+    if(isNaN(d.getTime())) return false; // invalid date — filter mein mat lo
     if(fromD && d < fromD) return false;
     if(toD   && d > toD)   return false;
     return true;
@@ -3803,6 +3804,7 @@ function rRep(){
   var tTot=0, tPd=0;
   fcc.forEach(function(c){
     bS[(c.status||'').toLowerCase()]=(bS[(c.status||'').toLowerCase()]||0)+1;
+    // bR — region bar chart ke liye (fcc se, consistent with By State/Dept)
     if(c.region) bR[c.region]=(bR[c.region]||0)+1;
     bSt[c.state||'(State Nahi)']=(bSt[c.state||'(State Nahi)']||0)+1;
     bD[c.dept||'(Dept Nahi)']=(bD[c.dept||'(Dept Nahi)']||0)+1;
@@ -3813,7 +3815,7 @@ function rRep(){
   var bar=function(v,col,mx){ return '<div style="flex:1;background:#f0f4f8;border-radius:4px;height:9px;overflow:hidden"><div style="width:'+Math.round(v/(mx||1)*100)+'%;height:100%;background:'+col+';border-radius:4px;min-width:3px"></div></div>'; };
   var sL={pending_z:'Pending Zimmedar',pending_f:'Pending (Finance)',pending_o:'Pending (Office)',ifta:'Sent to Ifta',closed:'Closed',meeting:'Meeting'};
   var sC={pending_z:'var(--red)',pending_f:'var(--yellow)',pending_o:'var(--cyan)',ifta:'var(--pink)',closed:'var(--green)',meeting:'var(--blue)'};
-  var mxR=Math.max.apply(null, Object.values(bR).concat([1]));
+  var mxR=1; // bR sync ke baad set hoga (regionStats ke baad)
   var mxSt=Math.max.apply(null, Object.values(bSt).concat([1]));
   var mxD=Math.max.apply(null, Object.values(bD).concat([1]));
 
@@ -3964,6 +3966,16 @@ function rRep(){
     var s = regionStats[r];
     s.pending = Math.max(0, s.kulMasail - s.halShuda);
   });
+
+  // ===== bR ko regionStats se sync karo =====
+  // By Region bar chart = region cards ke saath bilkul same numbers
+  bR = {};
+  Object.keys(regionStats).forEach(function(r){
+    var kul = regionStats[r].kulMasail;
+    if(kul > 0) bR[r] = kul;
+  });
+  mxR = Math.max.apply(null, Object.values(bR).concat([1]));
+  // ===== END bR sync =====
 
   // Fixed colors per region name — position change hone par bhi color same rahe
   var _fixedColorMap={
@@ -4359,6 +4371,8 @@ async function saveCase(){
     }
     eId=null;
     document.getElementById('formTit').textContent='➕ New Case';
+    // Dashboard aur report immediately refresh karo
+    setTimeout(function(){ if(typeof rDash==='function') rDash(); if(typeof rRep==='function' && _currentPg==='reports') rRep(); },800);
     // Jis page se aaye the wahan wapas jao — All Cases, Search, ya current page
     var _prevPg = _currentPg === 'newcase' ? (_lastPgBeforeNewCase || 'cases') : _currentPg;
     goPage(_prevPg);
@@ -4487,9 +4501,9 @@ function viewC(id, readOnly){
   </div>` : '';
   gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${c.tPd?'₹'+parseFloat(c.tPd).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${c.tRm?'₹'+parseFloat(c.tRm).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${hrHtml}${instHtml}</div></div>`;
 }
-  if(guides.indexOf('halfia')>-1){gh=`<div class="sbox" style="border-color:#9c27b0;background:#fdf5ff;margin-top:11px"><div class="sbox-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center"><span>📜 Halfiya Bayan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.halfiaSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.halfiaSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.halfiaSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.halfiaSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.hSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.hDt||'—'}</div></div>${c.hNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.hNt}</div></div>`:''}</div></div>`;}
-  if(guides.indexOf('tafhim')>-1){gh=`<div class="sbox" style="border-color:#1976d2;background:#f5f9ff;margin-top:11px"><div class="sbox-title" style="color:var(--blue)">🗣️ Tafhim</div><div class="detgrid"><div class="di"><div class="dl">Type</div><div class="dv">${tfL[c.tfT]||c.tfT||'—'}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tfD)}</div></div>${c.tfNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tfNt}</div></div>`:''}</div></div>`;}
-  if(guides.indexOf('tabadla')>-1){gh=`<div class="sbox" style="border-color:#2e7d32;background:#f5fff7;margin-top:11px"><div class="sbox-title" style="color:var(--green)">🔄 Transfer</div><div class="detgrid"><div class="di"><div class="dl">Suggested?</div><div class="dv">${yn(c.tbO)}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tbD)}</div></div>${c.tbPl?`<div class="di"><div class="dl">New Location</div><div class="dv">${c.tbPl}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('halfia')>-1){gh+=`<div class="sbox" style="border-color:#9c27b0;background:#fdf5ff;margin-top:11px"><div class="sbox-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center"><span>📜 Halfiya Bayan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.halfiaSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.halfiaSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.halfiaSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.halfiaSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.hSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.hDt||'—'}</div></div>${c.hNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.hNt}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('tafhim')>-1){gh+=`<div class="sbox" style="border-color:#1976d2;background:#f5f9ff;margin-top:11px"><div class="sbox-title" style="color:var(--blue)">🗣️ Tafhim</div><div class="detgrid"><div class="di"><div class="dl">Type</div><div class="dv">${tfL[c.tfT]||c.tfT||'—'}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tfD)}</div></div>${c.tfNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tfNt}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('tabadla')>-1){gh+=`<div class="sbox" style="border-color:#2e7d32;background:#f5fff7;margin-top:11px"><div class="sbox-title" style="color:var(--green)">🔄 Transfer</div><div class="detgrid"><div class="di"><div class="dl">Suggested?</div><div class="dv">${yn(c.tbO)}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tbD)}</div></div>${c.tbPl?`<div class="di"><div class="dl">New Location</div><div class="dv">${c.tbPl}</div></div>`:''}</div></div>`;}
   document.getElementById('detB').innerHTML=`<div class="sbox"><div class="sbox-title">📋 Case Info</div><div class="detgrid"><div class="di"><div class="dl">Case No</div><div class="dv">${c.caseNo||'—'}</div></div><div class="di"><div class="dl">Open Date</div><div class="dv">${c.openDate||'—'}</div></div><div class="di"><div class="dl">Year</div><div class="dv">${c.year||'—'}</div></div><div class="di"><div class="dl">Mufattish</div><div class="dv">${c.mufattish||'—'}</div></div><div class="di"><div class="dl">Sael</div><div class="dv">${c.sael||'—'}</div></div><div class="di"><div class="dl">Status</div><div class="dv">${sBdg(c.status)}</div></div><div class="di"><div class="dl">Closing Date</div><div class="dv">${c.closeDate||'—'}</div></div><div class="di"><div class="dl">کلوزنگ ٹائم</div><div class="dv" style="font-weight:700;color:var(--mt)">${c.closingTime||'—'}</div></div><div class="di"><div class="dl">Region</div><div class="dv">${c.region||'—'}</div></div><div class="di"><div class="dl">State</div><div class="dv">${c.state||'—'}</div></div><div class="di"><div class="dl">Division</div><div class="dv">${c.division||'—'}</div></div><div class="di"><div class="dl">District</div><div class="dv">${c.district||'—'}</div></div><div class="di"><div class="dl">City</div><div class="dv">${c.city||'—'}</div></div><div class="di"><div class="dl">Dept</div><div class="dv">${c.dept||'—'}</div></div><div class="di"><div class="dl">Person(s)</div><div class="dv">${(c.persons&&c.persons.length?c.persons:[{name:c.name,mobile:c.mobile,empCode:c.empCode}]).map(function(p,i){return(i>0?'<hr style="border:none;border-top:1px solid #eee;margin:3px 0">':'')+p.name+(p.mansab?' — '+p.mansab:'')+(p.mobile?' | '+p.mobile:'')+(p.empCode?' | '+p.empCode:'');}).join('')||'—'}</div></div><div class="di" style="display:none"><div class="dl">Mobile</div><div class="dv" dir="ltr">${c.mobile||'—'}</div></div><div class="di" style="display:none"><div class="dl">Emp Code</div><div class="dv">${c.empCode||'—'}</div></div><div class="di"><div class="dl">Rahnumai</div><div class="dv">${gBdg(c.guide)||'—'}</div></div></div></div>${(c.callCount||c.mailCount||c.waCount)?`<div class="sbox det-contact" style="border-color:var(--cyan);background:#f0fafe"><div class="sbox-title" style="color:var(--cyan)">📞 Contact Tracking</div><div class="detgrid"><div class="di"><div class="dl">📞 Call</div><div class="dv">${c.callCount||0}</div></div><div class="di"><div class="dl">📧 Mail</div><div class="dv">${c.mailCount||0}</div></div><div class="di"><div class="dl">💬 WhatsApp</div><div class="dv">${c.waCount||0}</div></div><div class="di"><div class="dl">Total</div><div class="dv" style="font-weight:700;color:var(--cyan)">${c.contactTotal||0}</div></div></div></div>`:''}${c.subject?`<div class="det-subject-wrap"><div class="sbox det-subject"><div class="sbox-title">📝 Subject</div><p style="font-size:.95rem;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:2.2" dir="auto">${c.subject}</p></div></div>`:''}${c.detail?`<div class="det-details-wrap"><div class="sbox det-details"><div class="sbox-title">📋 Details</div><p style="font-size:.95rem;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:2.2" dir="auto">${c.detail}</p></div></div>`:''}${c.rahnumai?`<div class="det-rahnumai-wrap"><div class="sbox det-rahnumai" style="border-color:var(--blue);background:#f5f9ff"><div class="sbox-title" style="color:var(--blue)">📖 Sharai Rahnumai</div><p style="font-size:.95rem;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:2.2" dir="auto">${c.rahnumai}</p></div></div>`:''}${gh}`;
   document.getElementById('detF').innerHTML=`
     <button class="btn bsm" style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7" onclick="detPDF()">🖨️ PDF</button>
@@ -5110,15 +5124,57 @@ function gtClickState(state){
   doSrch._customFilter=null;
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
   ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  if(MS['ms-sSt']){ MS['ms-sSt'].selected=new Set([state]); msUpdateBtn('ms-sSt'); }
+  var _df=_repDateFilter();
+  var _stN=(state||'').trim().toLowerCase();
+  doSrch._customFilter=function(c){
+    if((c.state||'').trim().toLowerCase()!==_stN) return false;
+    if(_df && !_df(c)) return false;
+    return true;
+  };
   goPage('search'); setTimeout(function(){ doSrch(); }, 200);
 }
 function gtClickDept(dept){
   doSrch._customFilter=null;
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
   ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  if(MS['ms-sDp']){ MS['ms-sDp'].selected=new Set([dept]); msUpdateBtn('ms-sDp'); }
+  var _df=_repDateFilter();
+  var _deptN=(dept||'').trim().toLowerCase();
+  doSrch._customFilter=function(c){
+    // Dept check
+    var cDepts=(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[])).map(function(d){return (d||'').trim().toLowerCase();});
+    var deptOk=cDepts.some(function(d){return d===_deptN||d.indexOf(_deptN)>-1||_deptN.indexOf(d)>-1;});
+    if(!deptOk) return false;
+    // Date check
+    if(_df && !_df(c)) return false;
+    return true;
+  };
   goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+
+// ===== HELPER: Report date range se customFilter banana =====
+function _repDateFilter(){
+  var _rFromD=null,_rToD=null;
+  var _rY=parseInt((document.getElementById('repYear')||{}).value||'')||0;
+  var _rM=parseInt((document.getElementById('repMonth')||{}).value||'')||0;
+  var _rQ=(document.getElementById('repFilter')||{}).value||'all';
+  var _now=new Date();
+  if(_rQ==='thismonth'){ _rFromD=new Date(_now.getFullYear(),_now.getMonth(),1); _rToD=new Date(_now.getFullYear(),_now.getMonth()+1,0); }
+  else if(_rQ==='lastmonth'){ var _lY=_now.getMonth()===0?_now.getFullYear()-1:_now.getFullYear(),_lM=_now.getMonth()===0?11:_now.getMonth()-1; _rFromD=new Date(_lY,_lM,1); _rToD=new Date(_lY,_lM+1,0); }
+  else if(_rQ==='thisyear'){ _rFromD=new Date(_now.getFullYear(),0,1); _rToD=new Date(_now.getFullYear(),11,31); }
+  else if(_rQ==='lastyear'){ _rFromD=new Date(_now.getFullYear()-1,0,1); _rToD=new Date(_now.getFullYear()-1,11,31); }
+  else if(_rQ==='last3'){ _rFromD=new Date(_now.getFullYear(),_now.getMonth()-2,1); _rToD=new Date(_now.getFullYear(),_now.getMonth()+1,0); }
+  else if(_rQ==='last6'){ _rFromD=new Date(_now.getFullYear(),_now.getMonth()-5,1); _rToD=new Date(_now.getFullYear(),_now.getMonth()+1,0); }
+  else{ if(_rY&&_rM){ _rFromD=new Date(_rY,_rM-1,1); _rToD=new Date(_rY,_rM,0); } else if(_rY){ _rFromD=new Date(_rY,0,1); _rToD=new Date(_rY,11,31); } }
+  if(_rFromD&&_rToD){
+    var _fd=_rFromD,_td=_rToD;
+    return function(c){
+      if(!c.openDate) return false;
+      var p=String(c.openDate).split('-');
+      var od=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]||1));
+      return od>=_fd && od<=_td;
+    };
+  }
+  return null;
 }
 
 // Grand Total card click — All Cases mein redirect
@@ -5134,11 +5190,13 @@ function gtClick(type){
   });
 
   if(type==='all'){
-    // No filter — show all
+    var _df0=_repDateFilter(); if(_df0) doSrch._customFilter=_df0;
   } else if(type==='closed'){
     if(MS['ms-sStat']){ MS['ms-sStat'].selected=new Set(['closed']); msUpdateBtn('ms-sStat'); }
+    var _df1=_repDateFilter(); if(_df1){ var _pf1=_df1; doSrch._customFilter=function(c){return _pf1(c)&&(c.status||'').toLowerCase()==='closed';}; }
   } else if(type==='pending'){
     if(MS['ms-sStat']){ MS['ms-sStat'].selected=new Set(['pending_z','pending_o','meeting','ifta']); msUpdateBtn('ms-sStat'); }
+    var _df2=_repDateFilter(); if(_df2){ var _pf2=_df2; doSrch._customFilter=function(c){return _pf2(c)&&(c.status||'').toLowerCase()!=='closed';}; }
   } else if(type==='abiq'){
     // Saabiqah = pending cases jo is mahine se pehle khule
     var thisMonthStart = new Date(); thisMonthStart.setDate(1); thisMonthStart.setHours(0,0,0,0);
