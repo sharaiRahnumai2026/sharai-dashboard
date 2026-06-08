@@ -717,11 +717,51 @@ async function hashPw(pw){
               <option value="">-- Select --</option>
               <option value="maaf">✅ Donor ne Maaf Kiya</option>
               <option value="ajeer_ko_do">💰 Donor ne Ajeer ko Dene Kaha</option>
+              <option value="wapas_karo">🔄 Donor Ko Wapas Karo</option>
               <option value="other">📝 Other</option>
             </select>
           </div>
           <input type="hidden" id="tDRCustom">
           <div id="tDRCustomPreview" style="display:none;grid-column:1/-1;margin-top:4px;padding:8px 12px;background:#f3f9ff;border:1px solid #90caf9;border-radius:7px;font-size:.78rem;color:var(--bd);white-space:pre-wrap"></div>
+
+          <!-- Wapas Karo Fields -->
+          <div id="tWapasWrap" style="display:none;grid-column:1/-1;background:#fff8f0;border:1.5px solid #ffcc80;border-radius:10px;padding:14px;margin-top:6px">
+            <div style="font-size:.78rem;font-weight:700;color:#e65100;margin-bottom:12px">🔄 Wapas Karne Ki Details</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--mt);margin-bottom:6px">TYPE (EK YA DONO)</div>
+                <div style="display:flex;gap:10px">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
+                    <input type="checkbox" id="tWapasRaqam" onchange="onWapasTypeChange()"> 💰 Raqam
+                  </label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
+                    <input type="checkbox" id="tWapasAshiya" onchange="onWapasTypeChange()"> 📦 Ashiya
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI TARIKH</label>
+                <input type="date" id="tWapasDate" style="width:100%;margin-top:4px">
+              </div>
+            </div>
+            <div id="tWapasRaqamBox" style="display:none;margin-bottom:10px">
+              <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI RAQAM (₹)</label>
+              <input type="number" id="tWapasAmt" placeholder="0" style="width:100%;margin-top:4px" oninput="calcWapas()">
+            </div>
+            <div id="tWapasAshiyaBox" style="display:none;margin-bottom:10px">
+              <label style="font-size:.72rem;font-weight:700;color:var(--mt)">ASHIYA KI DETAILS</label>
+              <input type="text" id="tWapasAshiyaDesc" placeholder="Ashiya ka naam / description..." style="width:100%;margin-top:4px">
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS HUA?</label>
+              <select id="tWapasDone" onchange="calcWapas()" style="width:100%;margin-top:4px">
+                <option value="">Select...</option>
+                <option value="no">🔴 Nahi — Pending</option>
+                <option value="yes">✅ Haan — Ho Gaya</option>
+              </select>
+            </div>
+            <div id="tWapasInfo" style="display:none;background:#fff3e0;border:1px solid #ffcc80;border-radius:7px;padding:8px 12px;font-size:.76rem;color:#e65100"></div>
+          </div>
 
           <!-- Other Donor Response Modal -->
           <div id="tDROtherModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
@@ -2522,7 +2562,12 @@ function resetTawnFields(){
    'tDirectAmt','tDirectDate','tDirectRef','tDirectNotes',
    'tHRJV','tHRDate','tHRStart','tHREnd','tHRMonthly',
    'tAshiyaNaam','tAshiyaWajiba','tAshiyaNafila','tAshiyaMaddat','tAshiyaProcessNo',
-   'tHkm','tMaddat'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+   'tHkm','tMaddat',
+   'tWapasAmt','tWapasAshiyaDesc','tWapasDate'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['tWapasRaqam','tWapasAshiya'].forEach(function(id){ var el=document.getElementById(id); if(el) el.checked=false; });
+  var ww=document.getElementById('tWapasWrap'); if(ww) ww.style.display='none';
+  var wd=document.getElementById('tWapasDone'); if(wd) wd.value='';
+  var wi=document.getElementById('tWapasInfo'); if(wi){ wi.style.display='none'; wi.innerHTML=''; }
   // Reset hidden fields
   ['tJm','tMd','tMq','tHkm'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   // Reset sections — sab hide karo
@@ -2563,21 +2608,28 @@ function onDonorResponse(val){
   var preview = document.getElementById('tDRCustomPreview');
   var customInp = document.getElementById('tDRCustom');
   var otherText = document.getElementById('tDROtherText');
-  
+  var wapasWrap = document.getElementById('tWapasWrap');
+
+  // Wapas wrap hamesha hide karo pehle
+  if(wapasWrap) wapasWrap.style.display = 'none';
+
   if(val === 'maaf'){
     if(wrap) wrap.style.display = 'none';
-    // Clear custom text
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
   } else if(val === 'ajeer_ko_do'){
     if(wrap) wrap.style.display = '';
-    // Clear custom text
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
+  } else if(val === 'wapas_karo'){
+    if(wrap) wrap.style.display = 'none';
+    if(customInp) customInp.value = '';
+    if(otherText) otherText.value = '';
+    if(preview){ preview.style.display='none'; preview.textContent=''; }
+    if(wapasWrap) wapasWrap.style.display = 'block';
   } else if(val === 'other'){
-    // Clear previous and open popup fresh
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
@@ -2588,6 +2640,33 @@ function onDonorResponse(val){
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
+  }
+}
+function onWapasTypeChange(){
+  var raqam = document.getElementById('tWapasRaqam') && document.getElementById('tWapasRaqam').checked;
+  var ashiya = document.getElementById('tWapasAshiya') && document.getElementById('tWapasAshiya').checked;
+  var raqamBox = document.getElementById('tWapasRaqamBox');
+  var ashiyaBox = document.getElementById('tWapasAshiyaBox');
+  if(raqamBox) raqamBox.style.display = raqam ? 'block' : 'none';
+  if(ashiyaBox) ashiyaBox.style.display = ashiya ? 'block' : 'none';
+  calcWapas();
+}
+function calcWapas(){
+  var done = (document.getElementById('tWapasDone')||{}).value;
+  var amt = parseFloat((document.getElementById('tWapasAmt')||{}).value)||0;
+  var info = document.getElementById('tWapasInfo');
+  var tawnStEl = document.getElementById('tawnSt');
+  if(!info) return;
+  if(done === 'yes'){
+    info.style.display = 'block';
+    info.innerHTML = '✅ Wapas Ho Gaya — Tawan Status: <strong>Received</strong>' + (amt > 0 ? ' | Wapas Ki Raqam: <strong>₹'+amt.toLocaleString('en-IN')+'</strong>' : '');
+    if(tawnStEl) tawnStEl.value = 'closed';
+  } else if(done === 'no'){
+    info.style.display = 'block';
+    info.innerHTML = '🔴 Abhi Wapas Nahi Hua — Tawan Status: <strong>Pending</strong>';
+    if(tawnStEl) tawnStEl.value = 'open';
+  } else {
+    info.style.display = 'none';
   }
 }
 function tDROtherCancel(){
@@ -3988,16 +4067,16 @@ function rRep(){
   };
   var _defaultColors=['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#c62828','#4527a0','#558b2f'];
   var regionColors=_defaultColors; // fallback
-  // Fixed order: HIER se region order lo (settings ka order), sort mat karo
-  var _hierRegions = Object.keys(HIER);
+  // Fixed order — hamesha same order
+  var _fixedOrder = ['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
   var regionKeys = [];
-  // Pehle HIER order ke regions add karo (jo data mein hain)
-  _hierRegions.forEach(function(r){
+  // Pehle fixed order ke regions
+  _fixedOrder.forEach(function(r){
     if(regionStats[r] && (regionStats[r].kulMasail>0 || regionStats[r].sabiqa>0)){
       regionKeys.push(r);
     }
   });
-  // Phir koi bhi region jo HIER mein nahi lekin data mein hai
+  // Phir koi bhi naya region jo fixed order mein nahi
   Object.keys(regionStats).forEach(function(r){
     if((regionStats[r].kulMasail>0 || regionStats[r].sabiqa>0) && regionKeys.indexOf(r)<0){
       regionKeys.push(r);
@@ -4361,7 +4440,14 @@ async function saveCase(){
       tHREnd:document.getElementById('tHREnd')?document.getElementById('tHREnd').value:'',
       tHRMonthly:document.getElementById('tHRMonthly')?document.getElementById('tHRMonthly').value:'',
       tHRJV:document.getElementById('tHRJV')?document.getElementById('tHRJV').value.trim():'',
-      tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),
+      tWapasRaqam:document.getElementById('tWapasRaqam')?document.getElementById('tWapasRaqam').checked:false,
+      tWapasAshiya:document.getElementById('tWapasAshiya')?document.getElementById('tWapasAshiya').checked:false,
+      tWapasAmt:document.getElementById('tWapasAmt')?document.getElementById('tWapasAmt').value:'',
+      tWapasAshiyaDesc:document.getElementById('tWapasAshiyaDesc')?document.getElementById('tWapasAshiyaDesc').value.trim():'',
+      tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
+      tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
+      tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
@@ -4403,6 +4489,18 @@ function editC(id){
     tog('fIdrBox',c.idarati==='yes');togGuide();
     if(c.tJm==='yes'||c.tJm==='partial')document.getElementById('tAmtBox').style.display='block';
   loadInstallments(c.tInsts||[]);
+  // Wapas fields restore
+  if(c.tDR === 'wapas_karo'){
+    var ww = document.getElementById('tWapasWrap');
+    if(ww) ww.style.display = 'block';
+    if(document.getElementById('tWapasRaqam')) document.getElementById('tWapasRaqam').checked = c.tWapasRaqam||false;
+    if(document.getElementById('tWapasAshiya')) document.getElementById('tWapasAshiya').checked = c.tWapasAshiya||false;
+    if(document.getElementById('tWapasAmt')) document.getElementById('tWapasAmt').value = c.tWapasAmt||'';
+    if(document.getElementById('tWapasAshiyaDesc')) document.getElementById('tWapasAshiyaDesc').value = c.tWapasAshiyaDesc||'';
+    if(document.getElementById('tWapasDate')) document.getElementById('tWapasDate').value = c.tWapasDate||'';
+    if(document.getElementById('tWapasDone')) document.getElementById('tWapasDone').value = c.tWapasDone||'';
+    onWapasTypeChange(); calcWapas();
+  }
   // HR fields restore
   ['tHRDate','tHRStart','tHREnd','tHRMonthly','tHRJV'].forEach(function(id){
     var el=document.getElementById(id);
@@ -5551,10 +5649,11 @@ function getTawanCases(){
   });
 }
 
-function wusBadgeTW(v, tPd, tTot, tawnSt){
+function wusBadgeTW(v, tPd, tTot, tawnSt, tDR){
   var paid = parseFloat(tPd)||0;
   var tot  = parseFloat(tTot)||0;
-  // Agar tawnSt closed hai to Received — chahe tPd blank ho
+  if(tDR === 'wapas_karo') return '<span class="badge" style="background:#e3f2fd;color:#0c447c;border:1px solid #90caf9">🔄 Wapas</span>';
+  if(tDR === 'maaf') return '<span class="badge" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8">🤲 Mafi</span>';
   if(tawnSt==='closed') return '<span class="badge bg">✅ Received</span>';
   if(v==='yes' && paid > 0) return '<span class="badge bg">✅ Received</span>';
   if(v==='yes' && paid === 0) return '<span class="badge br">❌ Not Received</span>';
@@ -5672,7 +5771,7 @@ function renderTawan(){
         return c.tRm?'₹'+parseFloat(c.tRm).toLocaleString('en-IN'):'—';
       })()}</td>
       <td>${(function(){
-        var badge = wusBadgeTW(c.tJm, c.tPd, c.tTot, c.tawnSt);
+        var badge = wusBadgeTW(c.tJm, c.tPd, c.tTot, c.tawnSt, c.tDR);
         var hasHR = (c.tCollMethod||'').includes('hr');
         var hrBadge = hasHR ? ' <span style="background:#1565c0;color:#fff;font-size:.62rem;padding:1px 5px;border-radius:4px;font-weight:700;vertical-align:middle">🏢 HR</span>' : '';
         return badge + hrBadge;
@@ -6518,11 +6617,11 @@ function repGetFilteredCases(){
   }
   return cc.filter(function(c){
     if(!fromD&&!toD) return true;
-    var ds=c.openDate||''; if(!ds) return true;
+    var ds=c.openDate||''; if(!ds) return false;
     if(ds.length===4) ds=ds+'-01-01';
     var parts=ds.split('-');
     var d = parts.length===3 ? new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2])) : new Date(ds);
-    if(isNaN(d.getTime())) return true;
+    if(isNaN(d.getTime())) return false;
     if(fromD&&d<fromD) return false;
     if(toD&&d>toD) return false;
     return true;
