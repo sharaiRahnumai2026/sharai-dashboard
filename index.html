@@ -1976,15 +1976,28 @@ var _casesPageData = []; // current page ke full docs
 function _applyRestriction(arr){
   if(cu && cu.username !== 'admin'){
     var dr=cu.dataRestrict||{};
-    if(dr.regions&&dr.regions.length>0){
-      return arr.filter(function(c){
+    return arr.filter(function(c){
+      // Region check
+      if(dr.regions&&dr.regions.length>0){
         var cReg=(c.region||'').trim().toLowerCase();
-        return dr.regions.some(function(r){
+        var regOk=dr.regions.some(function(r){
           var rr=(r||'').trim().toLowerCase();
-          return cReg===rr;
+          return cReg===rr||cReg===rr+' region'||cReg.replace(' region','')===rr;
         });
-      });
-    }
+        if(!regOk) return false;
+      }
+      // State check — blank case dikhao
+      if(dr.states&&dr.states.length>0){var cSt=(c.state||'').trim().toLowerCase();if(cSt){var stOk=dr.states.some(function(s){return cSt===(s||'').trim().toLowerCase();});if(!stOk)return false;}}
+      // Division check — blank case dikhao
+      if(dr.divisions&&dr.divisions.length>0){var cDv=(c.division||'').trim().toLowerCase();if(cDv){var dvOk=dr.divisions.some(function(d){return cDv===(d||'').trim().toLowerCase();});if(!dvOk)return false;}}
+      // District check — blank case dikhao
+      if(dr.districts&&dr.districts.length>0){var cDi=(c.district||'').trim().toLowerCase();if(cDi){var diOk=dr.districts.some(function(d){return cDi===(d||'').trim().toLowerCase();});if(!diOk)return false;}}
+      // Dept check — blank case dikhao
+      if(dr.depts&&dr.depts.length>0){var cDepts=(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[])).map(function(d){return(d||'').trim().toLowerCase();});if(cDepts.length>0){var dpOk=dr.depts.some(function(d){var dd=(d||'').trim().toLowerCase();return cDepts.some(function(cd){return cd===dd||cd.indexOf(dd)>-1||dd.indexOf(cd)>-1;});});if(!dpOk)return false;}}
+      // Sael check — blank case dikhao
+      if(dr.saels&&dr.saels.length>0){var cSael=(c.sael||c.saelZimmedar||'').trim().toLowerCase();if(cSael){var saelOk=dr.saels.some(function(s){return cSael===(s||'').trim().toLowerCase();});if(!saelOk)return false;}}
+      return true;
+    });
   }
   return arr;
 }
@@ -4624,7 +4637,18 @@ function viewC(id, readOnly){
 function rUsers(){
   const rL={admin:'Administrator',staff:'Staff',viewer:'Viewer'};
   const dL={'admin':'🔑 Admin','superadmin':'⭐ Super Admin','nazim_ala':'🏛️ Nazim e Ala','nazim':'📋 Nazim','naib_nazim':'📋 Naib Nazim','muhtamim':'🗂️ Muhtamim','naib_muhtamim':'🗂️ Naib Muhtamim','mufattish':'🔍 Mufattish','sael_zimmedar':'📞 Sael Zimmedar','zimmedar':'✅ Zimmedar','viewer_basic':'👁️ Viewer Basic','viewer_report':'📊 Viewer+Reports','viewer_tawan':'💰 Viewer+Tawan'};
-  document.getElementById('uList').innerHTML=uc.map(u=>{
+  // Non-superadmin: sirf apne region ke users dikhao
+  var _ucFiltered = uc;
+  if(cu && cu.username !== 'admin'){
+    var _cuRegions = (cu.dataRestrict&&cu.dataRestrict.regions&&cu.dataRestrict.regions.length>0) ? cu.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
+    if(_cuRegions.length>0){
+      _ucFiltered = uc.filter(function(u){
+        var uRegions = (u.dataRestrict&&u.dataRestrict.regions&&u.dataRestrict.regions.length>0) ? u.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
+        return uRegions.some(function(r){ return _cuRegions.indexOf(r)>-1; });
+      });
+    }
+  }
+  document.getElementById('uList').innerHTML=_ucFiltered.map(u=>{
     const act=u.active!==false;
     const dr=u.dataRestrict||{};
     const drLabels={regions:'Region',states:'State',divisions:'Division',districts:'District',saels:'Sael',depts:'Department'};
@@ -4637,6 +4661,7 @@ function rUsers(){
           🔒 <b>Data Restrict:</b> ${drKeys.map(function(k){var v=dr[k];var display=Array.isArray(v)?v.join(', '):v;return (drLabels[k]||k)+': <b>'+display+'</b>';}).join(' | ')}
         </div>`
       :`<div style="margin-top:4px;font-size:.64rem;color:#aaa">🔓 No restriction (sab data dikhega)</div>`;
+    const _isSuper = cu && cu.username === 'admin';
     return`<div class="ucard ${u.role==='admin'?'adm':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -4646,16 +4671,16 @@ function rUsers(){
             <div style="font-size:.69rem;color:var(--mt)">@${u.username}${u.note?' — '+u.note:''}</div>
           </div>
         </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${_isSuper?`<div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn bpri bsm" onclick="openUM('${u.id}')">✏️ Edit</button>
           <button class="btn bsm" style="background:#fff8e1;border:1px solid #ffe082;color:#e65100" onclick="openResetPw('${u.id}')">🔑 Reset PW</button>
           ${u.username!=='admin'?`<button class="btn bred bsm" onclick="dUser('${u.id}')">🗑️</button>`:''}
-        </div>
+        </div>`:''}
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:2px">
+      ${_isSuper?`<div style="display:flex;flex-wrap:wrap;gap:2px">
         ${Object.entries(u.perms||{}).filter(([k,v])=>v).map(([k])=>`<span style="background:#e3f2fd;color:var(--blue);padding:1px 6px;border-radius:8px;font-size:.61rem;border:1px solid #90caf9">${k}</span>`).join('')}
       </div>
-      ${drHtml}
+      ${drHtml}`:''}
     </div>`;
   }).join('')||'<p style="color:var(--mt);padding:18px">No users</p>';
 }
@@ -4881,7 +4906,11 @@ function initUDRestrict(savedDR){
   if(dr.district && !dr.districts) dr.districts = [dr.district];
   if(dr.sael && !dr.saels) dr.saels = [dr.sael];
   if(dr.dept && !dr.depts) dr.depts = [dr.dept];
+  // Non-superadmin: sirf apne allowed regions
   var regions = Object.keys(HIER);
+  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.regions && cu.dataRestrict.regions.length>0){
+    regions = regions.filter(function(r){ return cu.dataRestrict.regions.indexOf(r)>-1; });
+  }
 
   // REGION
   drRenderBox('uDRegBox', regions, dr.regions||[], 'drRegionChanged()');
@@ -4929,11 +4958,19 @@ function initUDRestrict(savedDR){
     document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
   }
 
-  // SAEL
-  drRenderBox('uDSaelBox', SAEL, dr.saels||[], '');
+  // SAEL — non-superadmin: sirf apne allowed saels
+  var _saelList = SAEL;
+  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.saels && cu.dataRestrict.saels.length>0){
+    _saelList = SAEL.filter(function(s){ return cu.dataRestrict.saels.indexOf(s)>-1; });
+  }
+  drRenderBox('uDSaelBox', _saelList, dr.saels||[], '');
 
-  // DEPT
-  drRenderBox('uDDeptBox', DEPTS, dr.depts||[], '');
+  // DEPT — non-superadmin: sirf apne allowed depts
+  var _deptList = DEPTS;
+  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.depts && cu.dataRestrict.depts.length>0){
+    _deptList = DEPTS.filter(function(d){ return cu.dataRestrict.depts.indexOf(d)>-1; });
+  }
+  drRenderBox('uDDeptBox', _deptList, dr.depts||[], '');
 }
 // ===== END USER DATA RESTRICTION =====
 // ===== DESIGNATION PRESET SYSTEM =====
