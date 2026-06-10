@@ -1976,28 +1976,15 @@ var _casesPageData = []; // current page ke full docs
 function _applyRestriction(arr){
   if(cu && cu.username !== 'admin'){
     var dr=cu.dataRestrict||{};
-    return arr.filter(function(c){
-      // Region check
-      if(dr.regions&&dr.regions.length>0){
+    if(dr.regions&&dr.regions.length>0){
+      return arr.filter(function(c){
         var cReg=(c.region||'').trim().toLowerCase();
-        var regOk=dr.regions.some(function(r){
+        return dr.regions.some(function(r){
           var rr=(r||'').trim().toLowerCase();
-          return cReg===rr||cReg===rr+' region'||cReg.replace(' region','')===rr;
+          return cReg===rr;
         });
-        if(!regOk) return false;
-      }
-      // State check — blank case dikhao
-      if(dr.states&&dr.states.length>0){var cSt=(c.state||'').trim().toLowerCase();if(cSt){var stOk=dr.states.some(function(s){return cSt===(s||'').trim().toLowerCase();});if(!stOk)return false;}}
-      // Division check — blank case dikhao
-      if(dr.divisions&&dr.divisions.length>0){var cDv=(c.division||'').trim().toLowerCase();if(cDv){var dvOk=dr.divisions.some(function(d){return cDv===(d||'').trim().toLowerCase();});if(!dvOk)return false;}}
-      // District check — blank case dikhao
-      if(dr.districts&&dr.districts.length>0){var cDi=(c.district||'').trim().toLowerCase();if(cDi){var diOk=dr.districts.some(function(d){return cDi===(d||'').trim().toLowerCase();});if(!diOk)return false;}}
-      // Dept check — blank case dikhao
-      if(dr.depts&&dr.depts.length>0){var cDepts=(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[])).map(function(d){return(d||'').trim().toLowerCase();});if(cDepts.length>0){var dpOk=dr.depts.some(function(d){var dd=(d||'').trim().toLowerCase();return cDepts.some(function(cd){return cd===dd||cd.indexOf(dd)>-1||dd.indexOf(cd)>-1;});});if(!dpOk)return false;}}
-      // Sael check — blank case dikhao
-      if(dr.saels&&dr.saels.length>0){var cSael=(c.sael||c.saelZimmedar||'').trim().toLowerCase();if(cSael){var saelOk=dr.saels.some(function(s){return cSael===(s||'').trim().toLowerCase();});if(!saelOk)return false;}}
-      return true;
-    });
+      });
+    }
   }
   return arr;
 }
@@ -4063,6 +4050,9 @@ function rRep(){
     s.pending = Math.max(0, s.kulMasail - s.halShuda);
   });
 
+  // PDF ke liye global save karo
+  window._lastRegionStats = regionStats;
+
   // ===== bR ko regionStats se sync karo =====
   // By Region bar chart = region cards ke saath bilkul same numbers
   bR = {};
@@ -4637,18 +4627,7 @@ function viewC(id, readOnly){
 function rUsers(){
   const rL={admin:'Administrator',staff:'Staff',viewer:'Viewer'};
   const dL={'admin':'🔑 Admin','superadmin':'⭐ Super Admin','nazim_ala':'🏛️ Nazim e Ala','nazim':'📋 Nazim','naib_nazim':'📋 Naib Nazim','muhtamim':'🗂️ Muhtamim','naib_muhtamim':'🗂️ Naib Muhtamim','mufattish':'🔍 Mufattish','sael_zimmedar':'📞 Sael Zimmedar','zimmedar':'✅ Zimmedar','viewer_basic':'👁️ Viewer Basic','viewer_report':'📊 Viewer+Reports','viewer_tawan':'💰 Viewer+Tawan'};
-  // Non-superadmin: sirf apne region ke users dikhao
-  var _ucFiltered = uc;
-  if(cu && cu.username !== 'admin'){
-    var _cuRegions = (cu.dataRestrict&&cu.dataRestrict.regions&&cu.dataRestrict.regions.length>0) ? cu.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
-    if(_cuRegions.length>0){
-      _ucFiltered = uc.filter(function(u){
-        var uRegions = (u.dataRestrict&&u.dataRestrict.regions&&u.dataRestrict.regions.length>0) ? u.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
-        return uRegions.some(function(r){ return _cuRegions.indexOf(r)>-1; });
-      });
-    }
-  }
-  document.getElementById('uList').innerHTML=_ucFiltered.map(u=>{
+  document.getElementById('uList').innerHTML=uc.map(u=>{
     const act=u.active!==false;
     const dr=u.dataRestrict||{};
     const drLabels={regions:'Region',states:'State',divisions:'Division',districts:'District',saels:'Sael',depts:'Department'};
@@ -4661,7 +4640,6 @@ function rUsers(){
           🔒 <b>Data Restrict:</b> ${drKeys.map(function(k){var v=dr[k];var display=Array.isArray(v)?v.join(', '):v;return (drLabels[k]||k)+': <b>'+display+'</b>';}).join(' | ')}
         </div>`
       :`<div style="margin-top:4px;font-size:.64rem;color:#aaa">🔓 No restriction (sab data dikhega)</div>`;
-    const _isSuper = cu && cu.username === 'admin';
     return`<div class="ucard ${u.role==='admin'?'adm':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -4671,16 +4649,16 @@ function rUsers(){
             <div style="font-size:.69rem;color:var(--mt)">@${u.username}${u.note?' — '+u.note:''}</div>
           </div>
         </div>
-        ${_isSuper?`<div style="display:flex;gap:4px;flex-wrap:wrap">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn bpri bsm" onclick="openUM('${u.id}')">✏️ Edit</button>
           <button class="btn bsm" style="background:#fff8e1;border:1px solid #ffe082;color:#e65100" onclick="openResetPw('${u.id}')">🔑 Reset PW</button>
           ${u.username!=='admin'?`<button class="btn bred bsm" onclick="dUser('${u.id}')">🗑️</button>`:''}
-        </div>`:''}
+        </div>
       </div>
-      ${_isSuper?`<div style="display:flex;flex-wrap:wrap;gap:2px">
+      <div style="display:flex;flex-wrap:wrap;gap:2px">
         ${Object.entries(u.perms||{}).filter(([k,v])=>v).map(([k])=>`<span style="background:#e3f2fd;color:var(--blue);padding:1px 6px;border-radius:8px;font-size:.61rem;border:1px solid #90caf9">${k}</span>`).join('')}
       </div>
-      ${drHtml}`:''}
+      ${drHtml}
     </div>`;
   }).join('')||'<p style="color:var(--mt);padding:18px">No users</p>';
 }
@@ -4906,11 +4884,7 @@ function initUDRestrict(savedDR){
   if(dr.district && !dr.districts) dr.districts = [dr.district];
   if(dr.sael && !dr.saels) dr.saels = [dr.sael];
   if(dr.dept && !dr.depts) dr.depts = [dr.dept];
-  // Non-superadmin: sirf apne allowed regions
   var regions = Object.keys(HIER);
-  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.regions && cu.dataRestrict.regions.length>0){
-    regions = regions.filter(function(r){ return cu.dataRestrict.regions.indexOf(r)>-1; });
-  }
 
   // REGION
   drRenderBox('uDRegBox', regions, dr.regions||[], 'drRegionChanged()');
@@ -4958,19 +4932,11 @@ function initUDRestrict(savedDR){
     document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
   }
 
-  // SAEL — non-superadmin: sirf apne allowed saels
-  var _saelList = SAEL;
-  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.saels && cu.dataRestrict.saels.length>0){
-    _saelList = SAEL.filter(function(s){ return cu.dataRestrict.saels.indexOf(s)>-1; });
-  }
-  drRenderBox('uDSaelBox', _saelList, dr.saels||[], '');
+  // SAEL
+  drRenderBox('uDSaelBox', SAEL, dr.saels||[], '');
 
-  // DEPT — non-superadmin: sirf apne allowed depts
-  var _deptList = DEPTS;
-  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.depts && cu.dataRestrict.depts.length>0){
-    _deptList = DEPTS.filter(function(d){ return cu.dataRestrict.depts.indexOf(d)>-1; });
-  }
-  drRenderBox('uDDeptBox', _deptList, dr.depts||[], '');
+  // DEPT
+  drRenderBox('uDDeptBox', DEPTS, dr.depts||[], '');
 }
 // ===== END USER DATA RESTRICTION =====
 // ===== DESIGNATION PRESET SYSTEM =====
@@ -5373,18 +5339,12 @@ function gtClick(type){
       return !closed && od && od < thisMonthStart;
     };
   } else if(type==='mojuda'){
-    // Moujuda = report ke selected filter ke hisaab se
-    var _df_m = _repDateFilter();
-    var _rY_m = parseInt((document.getElementById('repYear')||{}).value||'')||0;
-    var _rQ_m = (document.getElementById('repFilter')||{}).value||'all';
-    if(_df_m){
-      doSrch._customFilter = _df_m;
-    } else if(_rY_m && _rQ_m==='all'){
-      var _fy_m = _rY_m;
-      doSrch._customFilter = function(c){ return String(c.year||'')===String(_fy_m); };
-    } else {
-      doSrch._customFilter = null;
-    }
+    // Moujuda = cases jo is mahine khule hain
+    var thisMonthStart2 = new Date(); thisMonthStart2.setDate(1); thisMonthStart2.setHours(0,0,0,0);
+    doSrch._customFilter = function(c){
+      var od = c.openDate ? new Date(c.openDate) : null;
+      return od && od >= thisMonthStart2;
+    };
   } else if(type==='tawan_all'){
     doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('tawan')>-1; };
   } else if(type==='tawan_received'){
@@ -6868,7 +6828,8 @@ async function repDownloadExcel(selectedRegions){
   // Build region stats
   var urduMap = {
     'Ajmer Region':'اجمیر','Mumbai Region':'ممبئی','Hyderabad Region':'حیدرآباد',
-    'Bengaluru Region':'بنگلور','Delhi Region':'دہلی','Kolkata Region':'کلکتہ'
+    'Bengaluru Region':'بنگلور','Delhi Region':'دہلی','Kolkata Region':'کلکتہ',
+    'Bareilly Region':'بریلی','Nagpur Region':'ناگپور'
   };
   // Sirf selected regions ka Excel banao
   var _allRegionOrder = ['Ajmer Region','Delhi Region','Mumbai Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
@@ -6904,7 +6865,26 @@ async function repDownloadExcel(selectedRegions){
   // سابقہ = range se pehle ke pending; موجودہ = range mein naye; کل = sabiqa+moujuda
   // حل شدہ = range mein close hue; پینڈنگ = کل - حل شدہ
 
-  var _exRangeEnd = toD || new Date();
+  // Calculate _exFromD and _exToD from current filter
+  var _exFromD = null, _exToD = null;
+  var _exNow = new Date();
+  if(quickVal==='thismonth'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth(),1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
+  else if(quickVal==='lastmonth'){ var _exlmY=_exNow.getMonth()===0?_exNow.getFullYear()-1:_exNow.getFullYear(),_exlmM=_exNow.getMonth()===0?11:_exNow.getMonth()-1; _exFromD=new Date(_exlmY,_exlmM,1); _exToD=new Date(_exlmY,_exlmM+1,0); }
+  else if(quickVal==='last3'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth()-2,1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
+  else if(quickVal==='last6'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth()-5,1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
+  else if(quickVal==='thisyear'){ _exFromD=new Date(_exNow.getFullYear(),0,1); _exToD=new Date(_exNow.getFullYear(),11,31); }
+  else if(quickVal==='lastyear'){ _exFromD=new Date(_exNow.getFullYear()-1,0,1); _exToD=new Date(_exNow.getFullYear()-1,11,31); }
+  else if(quickVal==='custom'){
+    var _exRepFrom=(document.getElementById('repFrom')||{}).value||'';
+    var _exRepTo=(document.getElementById('repTo')||{}).value||'';
+    if(_exRepFrom){ var _pf=_exRepFrom.split('-'); _exFromD=new Date(parseInt(_pf[0]),parseInt(_pf[1])-1,parseInt(_pf[2])); }
+    if(_exRepTo){ var _pt=_exRepTo.split('-'); _exToD=new Date(parseInt(_pt[0]),parseInt(_pt[1])-1,parseInt(_pt[2]),23,59,59); }
+    if(!monthLabel) monthLabel = (_exRepFrom||'?')+' to '+(_exRepTo||'?');
+  }
+  else if(selYear&&selMonth){ _exFromD=new Date(selYear,selMonth-1,1); _exToD=new Date(selYear,selMonth,0); }
+  else if(selYear){ _exFromD=new Date(selYear,0,1); _exToD=new Date(selYear,11,31); }
+
+  var _exRangeEnd = _exToD || new Date();
 
   // Step 1: موجودہ — range ke andar khule cases
   cc.forEach(function(c){
@@ -6912,7 +6892,7 @@ async function repDownloadExcel(selectedRegions){
     if(!rStats[r]) return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
-    var inRange = (!fromD || od >= fromD) && od <= _exRangeEnd;
+    var inRange = (!_exFromD || od >= _exFromD) && od <= _exRangeEnd;
     if(inRange) rStats[r].moujuda++;
   });
 
@@ -6926,7 +6906,7 @@ async function repDownloadExcel(selectedRegions){
     var cd = _exParseDate(c.closeDate);
     var closed = (c.status||'').toLowerCase()==='closed';
     if(!od) return;
-    if(!fromD || od >= fromD) return;
+    if(!_exFromD || od >= _exFromD) return;
     if(_exSabiqaYearBound && od < _exSabiqaYearBound) return;
     // Range start tak PENDING tha:
     // - Abhi bhi open/pending → count karo
@@ -6934,7 +6914,7 @@ async function repDownloadExcel(selectedRegions){
     // - Close hua aur closeDate blank ya range se pehle → MAT count karo
     if(!closed) {
       rStats[r].sabiqa++;
-    } else if(cd && cd >= fromD) {
+    } else if(cd && cd >= _exFromD) {
       rStats[r].sabiqa++;
     }
   });
@@ -6944,7 +6924,7 @@ async function repDownloadExcel(selectedRegions){
     rStats[r].kul = rStats[r].sabiqa + rStats[r].moujuda;
   });
 
-  // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
+  // Step 4: حل شدہ — range ke andar close hue cases
   var _exSabYB2 = selYear ? new Date(selYear, 0, 1) : null;
   cc.forEach(function(c){
     var r = c.region||'Unknown';
@@ -6952,11 +6932,13 @@ async function repDownloadExcel(selectedRegions){
     if((c.status||'').toLowerCase()!=='closed') return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
-    var inMoujuda = (!fromD || od >= fromD) && od <= _exRangeEnd;
-    var inSabiqa  = fromD && od < fromD && (!_exSabYB2 || od >= _exSabYB2);
+    var inMoujuda = (!_exFromD || od >= _exFromD) && od <= _exRangeEnd;
+    var inSabiqa  = _exFromD && od < _exFromD && (!_exSabYB2 || od >= _exSabYB2);
+    if(!(inMoujuda || inSabiqa)) return;
     var cd2 = _exParseDate(c.closeDate);
     if(cd2){
-      if(cd2 >= (fromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
+      // closeDate range ke andar hona chahiye
+      if(cd2 >= (_exFromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
     } else {
       // closeDate blank — sirf moujuda cases count karo
       if(inMoujuda) rStats[r].hal++;
@@ -7125,7 +7107,22 @@ function repDownloadPDF(){
   else if(_pdfSelYear&&_pdfSelMonth){ _pdfFYear=_pdfSelYear; _pdfFMonth=_pdfSelMonth-1; }
   else if(_pdfSelYear){ _pdfFYear=_pdfSelYear; _pdfFMonth=now.getMonth(); }
   else if(_pdfSelMonth){ _pdfFYear=now.getFullYear(); _pdfFMonth=_pdfSelMonth-1; }
-  var regionStats = repBuildRegionStats(fcc, _pdfFYear, _pdfFMonth);
+  // rRep se same regionStats use karo
+  var _pdfStats = window._lastRegionStats || {};
+  var _fixedOrder = ['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
+  var regionStatsList = _fixedOrder
+    .filter(function(r){ return _pdfStats[r] && _pdfStats[r].kulMasail > 0; })
+    .map(function(r){
+      var s = _pdfStats[r];
+      return {region:r, total:s.kulMasail, sabiqa:s.sabiqa, moujuda:s.moujuda, pending:s.pending, closed:s.halShuda};
+    });
+  // Extra regions
+  Object.keys(_pdfStats).forEach(function(r){
+    if(_fixedOrder.indexOf(r)<0 && _pdfStats[r].kulMasail>0){
+      var s=_pdfStats[r];
+      regionStatsList.push({region:r,total:s.kulMasail,sabiqa:s.sabiqa,moujuda:s.moujuda,pending:s.pending,closed:s.halShuda});
+    }
+  });
 
   var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || jsPDF;
   var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
@@ -7145,9 +7142,9 @@ function repDownloadPDF(){
 
   var regRows = [];
   var gT=0,gS=0,gM=0,gP=0,gC=0;
-  regionStats.forEach(function(s){
+  regionStatsList.forEach(function(s){
     var pct=s.total>0?Math.round(s.closed/s.total*100):0;
-    regRows.push([s.region+' Region',s.total,s.sabiqa,s.moujuda,s.pending,s.closed,pct+'%']);
+    regRows.push([s.region,s.total,s.sabiqa,s.moujuda,s.pending,s.closed,pct+'%']);
     gT+=s.total;gS+=s.sabiqa;gM+=s.moujuda;gP+=s.pending;gC+=s.closed;
   });
   var gPct2=gT>0?Math.round(gC/gT*100):0;
@@ -7165,26 +7162,6 @@ function repDownloadPDF(){
     didParseCell:function(d){
       if(d.row.index===regRows.length-1){d.cell.styles.fillColor=[26,35,126];d.cell.styles.textColor=255;d.cell.styles.fontStyle='bold';}
     }
-  });
-
-  // Cases detail table
-  var nextY = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(12);
-  doc.setFont('helvetica','bold');
-  doc.text('Cases Detail ('+fcc.length+' cases)', 14, nextY);
-
-  var caseRows = fcc.slice(0,500).map(function(c,i){
-    return [i+1, c.caseNo||'', c.openDate||'', c.name||'', c.region||'', c.state||'', c.dept||'', c.status||''];
-  });
-
-  doc.autoTable({
-    startY: nextY+3,
-    head:[['#','Case No','Open Date','Name','Region','State','Department','Status']],
-    body: caseRows,
-    theme:'striped',
-    headStyles:{fillColor:[21,101,192],textColor:255,fontStyle:'bold',fontSize:8},
-    bodyStyles:{fontSize:7.5},
-    columnStyles:{0:{cellWidth:8,halign:'center'},1:{cellWidth:20},2:{cellWidth:20},3:{cellWidth:35},4:{cellWidth:20},5:{cellWidth:20},6:{cellWidth:45},7:{cellWidth:20}},
   });
 
   var fname = 'Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
