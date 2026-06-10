@@ -1047,13 +1047,7 @@ async function hashPw(pw){
       </div>
     </div>
     <div class="twrap">
-      <div class="thead" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-        <div><h3 style="margin:0">Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="srExportExcel()" style="background:#1e7e34;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.82rem;">📊 Excel</button>
-          <button onclick="srExportPDF()" style="background:#c0392b;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.82rem;">📄 PDF</button>
-        </div>
-      </div>
+      <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
       <!-- srDebug removed in production -->
       <div style="overflow-x:auto"><table><thead><tr id="srTH"></tr></thead><tbody id="srTB"></tbody></table></div>
       <div id="searchPagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 14px;border-top:1px solid var(--bor);flex-wrap:wrap;"></div>
@@ -1982,15 +1976,28 @@ var _casesPageData = []; // current page ke full docs
 function _applyRestriction(arr){
   if(cu && cu.username !== 'admin'){
     var dr=cu.dataRestrict||{};
-    if(dr.regions&&dr.regions.length>0){
-      return arr.filter(function(c){
+    return arr.filter(function(c){
+      // Region check
+      if(dr.regions&&dr.regions.length>0){
         var cReg=(c.region||'').trim().toLowerCase();
-        return dr.regions.some(function(r){
+        var regOk=dr.regions.some(function(r){
           var rr=(r||'').trim().toLowerCase();
-          return cReg===rr;
+          return cReg===rr||cReg===rr+' region'||cReg.replace(' region','')===rr;
         });
-      });
-    }
+        if(!regOk) return false;
+      }
+      // State check — blank case dikhao
+      if(dr.states&&dr.states.length>0){var cSt=(c.state||'').trim().toLowerCase();if(cSt){var stOk=dr.states.some(function(s){return cSt===(s||'').trim().toLowerCase();});if(!stOk)return false;}}
+      // Division check — blank case dikhao
+      if(dr.divisions&&dr.divisions.length>0){var cDv=(c.division||'').trim().toLowerCase();if(cDv){var dvOk=dr.divisions.some(function(d){return cDv===(d||'').trim().toLowerCase();});if(!dvOk)return false;}}
+      // District check — blank case dikhao
+      if(dr.districts&&dr.districts.length>0){var cDi=(c.district||'').trim().toLowerCase();if(cDi){var diOk=dr.districts.some(function(d){return cDi===(d||'').trim().toLowerCase();});if(!diOk)return false;}}
+      // Dept check — blank case dikhao
+      if(dr.depts&&dr.depts.length>0){var cDepts=(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[])).map(function(d){return(d||'').trim().toLowerCase();});if(cDepts.length>0){var dpOk=dr.depts.some(function(d){var dd=(d||'').trim().toLowerCase();return cDepts.some(function(cd){return cd===dd||cd.indexOf(dd)>-1||dd.indexOf(cd)>-1;});});if(!dpOk)return false;}}
+      // Sael check — blank case dikhao
+      if(dr.saels&&dr.saels.length>0){var cSael=(c.sael||c.saelZimmedar||'').trim().toLowerCase();if(cSael){var saelOk=dr.saels.some(function(s){return cSael===(s||'').trim().toLowerCase();});if(!saelOk)return false;}}
+      return true;
+    });
   }
   return arr;
 }
@@ -2307,7 +2314,28 @@ function goPage(pg,el,skipHistory){
   requestAnimationFrame(function(){
     if(pg==='dash')         rDash();
     else if(pg==='cases')   rCases();
-    else if(pg==='reports'){ repClearFilters(); rRep(); }
+    else if(pg==='reports'){
+      // Pehli baar open ho to clear, warna saved filters restore karo
+      var _repSaved = sessionStorage.getItem('repFilters');
+      if(_repSaved){
+        try{
+          var _rf = JSON.parse(_repSaved);
+          var _ry = document.getElementById('repYear');
+          var _rm = document.getElementById('repMonth');
+          var _rq = document.getElementById('repFilter');
+          var _rfd = document.getElementById('repFrom');
+          var _rtd = document.getElementById('repTo');
+          if(_ry && _rf.year !== undefined) _ry.value = _rf.year;
+          if(_rm && _rf.month !== undefined) _rm.value = _rf.month;
+          if(_rq && _rf.quick) _rq.value = _rf.quick;
+          if(_rfd && _rf.from) _rfd.value = _rf.from;
+          if(_rtd && _rf.to) _rtd.value = _rf.to;
+        }catch(e){}
+      } else {
+        repClearFilters();
+      }
+      rRep();
+    }
     else if(pg==='settings'){
       lmRenderTCategory(); lmRenderTPurpose(); lmLoadFirebaseRegions();
       setTimeout(lmLoadSettings, 30);
@@ -3790,6 +3818,16 @@ function rRep(){
   var months=['','January','February','March','April','May','June','July','August','September','October','November','December'];
   var selYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
   var selMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
+  // Filters save karo sessionStorage mein
+  try{
+    sessionStorage.setItem('repFilters', JSON.stringify({
+      year: (document.getElementById('repYear')||{}).value||'',
+      month: (document.getElementById('repMonth')||{}).value||'',
+      quick: (document.getElementById('repFilter')||{}).value||'all',
+      from: (document.getElementById('repFrom')||{}).value||'',
+      to: (document.getElementById('repTo')||{}).value||''
+    }));
+  }catch(e){}
   var quickVal = (document.getElementById('repFilter')||{}).value || 'all';
 
   // Future date warning
@@ -4056,9 +4094,6 @@ function rRep(){
     s.pending = Math.max(0, s.kulMasail - s.halShuda);
   });
 
-  // PDF ke liye global save karo
-  window._lastRegionStats = regionStats;
-
   // ===== bR ko regionStats se sync karo =====
   // By Region bar chart = region cards ke saath bilkul same numbers
   bR = {};
@@ -4196,8 +4231,8 @@ function rRep(){
   var cards = [
     {size: Object.keys(bS).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickStatus(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(e[0])+'\',\'all\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bSt).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" data-st="'+encodeURIComponent(e[0])+'" onclick="gtClickState(decodeURIComponent(this.dataset.st))" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" data-dp="'+encodeURIComponent(e[0])+'" onclick="gtClickDept(decodeURIComponent(this.dataset.dp))" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bSt).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(decodeURIComponent(this.dataset.dept))" data-dept="'+encodeURIComponent(e[0])+'" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;tawan_all&quot;)" title="Tamam Tawan cases"><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_received&quot;)" title="Received Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_pending&quot;)" title="Pending Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;halfia_all&quot;)" title="Tamam Halfiya cases"><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_done&quot;)" title="Done cases"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_pending&quot;)" title="Pending cases"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>'}
   ];
@@ -4633,7 +4668,18 @@ function viewC(id, readOnly){
 function rUsers(){
   const rL={admin:'Administrator',staff:'Staff',viewer:'Viewer'};
   const dL={'admin':'🔑 Admin','superadmin':'⭐ Super Admin','nazim_ala':'🏛️ Nazim e Ala','nazim':'📋 Nazim','naib_nazim':'📋 Naib Nazim','muhtamim':'🗂️ Muhtamim','naib_muhtamim':'🗂️ Naib Muhtamim','mufattish':'🔍 Mufattish','sael_zimmedar':'📞 Sael Zimmedar','zimmedar':'✅ Zimmedar','viewer_basic':'👁️ Viewer Basic','viewer_report':'📊 Viewer+Reports','viewer_tawan':'💰 Viewer+Tawan'};
-  document.getElementById('uList').innerHTML=uc.map(u=>{
+  // Non-superadmin: sirf apne region ke users dikhao
+  var _ucFiltered = uc;
+  if(cu && cu.username !== 'admin'){
+    var _cuRegions = (cu.dataRestrict&&cu.dataRestrict.regions&&cu.dataRestrict.regions.length>0) ? cu.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
+    if(_cuRegions.length>0){
+      _ucFiltered = uc.filter(function(u){
+        var uRegions = (u.dataRestrict&&u.dataRestrict.regions&&u.dataRestrict.regions.length>0) ? u.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
+        return uRegions.some(function(r){ return _cuRegions.indexOf(r)>-1; });
+      });
+    }
+  }
+  document.getElementById('uList').innerHTML=_ucFiltered.map(u=>{
     const act=u.active!==false;
     const dr=u.dataRestrict||{};
     const drLabels={regions:'Region',states:'State',divisions:'Division',districts:'District',saels:'Sael',depts:'Department'};
@@ -4646,6 +4692,7 @@ function rUsers(){
           🔒 <b>Data Restrict:</b> ${drKeys.map(function(k){var v=dr[k];var display=Array.isArray(v)?v.join(', '):v;return (drLabels[k]||k)+': <b>'+display+'</b>';}).join(' | ')}
         </div>`
       :`<div style="margin-top:4px;font-size:.64rem;color:#aaa">🔓 No restriction (sab data dikhega)</div>`;
+    const _isSuper = cu && cu.username === 'admin';
     return`<div class="ucard ${u.role==='admin'?'adm':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -4655,16 +4702,16 @@ function rUsers(){
             <div style="font-size:.69rem;color:var(--mt)">@${u.username}${u.note?' — '+u.note:''}</div>
           </div>
         </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${_isSuper?`<div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn bpri bsm" onclick="openUM('${u.id}')">✏️ Edit</button>
           <button class="btn bsm" style="background:#fff8e1;border:1px solid #ffe082;color:#e65100" onclick="openResetPw('${u.id}')">🔑 Reset PW</button>
           ${u.username!=='admin'?`<button class="btn bred bsm" onclick="dUser('${u.id}')">🗑️</button>`:''}
-        </div>
+        </div>`:''}
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:2px">
+      ${_isSuper?`<div style="display:flex;flex-wrap:wrap;gap:2px">
         ${Object.entries(u.perms||{}).filter(([k,v])=>v).map(([k])=>`<span style="background:#e3f2fd;color:var(--blue);padding:1px 6px;border-radius:8px;font-size:.61rem;border:1px solid #90caf9">${k}</span>`).join('')}
       </div>
-      ${drHtml}
+      ${drHtml}`:''}
     </div>`;
   }).join('')||'<p style="color:var(--mt);padding:18px">No users</p>';
 }
@@ -4890,7 +4937,11 @@ function initUDRestrict(savedDR){
   if(dr.district && !dr.districts) dr.districts = [dr.district];
   if(dr.sael && !dr.saels) dr.saels = [dr.sael];
   if(dr.dept && !dr.depts) dr.depts = [dr.dept];
+  // Non-superadmin: sirf apne allowed regions
   var regions = Object.keys(HIER);
+  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.regions && cu.dataRestrict.regions.length>0){
+    regions = regions.filter(function(r){ return cu.dataRestrict.regions.indexOf(r)>-1; });
+  }
 
   // REGION
   drRenderBox('uDRegBox', regions, dr.regions||[], 'drRegionChanged()');
@@ -4938,11 +4989,19 @@ function initUDRestrict(savedDR){
     document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
   }
 
-  // SAEL
-  drRenderBox('uDSaelBox', SAEL, dr.saels||[], '');
+  // SAEL — non-superadmin: sirf apne allowed saels
+  var _saelList = SAEL;
+  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.saels && cu.dataRestrict.saels.length>0){
+    _saelList = SAEL.filter(function(s){ return cu.dataRestrict.saels.indexOf(s)>-1; });
+  }
+  drRenderBox('uDSaelBox', _saelList, dr.saels||[], '');
 
-  // DEPT
-  drRenderBox('uDDeptBox', DEPTS, dr.depts||[], '');
+  // DEPT — non-superadmin: sirf apne allowed depts
+  var _deptList = DEPTS;
+  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.depts && cu.dataRestrict.depts.length>0){
+    _deptList = DEPTS.filter(function(d){ return cu.dataRestrict.depts.indexOf(d)>-1; });
+  }
+  drRenderBox('uDDeptBox', _deptList, dr.depts||[], '');
 }
 // ===== END USER DATA RESTRICTION =====
 // ===== DESIGNATION PRESET SYSTEM =====
@@ -5345,12 +5404,18 @@ function gtClick(type){
       return !closed && od && od < thisMonthStart;
     };
   } else if(type==='mojuda'){
-    // Moujuda = cases jo is mahine khule hain
-    var thisMonthStart2 = new Date(); thisMonthStart2.setDate(1); thisMonthStart2.setHours(0,0,0,0);
-    doSrch._customFilter = function(c){
-      var od = c.openDate ? new Date(c.openDate) : null;
-      return od && od >= thisMonthStart2;
-    };
+    // Moujuda = report ke selected filter ke hisaab se
+    var _df_m = _repDateFilter();
+    var _rY_m = parseInt((document.getElementById('repYear')||{}).value||'')||0;
+    var _rQ_m = (document.getElementById('repFilter')||{}).value||'all';
+    if(_df_m){
+      doSrch._customFilter = _df_m;
+    } else if(_rY_m && _rQ_m==='all'){
+      var _fy_m = _rY_m;
+      doSrch._customFilter = function(c){ return String(c.year||'')===String(_fy_m); };
+    } else {
+      doSrch._customFilter = null;
+    }
   } else if(type==='tawan_all'){
     doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('tawan')>-1; };
   } else if(type==='tawan_received'){
@@ -6834,8 +6899,7 @@ async function repDownloadExcel(selectedRegions){
   // Build region stats
   var urduMap = {
     'Ajmer Region':'اجمیر','Mumbai Region':'ممبئی','Hyderabad Region':'حیدرآباد',
-    'Bengaluru Region':'بنگلور','Delhi Region':'دہلی','Kolkata Region':'کلکتہ',
-    'Bareilly Region':'بریلی','Nagpur Region':'ناگپور'
+    'Bengaluru Region':'بنگلور','Delhi Region':'دہلی','Kolkata Region':'کلکتہ'
   };
   // Sirf selected regions ka Excel banao
   var _allRegionOrder = ['Ajmer Region','Delhi Region','Mumbai Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
@@ -6871,26 +6935,7 @@ async function repDownloadExcel(selectedRegions){
   // سابقہ = range se pehle ke pending; موجودہ = range mein naye; کل = sabiqa+moujuda
   // حل شدہ = range mein close hue; پینڈنگ = کل - حل شدہ
 
-  // Calculate _exFromD and _exToD from current filter
-  var _exFromD = null, _exToD = null;
-  var _exNow = new Date();
-  if(quickVal==='thismonth'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth(),1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
-  else if(quickVal==='lastmonth'){ var _exlmY=_exNow.getMonth()===0?_exNow.getFullYear()-1:_exNow.getFullYear(),_exlmM=_exNow.getMonth()===0?11:_exNow.getMonth()-1; _exFromD=new Date(_exlmY,_exlmM,1); _exToD=new Date(_exlmY,_exlmM+1,0); }
-  else if(quickVal==='last3'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth()-2,1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
-  else if(quickVal==='last6'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth()-5,1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
-  else if(quickVal==='thisyear'){ _exFromD=new Date(_exNow.getFullYear(),0,1); _exToD=new Date(_exNow.getFullYear(),11,31); }
-  else if(quickVal==='lastyear'){ _exFromD=new Date(_exNow.getFullYear()-1,0,1); _exToD=new Date(_exNow.getFullYear()-1,11,31); }
-  else if(quickVal==='custom'){
-    var _exRepFrom=(document.getElementById('repFrom')||{}).value||'';
-    var _exRepTo=(document.getElementById('repTo')||{}).value||'';
-    if(_exRepFrom){ var _pf=_exRepFrom.split('-'); _exFromD=new Date(parseInt(_pf[0]),parseInt(_pf[1])-1,parseInt(_pf[2])); }
-    if(_exRepTo){ var _pt=_exRepTo.split('-'); _exToD=new Date(parseInt(_pt[0]),parseInt(_pt[1])-1,parseInt(_pt[2]),23,59,59); }
-    if(!monthLabel) monthLabel = (_exRepFrom||'?')+' to '+(_exRepTo||'?');
-  }
-  else if(selYear&&selMonth){ _exFromD=new Date(selYear,selMonth-1,1); _exToD=new Date(selYear,selMonth,0); }
-  else if(selYear){ _exFromD=new Date(selYear,0,1); _exToD=new Date(selYear,11,31); }
-
-  var _exRangeEnd = _exToD || new Date();
+  var _exRangeEnd = toD || new Date();
 
   // Step 1: موجودہ — range ke andar khule cases
   cc.forEach(function(c){
@@ -6898,7 +6943,7 @@ async function repDownloadExcel(selectedRegions){
     if(!rStats[r]) return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
-    var inRange = (!_exFromD || od >= _exFromD) && od <= _exRangeEnd;
+    var inRange = (!fromD || od >= fromD) && od <= _exRangeEnd;
     if(inRange) rStats[r].moujuda++;
   });
 
@@ -6912,7 +6957,7 @@ async function repDownloadExcel(selectedRegions){
     var cd = _exParseDate(c.closeDate);
     var closed = (c.status||'').toLowerCase()==='closed';
     if(!od) return;
-    if(!_exFromD || od >= _exFromD) return;
+    if(!fromD || od >= fromD) return;
     if(_exSabiqaYearBound && od < _exSabiqaYearBound) return;
     // Range start tak PENDING tha:
     // - Abhi bhi open/pending → count karo
@@ -6920,7 +6965,7 @@ async function repDownloadExcel(selectedRegions){
     // - Close hua aur closeDate blank ya range se pehle → MAT count karo
     if(!closed) {
       rStats[r].sabiqa++;
-    } else if(cd && cd >= _exFromD) {
+    } else if(cd && cd >= fromD) {
       rStats[r].sabiqa++;
     }
   });
@@ -6930,7 +6975,7 @@ async function repDownloadExcel(selectedRegions){
     rStats[r].kul = rStats[r].sabiqa + rStats[r].moujuda;
   });
 
-  // Step 4: حل شدہ — range ke andar close hue cases
+  // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
   var _exSabYB2 = selYear ? new Date(selYear, 0, 1) : null;
   cc.forEach(function(c){
     var r = c.region||'Unknown';
@@ -6938,13 +6983,11 @@ async function repDownloadExcel(selectedRegions){
     if((c.status||'').toLowerCase()!=='closed') return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
-    var inMoujuda = (!_exFromD || od >= _exFromD) && od <= _exRangeEnd;
-    var inSabiqa  = _exFromD && od < _exFromD && (!_exSabYB2 || od >= _exSabYB2);
-    if(!(inMoujuda || inSabiqa)) return;
+    var inMoujuda = (!fromD || od >= fromD) && od <= _exRangeEnd;
+    var inSabiqa  = fromD && od < fromD && (!_exSabYB2 || od >= _exSabYB2);
     var cd2 = _exParseDate(c.closeDate);
     if(cd2){
-      // closeDate range ke andar hona chahiye
-      if(cd2 >= (_exFromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
+      if(cd2 >= (fromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
     } else {
       // closeDate blank — sirf moujuda cases count karo
       if(inMoujuda) rStats[r].hal++;
@@ -7113,22 +7156,7 @@ function repDownloadPDF(){
   else if(_pdfSelYear&&_pdfSelMonth){ _pdfFYear=_pdfSelYear; _pdfFMonth=_pdfSelMonth-1; }
   else if(_pdfSelYear){ _pdfFYear=_pdfSelYear; _pdfFMonth=now.getMonth(); }
   else if(_pdfSelMonth){ _pdfFYear=now.getFullYear(); _pdfFMonth=_pdfSelMonth-1; }
-  // rRep se same regionStats use karo
-  var _pdfStats = window._lastRegionStats || {};
-  var _fixedOrder = ['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
-  var regionStatsList = _fixedOrder
-    .filter(function(r){ return _pdfStats[r] && _pdfStats[r].kulMasail > 0; })
-    .map(function(r){
-      var s = _pdfStats[r];
-      return {region:r, total:s.kulMasail, sabiqa:s.sabiqa, moujuda:s.moujuda, pending:s.pending, closed:s.halShuda};
-    });
-  // Extra regions
-  Object.keys(_pdfStats).forEach(function(r){
-    if(_fixedOrder.indexOf(r)<0 && _pdfStats[r].kulMasail>0){
-      var s=_pdfStats[r];
-      regionStatsList.push({region:r,total:s.kulMasail,sabiqa:s.sabiqa,moujuda:s.moujuda,pending:s.pending,closed:s.halShuda});
-    }
-  });
+  var regionStats = repBuildRegionStats(fcc, _pdfFYear, _pdfFMonth);
 
   var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || jsPDF;
   var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
@@ -7148,9 +7176,9 @@ function repDownloadPDF(){
 
   var regRows = [];
   var gT=0,gS=0,gM=0,gP=0,gC=0;
-  regionStatsList.forEach(function(s){
+  regionStats.forEach(function(s){
     var pct=s.total>0?Math.round(s.closed/s.total*100):0;
-    regRows.push([s.region,s.total,s.sabiqa,s.moujuda,s.pending,s.closed,pct+'%']);
+    regRows.push([s.region+' Region',s.total,s.sabiqa,s.moujuda,s.pending,s.closed,pct+'%']);
     gT+=s.total;gS+=s.sabiqa;gM+=s.moujuda;gP+=s.pending;gC+=s.closed;
   });
   var gPct2=gT>0?Math.round(gC/gT*100):0;
@@ -7170,92 +7198,31 @@ function repDownloadPDF(){
     }
   });
 
+  // Cases detail table
+  var nextY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('Cases Detail ('+fcc.length+' cases)', 14, nextY);
+
+  var caseRows = fcc.slice(0,500).map(function(c,i){
+    return [i+1, c.caseNo||'', c.openDate||'', c.name||'', c.region||'', c.state||'', c.dept||'', c.status||''];
+  });
+
+  doc.autoTable({
+    startY: nextY+3,
+    head:[['#','Case No','Open Date','Name','Region','State','Department','Status']],
+    body: caseRows,
+    theme:'striped',
+    headStyles:{fillColor:[21,101,192],textColor:255,fontStyle:'bold',fontSize:8},
+    bodyStyles:{fontSize:7.5},
+    columnStyles:{0:{cellWidth:8,halign:'center'},1:{cellWidth:20},2:{cellWidth:20},3:{cellWidth:35},4:{cellWidth:20},5:{cellWidth:20},6:{cellWidth:45},7:{cellWidth:20}},
+  });
+
   var fname = 'Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
   toast('✅ PDF download ho raha hai!');
 }
-// ===== SEARCH RESULTS EXPORT =====
-function srExportExcel(){
-  var res = doSrch._res || [];
-  if(!res.length){ toast('❌ Koi results nahi!'); return; }
-  try {
-    var wb = new ExcelJS.Workbook();
-    var ws = wb.addWorksheet('Search Results');
-    ws.addRow(['#','Case No','Open Date','Year','Region','State','Division','District','Department','Name','Mobile','Subject','Status','Close Date','Rahnumai','Remarks']);
-    ws.getRow(1).font={bold:true};
-    ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1565C0'}};
-    ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};
-    res.forEach(function(c,i){
-      ws.addRow([i+1,c.caseNo||'',c.openDate||'',c.year||'',c.region||'',c.state||'',c.division||'',c.district||'',c.dept||'',c.name||'',c.mobile||'',c.subject||'',c.status||'',c.closeDate||'',c.rahnumai||'',c.remarks||'']);
-    });
-    ws.columns.forEach(function(col){ col.width=18; });
-    wb.xlsx.writeBuffer().then(function(buf){
-      var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-      var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-      a.download='Search_Results_'+new Date().toISOString().slice(0,10)+'.xlsx'; a.click();
-      toast('✅ Excel download ho raha hai!');
-    });
-  } catch(e){ toast('❌ Excel error: '+e.message); }
-}
-
-function srExportPDF(){
-  var res = doSrch._res || [];
-  if(!res.length){ toast('❌ Koi results nahi!'); return; }
-
-  var rows = res.map(function(c,i){
-    var statusColor = (c.status||'').toLowerCase()==='closed' ? '#2e7d32' : '#c62828';
-    return '<tr>'
-      +'<td style="text-align:center">'+(i+1)+'</td>'
-      +'<td>'+escHtml(c.caseNo||'')+'</td>'
-      +'<td>'+escHtml(c.openDate||'')+'</td>'
-      +'<td>'+escHtml(c.region||'')+'</td>'
-      +'<td>'+escHtml(c.state||'')+'</td>'
-      +'<td>'+escHtml(c.dept||'')+'</td>'
-      +'<td class="urdu">'+escHtml(c.name||'')+'</td>'
-      +'<td class="'+(((c.status||'').toLowerCase()==='closed')?'closed':'pending')+'">'+escHtml(c.status||'')+'</td>'
-      +'</tr>';
-  }).join('');
-
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">'
-    +'<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">'
-    +'<style>'
-    +'body{font-family:Arial,sans-serif;font-size:13px;margin:30px;color:#1a2340}'
-    +'h2{text-align:center;color:#1565c0;margin-bottom:6px;font-size:20px}'
-    +'p{text-align:center;color:#607090;margin-bottom:20px;font-size:12px}'
-    +'table{width:100%;border-collapse:collapse;margin-top:10px}'
-    +'th{background:#1565c0;color:#fff;padding:10px 12px;font-size:12px;text-align:left;border:1px solid #0d47a1}'
-    +'td{padding:8px 12px;border:1px solid #e0e6f0;font-size:12px;vertical-align:middle}'
-    +'tr:nth-child(even){background:#f5f8ff}'
-    +'tr:hover{background:#e8f0fe}'
-    +'.urdu{font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq",serif;direction:rtl;text-align:right;font-size:14px;line-height:2}'
-    +'.closed{color:#2e7d32;font-weight:600}'
-    +'.pending{color:#c62828;font-weight:600}'
-    +'@media print{'
-    +'  body{margin:15px}'
-    +'  th{background:#1565c0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
-    +'  tr:nth-child(even){background:#f5f8ff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
-    +'}'
-    +'</style></head><body>'
-    +'<h2>Search Results ('+res.length+' cases)</h2>'
-    +'<p>Generated: '+new Date().toLocaleDateString('en-IN')+'</p>'
-    +'<table><thead><tr>'
-    +'<th>#</th><th>Case No</th><th>Open Date</th><th>Region</th><th>State</th><th>Department</th><th>Name</th><th>Status</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<div style="text-align:center;margin:20px 0">'
-    +'<button onclick="window.print()" style="background:#1565c0;color:#fff;border:none;padding:12px 30px;border-radius:8px;font-size:15px;cursor:pointer">🖨️ Print / Save as PDF</button>'
-    +'</div>'
-    +'<script>'
-    +'document.fonts.ready.then(function(){ console.log("Fonts loaded"); });'
-    +'<\/script>'
-    +'</body></html>';
-
-  var win = window.open('','_blank');
-  win.document.write(html);
-  win.document.close();
-  toast('✅ Print dialog khulega — Save as PDF karo!');
-}
-// ===== END SEARCH EXPORT =====
+// ===== END EXPORT =====
 
 
 function onTawnKism(){
