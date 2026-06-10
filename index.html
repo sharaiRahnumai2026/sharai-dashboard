@@ -1047,7 +1047,13 @@ async function hashPw(pw){
       </div>
     </div>
     <div class="twrap">
-      <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
+      <div class="thead" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div><h3 style="margin:0">Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="srExportExcel()" style="background:#1e7e34;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.82rem;">📊 Excel</button>
+          <button onclick="srExportPDF()" style="background:#c0392b;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.82rem;">📄 PDF</button>
+        </div>
+      </div>
       <!-- srDebug removed in production -->
       <div style="overflow-x:auto"><table><thead><tr id="srTH"></tr></thead><tbody id="srTB"></tbody></table></div>
       <div id="searchPagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 14px;border-top:1px solid var(--bor);flex-wrap:wrap;"></div>
@@ -7168,7 +7174,88 @@ function repDownloadPDF(){
   doc.save(fname);
   toast('✅ PDF download ho raha hai!');
 }
-// ===== END EXPORT =====
+// ===== SEARCH RESULTS EXPORT =====
+function srExportExcel(){
+  var res = doSrch._res || [];
+  if(!res.length){ toast('❌ Koi results nahi!'); return; }
+  try {
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet('Search Results');
+    ws.addRow(['#','Case No','Open Date','Year','Region','State','Division','District','Department','Name','Mobile','Subject','Status','Close Date','Rahnumai','Remarks']);
+    ws.getRow(1).font={bold:true};
+    ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1565C0'}};
+    ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};
+    res.forEach(function(c,i){
+      ws.addRow([i+1,c.caseNo||'',c.openDate||'',c.year||'',c.region||'',c.state||'',c.division||'',c.district||'',c.dept||'',c.name||'',c.mobile||'',c.subject||'',c.status||'',c.closeDate||'',c.rahnumai||'',c.remarks||'']);
+    });
+    ws.columns.forEach(function(col){ col.width=18; });
+    wb.xlsx.writeBuffer().then(function(buf){
+      var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='Search_Results_'+new Date().toISOString().slice(0,10)+'.xlsx'; a.click();
+      toast('✅ Excel download ho raha hai!');
+    });
+  } catch(e){ toast('❌ Excel error: '+e.message); }
+}
+
+function srExportPDF(){
+  var res = doSrch._res || [];
+  if(!res.length){ toast('❌ Koi results nahi!'); return; }
+
+  var rows = res.map(function(c,i){
+    var statusColor = (c.status||'').toLowerCase()==='closed' ? '#2e7d32' : '#c62828';
+    return '<tr>'
+      +'<td style="text-align:center">'+(i+1)+'</td>'
+      +'<td>'+escHtml(c.caseNo||'')+'</td>'
+      +'<td>'+escHtml(c.openDate||'')+'</td>'
+      +'<td>'+escHtml(c.region||'')+'</td>'
+      +'<td>'+escHtml(c.state||'')+'</td>'
+      +'<td>'+escHtml(c.dept||'')+'</td>'
+      +'<td class="urdu">'+escHtml(c.name||'')+'</td>'
+      +'<td class="'+(((c.status||'').toLowerCase()==='closed')?'closed':'pending')+'">'+escHtml(c.status||'')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">'
+    +'<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">'
+    +'<style>'
+    +'body{font-family:Arial,sans-serif;font-size:13px;margin:30px;color:#1a2340}'
+    +'h2{text-align:center;color:#1565c0;margin-bottom:6px;font-size:20px}'
+    +'p{text-align:center;color:#607090;margin-bottom:20px;font-size:12px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:10px}'
+    +'th{background:#1565c0;color:#fff;padding:10px 12px;font-size:12px;text-align:left;border:1px solid #0d47a1}'
+    +'td{padding:8px 12px;border:1px solid #e0e6f0;font-size:12px;vertical-align:middle}'
+    +'tr:nth-child(even){background:#f5f8ff}'
+    +'tr:hover{background:#e8f0fe}'
+    +'.urdu{font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq",serif;direction:rtl;text-align:right;font-size:14px;line-height:2}'
+    +'.closed{color:#2e7d32;font-weight:600}'
+    +'.pending{color:#c62828;font-weight:600}'
+    +'@media print{'
+    +'  body{margin:15px}'
+    +'  th{background:#1565c0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'  tr:nth-child(even){background:#f5f8ff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'}'
+    +'</style></head><body>'
+    +'<h2>Search Results ('+res.length+' cases)</h2>'
+    +'<p>Generated: '+new Date().toLocaleDateString('en-IN')+'</p>'
+    +'<table><thead><tr>'
+    +'<th>#</th><th>Case No</th><th>Open Date</th><th>Region</th><th>State</th><th>Department</th><th>Name</th><th>Status</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div style="text-align:center;margin:20px 0">'
+    +'<button onclick="window.print()" style="background:#1565c0;color:#fff;border:none;padding:12px 30px;border-radius:8px;font-size:15px;cursor:pointer">🖨️ Print / Save as PDF</button>'
+    +'</div>'
+    +'<script>'
+    +'document.fonts.ready.then(function(){ console.log("Fonts loaded"); });'
+    +'<\/script>'
+    +'</body></html>';
+
+  var win = window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  toast('✅ Print dialog khulega — Save as PDF karo!');
+}
+// ===== END SEARCH EXPORT =====
 
 
 function onTawnKism(){
