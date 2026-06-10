@@ -350,35 +350,114 @@ window.addEventListener('DOMContentLoaded', function(){
   setTimeout(initFirebase, 50);
 });
 
-// ===== EMERGENCY PASSWORD RESET =====
+// ===== EMERGENCY PASSWORD RESET (recovery key required) =====
+// SECURITY: pehle ye function bina kisi check ke console se chal jaata tha = full account takeover.
+// Ab recovery key zaroori hai. Logged-in admin pehle setRecoveryKey() chala ke key set kare.
 async function emergencyReset(){
+  try{
+    var secSnap = await db.collection('settings').doc('security').get();
+    var recHash = secSnap.exists ? (secSnap.data().recoveryHash||'') : '';
+    if(!recHash){
+      alert('❌ Recovery key set nahi hai.\n\nPassword reset ke liye Firebase Console > Firestore > users collection mein jaake password field khud update karo,\nYA pehle admin login karke console mein setRecoveryKey() chalao.');
+      return;
+    }
+    var rk = prompt('🔑 Recovery key daalo:');
+    if(!rk) return;
+    var ok = await verifyPw(rk, recHash);
+    if(!ok){ alert('❌ Galat recovery key.'); return; }
+  }catch(e){ alert('❌ Error: '+e.message); return; }
   var uname = prompt('Admin username daalo:');
   if(!uname) return;
-  var newpw = prompt('Naya password daalo:');
-  if(!newpw) return;
+  var newpw = prompt('Naya password daalo (8+ chars):');
+  if(!newpw || newpw.length<8){ alert('❌ Password 8+ characters ka hona chahiye!'); return; }
   var confirm_pw = prompt('Password dobara daalo (confirm):');
   if(newpw !== confirm_pw){ alert('Passwords match nahi kiye!'); return; }
   try{
-    var hash = await hashPw(newpw);
-    // Check if user exists
+    var hash = await makePwHash(newpw);
     var snap = await db.collection('users').doc(uname).get();
     if(!snap.exists){ alert('User "'+uname+'" nahi mila!'); return; }
     await db.collection('users').doc(uname).update({ password: hash, mustChangePw: false });
-    alert('✅ Password reset ho gaya! Ab login karo: '+uname+' / '+newpw);
+    alert('✅ Password reset ho gaya! Ab login karo: '+uname);
   }catch(e){
     alert('❌ Error: '+e.message);
   }
 }
+// Logged-in admin ke liye: recovery key set/change karna (browser console se chalao)
+async function setRecoveryKey(){
+  if(!cu || cu.role!=='admin'){ alert('❌ Sirf logged-in admin recovery key set kar sakta hai.'); return; }
+  var rk = prompt('Nayi recovery key daalo (12+ chars, kahin safe likh lo):');
+  if(!rk || rk.length<12){ alert('❌ Recovery key 12+ characters ki honi chahiye.'); return; }
+  try{
+    var h = await makePwHash(rk);
+    await db.collection('settings').doc('security').set({recoveryHash:h, updatedAt:new Date().toISOString()},{merge:true});
+    alert('✅ Recovery key set ho gayi.');
+  }catch(e){ alert('❌ Error: '+e.message); }
+}
 // ===== END EMERGENCY RESET =====
 
-// ===== PASSWORD HASHING (SHA-256 via WebCrypto) =====
+// ===== PASSWORD HASHING =====
+// LEGACY: unsalted SHA-256 — sirf purane hashes verify/migrate karne ke liye. Naye passwords ke liye makePwHash() use karo.
 async function hashPw(pw){
   if(!pw) return '';
   const enc = new TextEncoder();
   const buf = await crypto.subtle.digest('SHA-256', enc.encode(pw));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+// NEW: PBKDF2-SHA256 with per-user random salt. Format: "v2$<iterations>$<saltHex>$<hashHex>"
+function _bufToHex(buf){ return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+function _hexToBuf(hex){ var a=new Uint8Array(hex.length/2); for(var i=0;i<a.length;i++)a[i]=parseInt(hex.substr(i*2,2),16); return a; }
+async function _pbkdf2(pw, saltHex, iters){
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', hash:'SHA-256', salt:_hexToBuf(saltHex), iterations:iters}, key, 256);
+  return _bufToHex(bits);
+}
+async function makePwHash(pw){
+  if(!pw) return '';
+  const salt = _bufToHex(crypto.getRandomValues(new Uint8Array(16)));
+  const ITERS = 150000;
+  const h = await _pbkdf2(pw, salt, ITERS);
+  return 'v2$'+ITERS+'$'+salt+'$'+h;
+}
+// Returns: true (ok), 'migrate' (ok but old format — re-hash karo), false (galat)
+async function verifyPw(pw, stored){
+  if(!pw || !stored) return false;
+  if(stored.indexOf('v2$')===0){
+    const parts = stored.split('$'); // v2, iters, salt, hash
+    if(parts.length!==4) return false;
+    const h = await _pbkdf2(pw, parts[2], parseInt(parts[1],10));
+    return h===parts[3];
+  }
+  // Legacy unsalted SHA-256 (64 hex chars)
+  if(/^[0-9a-f]{64}$/.test(stored)){
+    const legacy = await hashPw(pw);
+    return legacy===stored ? 'migrate' : false;
+  }
+  // Bahut purana: plaintext
+  return stored===pw ? 'migrate' : false;
+}
 // ===== END HASHING =====
+
+// ===== XSS PROTECTION: GLOBAL ESCAPE HELPERS =====
+function _e(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Deep-escape: object ki saari string values escape karke COPY return karta hai (original data untouched)
+function _escC(o){
+  if(o==null) return o;
+  if(typeof o==='string') return _e(o);
+  if(Array.isArray(o)) return o.map(_escC);
+  if(typeof o==='object'){
+    if(typeof o.toDate==='function') return o; // Firestore Timestamp — mat chhedo
+    var r={};
+    for(var k in o){ if(Object.prototype.hasOwnProperty.call(o,k)) r[k]=_escC(o[k]); }
+    return r;
+  }
+  return o;
+}
+// ===== END XSS PROTECTION =====
 
 </script>
 </head>
@@ -1948,7 +2027,7 @@ async function fbInit(){
     // Admin check background mein
     fbGetU().then(function(us){
       if(!us.find(function(u){return u.username==='admin';})){
-        hashPw('Admin@786#Secure').then(function(defHash){
+        makePwHash('Admin@786#Secure').then(function(defHash){
           db.collection('users').doc('admin').set({username:'admin',password:defHash,fullname:'Super Admin',role:'admin',active:true,mustChangePw:true,note:'',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},createdAt:new Date().toISOString()});
         });
       }
@@ -1976,28 +2055,15 @@ var _casesPageData = []; // current page ke full docs
 function _applyRestriction(arr){
   if(cu && cu.username !== 'admin'){
     var dr=cu.dataRestrict||{};
-    return arr.filter(function(c){
-      // Region check
-      if(dr.regions&&dr.regions.length>0){
+    if(dr.regions&&dr.regions.length>0){
+      return arr.filter(function(c){
         var cReg=(c.region||'').trim().toLowerCase();
-        var regOk=dr.regions.some(function(r){
+        return dr.regions.some(function(r){
           var rr=(r||'').trim().toLowerCase();
-          return cReg===rr||cReg===rr+' region'||cReg.replace(' region','')===rr;
+          return cReg===rr;
         });
-        if(!regOk) return false;
-      }
-      // State check — blank case dikhao
-      if(dr.states&&dr.states.length>0){var cSt=(c.state||'').trim().toLowerCase();if(cSt){var stOk=dr.states.some(function(s){return cSt===(s||'').trim().toLowerCase();});if(!stOk)return false;}}
-      // Division check — blank case dikhao
-      if(dr.divisions&&dr.divisions.length>0){var cDv=(c.division||'').trim().toLowerCase();if(cDv){var dvOk=dr.divisions.some(function(d){return cDv===(d||'').trim().toLowerCase();});if(!dvOk)return false;}}
-      // District check — blank case dikhao
-      if(dr.districts&&dr.districts.length>0){var cDi=(c.district||'').trim().toLowerCase();if(cDi){var diOk=dr.districts.some(function(d){return cDi===(d||'').trim().toLowerCase();});if(!diOk)return false;}}
-      // Dept check — blank case dikhao
-      if(dr.depts&&dr.depts.length>0){var cDepts=(c.depts&&c.depts.length?c.depts:(c.dept?[c.dept]:[])).map(function(d){return(d||'').trim().toLowerCase();});if(cDepts.length>0){var dpOk=dr.depts.some(function(d){var dd=(d||'').trim().toLowerCase();return cDepts.some(function(cd){return cd===dd||cd.indexOf(dd)>-1||dd.indexOf(cd)>-1;});});if(!dpOk)return false;}}
-      // Sael check — blank case dikhao
-      if(dr.saels&&dr.saels.length>0){var cSael=(c.sael||c.saelZimmedar||'').trim().toLowerCase();if(cSael){var saelOk=dr.saels.some(function(s){return cSael===(s||'').trim().toLowerCase();});if(!saelOk)return false;}}
-      return true;
-    });
+      });
+    }
   }
   return arr;
 }
@@ -2146,10 +2212,10 @@ function refreshMSOptions(){
 }
 
 // Login
-var _loginAttempts = 0;
-var _loginLockedUntil = 0;
+var _loginAttempts = parseInt(localStorage.getItem('sr_la')||'0');
+var _loginLockedUntil = parseInt(localStorage.getItem('sr_ll')||'0');
 async function doLogin(){
-  // Brute-force protection
+  // Brute-force protection (localStorage persist — page reload se reset nahi hoga)
   if(Date.now() < _loginLockedUntil){
     const secs = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
     const err=document.getElementById('lerr');
@@ -2162,28 +2228,35 @@ async function doLogin(){
   if(!u||!p){err.style.display='block';err.textContent='❌ Enter username and password';return;}
   err.style.display='none';btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
-    // Try hashed password first
-    const ph=await hashPw(p);
-    let s=await db.collection('users').where('username','==',u).where('password','==',ph).limit(1).get();
-    // If not found, try plaintext (old accounts) and auto-migrate
-    if(s.empty){
-      s=await db.collection('users').where('username','==',u).where('password','==',p).limit(1).get();
-      if(!s.empty){
-        // Migrate: update to hashed password
-        await db.collection('users').doc(s.docs[0].id).update({password:ph});
-      }
+    // SECURITY FIX: password ko query mein mat bhejo — sirf username se user lao, password locally verify karo
+    let s=await db.collection('users').where('username','==',u).limit(1).get();
+    let ok=false, doc=null;
+    if(!s.empty){
+      doc=s.docs[0];
+      ok=await verifyPw(p, doc.data().password||'');
     }
-    if(s.empty){err.style.display='block';err.textContent='❌ Invalid username or password';
+    if(!ok){
+      err.style.display='block';err.textContent='❌ Invalid username or password';
       _loginAttempts++;
+      localStorage.setItem('sr_la', String(_loginAttempts));
       if(_loginAttempts >= 5){
         _loginLockedUntil = Date.now() + 60000; // 60 second lockout
         _loginAttempts = 0;
+        localStorage.setItem('sr_la','0');
+        localStorage.setItem('sr_ll', String(_loginLockedUntil));
         err.textContent='❌ Bahut zyada galat attempts. 60 seconds ke liye lock ho gaya.';
       }
-      btn.textContent='🔐 Login';btn.disabled=false;return;}
-    const ud={id:s.docs[0].id,...s.docs[0].data()};
+      btn.textContent='🔐 Login';btn.disabled=false;return;
+    }
+    // Purana hash format tha? PBKDF2 pe migrate karo
+    if(ok==='migrate'){
+      try{ await db.collection('users').doc(doc.id).update({password: await makePwHash(p)}); }catch(_m){}
+    }
+    const ud={id:doc.id,...doc.data()};
     if(ud.active===false){err.style.display='block';err.textContent='❌ Account inactive';btn.textContent='🔐 Login';btn.disabled=false;return;}
-    _loginAttempts = 0; // Reset on success
+    _loginAttempts = 0; localStorage.setItem('sr_la','0'); localStorage.removeItem('sr_ll');
+    // SECURITY FIX: password hash session/memory mein store mat karo
+    delete ud.password;
     cu=ud;const sess={...ud,loginAt:Date.now()};localStorage.setItem('sr_s',JSON.stringify(sess));launch();
   }catch(e){console.error('Login error:',e);err.style.display='block';err.textContent='❌ Login failed. Please try again.';btn.textContent='🔐 Login';btn.disabled=false;}
 }
@@ -2199,7 +2272,7 @@ async function restoreS(){
       return;
     }
     const sn=await db.collection('users').doc(ud.id).get();
-    if(sn.exists&&(sn.data().active!==false)){cu={id:sn.id,...sn.data()};launch();}
+    if(sn.exists&&(sn.data().active!==false)){cu={id:sn.id,...sn.data()};delete cu.password;launch();}
     else localStorage.removeItem('sr_s');
   }catch(e){localStorage.removeItem('sr_s');}
 }
@@ -2234,7 +2307,7 @@ function launch(){
   startListener();
   // Background mein fresh user data + users list
   db.collection('users').doc(cu.id).get().then(function(sn){
-    if(sn.exists){ cu={id:sn.id,...sn.data()}; localStorage.setItem('sr_s',JSON.stringify({...cu,loginAt:Date.now()})); }
+    if(sn.exists){ cu={id:sn.id,...sn.data()}; delete cu.password; localStorage.setItem('sr_s',JSON.stringify({...cu,loginAt:Date.now()})); }
   }).catch(function(){});
   fbGetU().then(rUsers);
   setTimeout(initSearchableSelects,400);
@@ -2314,28 +2387,7 @@ function goPage(pg,el,skipHistory){
   requestAnimationFrame(function(){
     if(pg==='dash')         rDash();
     else if(pg==='cases')   rCases();
-    else if(pg==='reports'){
-      // Pehli baar open ho to clear, warna saved filters restore karo
-      var _repSaved = sessionStorage.getItem('repFilters');
-      if(_repSaved){
-        try{
-          var _rf = JSON.parse(_repSaved);
-          var _ry = document.getElementById('repYear');
-          var _rm = document.getElementById('repMonth');
-          var _rq = document.getElementById('repFilter');
-          var _rfd = document.getElementById('repFrom');
-          var _rtd = document.getElementById('repTo');
-          if(_ry && _rf.year !== undefined) _ry.value = _rf.year;
-          if(_rm && _rf.month !== undefined) _rm.value = _rf.month;
-          if(_rq && _rf.quick) _rq.value = _rf.quick;
-          if(_rfd && _rf.from) _rfd.value = _rf.from;
-          if(_rtd && _rf.to) _rtd.value = _rf.to;
-        }catch(e){}
-      } else {
-        repClearFilters();
-      }
-      rRep();
-    }
+    else if(pg==='reports'){ repClearFilters(); rRep(); }
     else if(pg==='settings'){
       lmRenderTCategory(); lmRenderTPurpose(); lmLoadFirebaseRegions();
       setTimeout(lmLoadSettings, 30);
@@ -2910,6 +2962,7 @@ function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.
 const THF=['#','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
 function setTH(el,hs){el.innerHTML=hs.map(h=>`<th>${h}</th>`).join('');}
 function mRow(c,i,sh){
+  c=_escC(c); // XSS FIX: saari user-entered values escape (subject, remarks, names, region...)
   const ab=`${hp('edit')?'<button class="btn bsm" style="background:#e3f2fd;color:var(--blue);padding:3px 7px" onclick="editC(\''+c.id+'\')">✏️</button> ':''}${hp('del')?'<button class="btn bred bsm" style="padding:3px 7px" onclick="delC(\''+c.id+'\')">🗑️</button>':''}`;
   const UF="font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:rtl;text-align:right;line-height:2;font-size:.8rem;";
   const loc=`<div style="font-size:.75rem;line-height:1.5">${c.region?'<span style="color:var(--bd);font-weight:600">'+c.region+'</span><br>':''}${c.state?c.state:''}${c.district?' / '+c.district:''}${c.city?' · <span style="color:var(--mt)">'+c.city+'</span>':''}</div>`;
@@ -3069,10 +3122,11 @@ function rRegCards(){
     var seen = {};
     src.forEach(function(c){ if(c.region && !seen[c.region]){ seen[c.region]=true; _allowedRegs.push(c.region); }});
   }
-  document.getElementById('regCards').innerHTML=_allowedRegs.map(r=>{
-    const s=rs[r]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
-    const t=tw[r];
-    const h=hf[r];
+  document.getElementById('regCards').innerHTML=_allowedRegs.map(rRaw=>{
+    const r=_e(rRaw); // XSS FIX: region naam data se aata hai
+    const s=rs[rRaw]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
+    const t=tw[rRaw];
+    const h=hf[rRaw];
     const tawnRow=t?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid #ffe0b2;padding:4px 0;background:#fff8f5;border-radius:0 0 4px 4px;margin-top:2px">
       <div onclick="fByRG('${r}','tawan')" style="text-align:center;font-size:.7rem;font-weight:700;color:#e65100;padding:2px;cursor:pointer">💰 Tawan</div>
       <div onclick="fByRG('${r}','tawan')" style="text-align:center;cursor:pointer" title="All Tawan"><div style="font-size:.82rem;font-weight:800;color:#e65100">${t.t}</div><div style="font-size:.56rem;color:var(--mt)">Total</div></div>
@@ -3818,16 +3872,6 @@ function rRep(){
   var months=['','January','February','March','April','May','June','July','August','September','October','November','December'];
   var selYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
   var selMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
-  // Filters save karo sessionStorage mein
-  try{
-    sessionStorage.setItem('repFilters', JSON.stringify({
-      year: (document.getElementById('repYear')||{}).value||'',
-      month: (document.getElementById('repMonth')||{}).value||'',
-      quick: (document.getElementById('repFilter')||{}).value||'all',
-      from: (document.getElementById('repFrom')||{}).value||'',
-      to: (document.getElementById('repTo')||{}).value||''
-    }));
-  }catch(e){}
   var quickVal = (document.getElementById('repFilter')||{}).value || 'all';
 
   // Future date warning
@@ -4232,7 +4276,7 @@ function rRep(){
     {size: Object.keys(bS).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickStatus(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(e[0])+'\',\'all\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: Object.keys(bSt).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(decodeURIComponent(this.dataset.dept))" data-dept="'+encodeURIComponent(e[0])+'" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;tawan_all&quot;)" title="Tamam Tawan cases"><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_received&quot;)" title="Received Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_pending&quot;)" title="Pending Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;halfia_all&quot;)" title="Tamam Halfiya cases"><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_done&quot;)" title="Done cases"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_pending&quot;)" title="Pending cases"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>'}
   ];
@@ -4624,7 +4668,8 @@ function editC(id){
 }
 function viewC(id, readOnly){
   resetHideRows();
-  const c=cc.find(x=>x.id===id);if(!c)return;
+  var c=cc.find(x=>x.id===id);if(!c)return;
+  c=_escC(c); // XSS FIX: detail modal mein bhi sab escape
   const yn=v=>v==='yes'?'<span class="badge bg">✅ Yes</span>':v==='no'?'<span class="badge br">❌ No</span>':v==='refused'?'<span class="badge br">⛔ Refused</span>':v==='partial'?'<span class="badge bo">🔸 Partial</span>':'—';
   const tfL={zubani:'Zubani',hr_nama:'HR Tafhim Nama',written:'Written'};
   const pmL={dept:'HR Salary Deduction',fin:'Finance Office',acc:'Account Deposit',other:'Other'};
@@ -4668,18 +4713,8 @@ function viewC(id, readOnly){
 function rUsers(){
   const rL={admin:'Administrator',staff:'Staff',viewer:'Viewer'};
   const dL={'admin':'🔑 Admin','superadmin':'⭐ Super Admin','nazim_ala':'🏛️ Nazim e Ala','nazim':'📋 Nazim','naib_nazim':'📋 Naib Nazim','muhtamim':'🗂️ Muhtamim','naib_muhtamim':'🗂️ Naib Muhtamim','mufattish':'🔍 Mufattish','sael_zimmedar':'📞 Sael Zimmedar','zimmedar':'✅ Zimmedar','viewer_basic':'👁️ Viewer Basic','viewer_report':'📊 Viewer+Reports','viewer_tawan':'💰 Viewer+Tawan'};
-  // Non-superadmin: sirf apne region ke users dikhao
-  var _ucFiltered = uc;
-  if(cu && cu.username !== 'admin'){
-    var _cuRegions = (cu.dataRestrict&&cu.dataRestrict.regions&&cu.dataRestrict.regions.length>0) ? cu.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
-    if(_cuRegions.length>0){
-      _ucFiltered = uc.filter(function(u){
-        var uRegions = (u.dataRestrict&&u.dataRestrict.regions&&u.dataRestrict.regions.length>0) ? u.dataRestrict.regions.map(function(r){return (r||'').toLowerCase();}) : [];
-        return uRegions.some(function(r){ return _cuRegions.indexOf(r)>-1; });
-      });
-    }
-  }
-  document.getElementById('uList').innerHTML=_ucFiltered.map(u=>{
+  document.getElementById('uList').innerHTML=uc.map(u=>{
+    u=_escC(u); // XSS FIX: fullname/username/note escape
     const act=u.active!==false;
     const dr=u.dataRestrict||{};
     const drLabels={regions:'Region',states:'State',divisions:'Division',districts:'District',saels:'Sael',depts:'Department'};
@@ -4692,7 +4727,6 @@ function rUsers(){
           🔒 <b>Data Restrict:</b> ${drKeys.map(function(k){var v=dr[k];var display=Array.isArray(v)?v.join(', '):v;return (drLabels[k]||k)+': <b>'+display+'</b>';}).join(' | ')}
         </div>`
       :`<div style="margin-top:4px;font-size:.64rem;color:#aaa">🔓 No restriction (sab data dikhega)</div>`;
-    const _isSuper = cu && cu.username === 'admin';
     return`<div class="ucard ${u.role==='admin'?'adm':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -4702,16 +4736,16 @@ function rUsers(){
             <div style="font-size:.69rem;color:var(--mt)">@${u.username}${u.note?' — '+u.note:''}</div>
           </div>
         </div>
-        ${_isSuper?`<div style="display:flex;gap:4px;flex-wrap:wrap">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn bpri bsm" onclick="openUM('${u.id}')">✏️ Edit</button>
           <button class="btn bsm" style="background:#fff8e1;border:1px solid #ffe082;color:#e65100" onclick="openResetPw('${u.id}')">🔑 Reset PW</button>
           ${u.username!=='admin'?`<button class="btn bred bsm" onclick="dUser('${u.id}')">🗑️</button>`:''}
-        </div>`:''}
+        </div>
       </div>
-      ${_isSuper?`<div style="display:flex;flex-wrap:wrap;gap:2px">
+      <div style="display:flex;flex-wrap:wrap;gap:2px">
         ${Object.entries(u.perms||{}).filter(([k,v])=>v).map(([k])=>`<span style="background:#e3f2fd;color:var(--blue);padding:1px 6px;border-radius:8px;font-size:.61rem;border:1px solid #90caf9">${k}</span>`).join('')}
       </div>
-      ${drHtml}`:''}
+      ${drHtml}
     </div>`;
   }).join('')||'<p style="color:var(--mt);padding:18px">No users</p>';
 }
@@ -4937,11 +4971,7 @@ function initUDRestrict(savedDR){
   if(dr.district && !dr.districts) dr.districts = [dr.district];
   if(dr.sael && !dr.saels) dr.saels = [dr.sael];
   if(dr.dept && !dr.depts) dr.depts = [dr.dept];
-  // Non-superadmin: sirf apne allowed regions
   var regions = Object.keys(HIER);
-  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.regions && cu.dataRestrict.regions.length>0){
-    regions = regions.filter(function(r){ return cu.dataRestrict.regions.indexOf(r)>-1; });
-  }
 
   // REGION
   drRenderBox('uDRegBox', regions, dr.regions||[], 'drRegionChanged()');
@@ -4989,19 +5019,11 @@ function initUDRestrict(savedDR){
     document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
   }
 
-  // SAEL — non-superadmin: sirf apne allowed saels
-  var _saelList = SAEL;
-  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.saels && cu.dataRestrict.saels.length>0){
-    _saelList = SAEL.filter(function(s){ return cu.dataRestrict.saels.indexOf(s)>-1; });
-  }
-  drRenderBox('uDSaelBox', _saelList, dr.saels||[], '');
+  // SAEL
+  drRenderBox('uDSaelBox', SAEL, dr.saels||[], '');
 
-  // DEPT — non-superadmin: sirf apne allowed depts
-  var _deptList = DEPTS;
-  if(cu && cu.username !== 'admin' && cu.dataRestrict && cu.dataRestrict.depts && cu.dataRestrict.depts.length>0){
-    _deptList = DEPTS.filter(function(d){ return cu.dataRestrict.depts.indexOf(d)>-1; });
-  }
-  drRenderBox('uDDeptBox', _deptList, dr.depts||[], '');
+  // DEPT
+  drRenderBox('uDDeptBox', DEPTS, dr.depts||[], '');
 }
 // ===== END USER DATA RESTRICTION =====
 // ===== DESIGNATION PRESET SYSTEM =====
@@ -5070,7 +5092,7 @@ async function saveUser(){
   Object.keys(cleanDR).forEach(function(k){if(!cleanDR[k])delete cleanDR[k];});
   var finalPw;
   if(pw){
-    finalPw = await hashPw(pw);
+    finalPw = await makePwHash(pw);
   } else if(eUId){
     // Keep existing password
     var existingUser = uc.find(function(x){return x.id===eUId;});
@@ -5091,6 +5113,7 @@ async function saveUser(){
     // If admin edits self, refresh cu immediately
     if(eUId && cu && cu.id === eUId){
       cu = {...cu, ...d, id:eUId};
+      delete cu.password; // SECURITY: hash session mein nahi jaana chahiye
       localStorage.setItem('sr_s', JSON.stringify({...cu, loginAt:Date.now()}));
       cacheInvalidate(); // restriction change — fresh data zaroori
       startListener();
@@ -5117,10 +5140,18 @@ async function chPass(){
   if(!op||!np){toast('❌ All fields required');return;}
   if(np!==cp){toast('❌ Mismatch');return;}
   if(np.length<8){toast('❌ Password 8+ characters ka hona chahiye');return;}
-  const oph=await hashPw(op);
-  if(cu.password!==oph){toast('❌ Wrong password');return;}
-  const nph=await hashPw(np);
-  try{await db.collection('users').doc(cu.id).update({password:nph,mustChangePw:false,updatedAt:new Date().toISOString()});cu.password=nph;const s=JSON.parse(localStorage.getItem('sr_s')||'{}');s.password=nph;s.mustChangePw=false;localStorage.setItem('sr_s',JSON.stringify(s));toast('✅ Changed!');['oP','nP','cP'].forEach(id=>document.getElementById(id).value='');}catch(e){toast('❌ '+e.message);}
+  // SECURITY FIX: cu.password ab session mein store nahi hota — fresh Firestore se verify karo
+  try{
+    const usn=await db.collection('users').doc(cu.id).get();
+    if(!usn.exists){toast('❌ User not found');return;}
+    const ok=await verifyPw(op, usn.data().password||'');
+    if(!ok){toast('❌ Wrong password');return;}
+    const nph=await makePwHash(np);
+    await db.collection('users').doc(cu.id).update({password:nph,mustChangePw:false,updatedAt:new Date().toISOString()});
+    cu.mustChangePw=false;
+    const s=JSON.parse(localStorage.getItem('sr_s')||'{}');delete s.password;s.mustChangePw=false;localStorage.setItem('sr_s',JSON.stringify(s));
+    toast('✅ Changed!');['oP','nP','cP'].forEach(id=>document.getElementById(id).value='');
+  }catch(e){toast('❌ '+e.message);}
 }
 
 // Utils
@@ -5404,18 +5435,12 @@ function gtClick(type){
       return !closed && od && od < thisMonthStart;
     };
   } else if(type==='mojuda'){
-    // Moujuda = report ke selected filter ke hisaab se
-    var _df_m = _repDateFilter();
-    var _rY_m = parseInt((document.getElementById('repYear')||{}).value||'')||0;
-    var _rQ_m = (document.getElementById('repFilter')||{}).value||'all';
-    if(_df_m){
-      doSrch._customFilter = _df_m;
-    } else if(_rY_m && _rQ_m==='all'){
-      var _fy_m = _rY_m;
-      doSrch._customFilter = function(c){ return String(c.year||'')===String(_fy_m); };
-    } else {
-      doSrch._customFilter = null;
-    }
+    // Moujuda = cases jo is mahine khule hain
+    var thisMonthStart2 = new Date(); thisMonthStart2.setDate(1); thisMonthStart2.setHours(0,0,0,0);
+    doSrch._customFilter = function(c){
+      var od = c.openDate ? new Date(c.openDate) : null;
+      return od && od >= thisMonthStart2;
+    };
   } else if(type==='tawan_all'){
     doSrch._customFilter = function(c){ var g=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]); return g.indexOf('tawan')>-1; };
   } else if(type==='tawan_received'){
@@ -5853,7 +5878,7 @@ function renderTawan(){
 
   // Nafila = tTot - tPd (total - received = remaining)
   // Wajiba = tPd (received)
-  tbody.innerHTML = filtered.map((c,i)=>`
+  tbody.innerHTML = filtered.map((cRaw,i)=>{const c=_escC(cRaw); /* XSS FIX */ return `
     <tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')">
       <td style="font-weight:800;color:var(--bd)">${i+1}</td>
       <td>${c.mufattish||'—'}</td>
@@ -5887,7 +5912,7 @@ function renderTawan(){
         ${hp('del')?`<button class="btn bred bsm" style="padding:3px 7px" onclick="delC('${c.id}')">🗑️</button>`:''}
       </td>
     </tr>
-  `).join('');
+  `;}).join('');
 }
 
 function clrTawanFilter(){
@@ -6557,7 +6582,7 @@ async function doResetPw(){
   }
   if(!_resetUId){ cmo('mResetPw'); return; }
   try{
-    const nph3=await hashPw(np);await db.collection('users').doc(_resetUId).update({password: nph3, mustChangePw: true, updatedAt: new Date().toISOString()});
+    const nph3=await makePwHash(np);await db.collection('users').doc(_resetUId).update({password: nph3, mustChangePw: true, updatedAt: new Date().toISOString()});
     // Update local cache
     var u = uc.find(function(x){return x.id===_resetUId;});
     if(u) u.password = nph3;
@@ -6936,26 +6961,26 @@ async function repDownloadExcel(selectedRegions){
   // سابقہ = range se pehle ke pending; موجودہ = range mein naye; کل = sabiqa+moujuda
   // حل شدہ = range mein close hue; پینڈنگ = کل - حل شدہ
 
-  // fromD / toD — same logic as rRep
+  // Calculate _exFromD and _exToD from current filter
   var _exFromD = null, _exToD = null;
-  var _months2=['','January','February','March','April','May','June','July','August','September','October','November','December'];
-  if(quickVal==='thismonth'){ _exFromD=new Date(now.getFullYear(),now.getMonth(),1); _exToD=new Date(now.getFullYear(),now.getMonth()+1,0); }
-  else if(quickVal==='lastmonth'){ var _lmY2=now.getFullYear(),_lmM2=now.getMonth()-1; if(_lmM2<0){_lmY2--;_lmM2=11;} _exFromD=new Date(_lmY2,_lmM2,1); _exToD=new Date(_lmY2,_lmM2+1,0); }
-  else if(quickVal==='lastyear'){ _exFromD=new Date(now.getFullYear()-1,0,1); _exToD=new Date(now.getFullYear()-1,11,31); }
-  else if(quickVal==='thisyear'){ _exFromD=new Date(now.getFullYear(),0,1); _exToD=new Date(now.getFullYear(),11,31); }
+  var _exNow = new Date();
+  if(quickVal==='thismonth'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth(),1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
+  else if(quickVal==='lastmonth'){ var _exlmY=_exNow.getMonth()===0?_exNow.getFullYear()-1:_exNow.getFullYear(),_exlmM=_exNow.getMonth()===0?11:_exNow.getMonth()-1; _exFromD=new Date(_exlmY,_exlmM,1); _exToD=new Date(_exlmY,_exlmM+1,0); }
+  else if(quickVal==='last3'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth()-2,1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
+  else if(quickVal==='last6'){ _exFromD=new Date(_exNow.getFullYear(),_exNow.getMonth()-5,1); _exToD=new Date(_exNow.getFullYear(),_exNow.getMonth()+1,0); }
+  else if(quickVal==='thisyear'){ _exFromD=new Date(_exNow.getFullYear(),0,1); _exToD=new Date(_exNow.getFullYear(),11,31); }
+  else if(quickVal==='lastyear'){ _exFromD=new Date(_exNow.getFullYear()-1,0,1); _exToD=new Date(_exNow.getFullYear()-1,11,31); }
   else if(quickVal==='custom'){
-    var _rf2=(document.getElementById('repFrom')||{}).value||''; var _rt2=(document.getElementById('repTo')||{}).value||'';
-    if(_rf2){ var _p=_rf2.split('-'); _exFromD=new Date(parseInt(_p[0]),parseInt(_p[1])-1,parseInt(_p[2]),0,0,0,0); }
-    if(_rt2){ var _p2=_rt2.split('-'); _exToD=new Date(parseInt(_p2[0]),parseInt(_p2[1])-1,parseInt(_p2[2]),23,59,59,999); }
-  } else {
-    if(selYear && selMonth){ _exFromD=new Date(selYear,selMonth-1,1); _exToD=new Date(selYear,selMonth,0); }
-    else if(selYear){ _exFromD=new Date(selYear,0,1); _exToD=new Date(selYear,11,31); }
-    else if(selMonth){ _exFromD=new Date(now.getFullYear(),selMonth-1,1); _exToD=new Date(now.getFullYear(),selMonth,0); }
+    var _exRepFrom=(document.getElementById('repFrom')||{}).value||'';
+    var _exRepTo=(document.getElementById('repTo')||{}).value||'';
+    if(_exRepFrom){ var _pf=_exRepFrom.split('-'); _exFromD=new Date(parseInt(_pf[0]),parseInt(_pf[1])-1,parseInt(_pf[2])); }
+    if(_exRepTo){ var _pt=_exRepTo.split('-'); _exToD=new Date(parseInt(_pt[0]),parseInt(_pt[1])-1,parseInt(_pt[2]),23,59,59); }
+    if(!monthLabel) monthLabel = (_exRepFrom||'?')+' to '+(_exRepTo||'?');
   }
-  var fromD = _exFromD;
-  var toD = _exToD;
+  else if(selYear&&selMonth){ _exFromD=new Date(selYear,selMonth-1,1); _exToD=new Date(selYear,selMonth,0); }
+  else if(selYear){ _exFromD=new Date(selYear,0,1); _exToD=new Date(selYear,11,31); }
 
-  var _exRangeEnd = toD || new Date();
+  var _exRangeEnd = _exToD || new Date();
 
   // Step 1: موجودہ — range ke andar khule cases
   cc.forEach(function(c){
@@ -6963,7 +6988,7 @@ async function repDownloadExcel(selectedRegions){
     if(!rStats[r]) return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
-    var inRange = (!fromD || od >= fromD) && od <= _exRangeEnd;
+    var inRange = (!_exFromD || od >= _exFromD) && od <= _exRangeEnd;
     if(inRange) rStats[r].moujuda++;
   });
 
@@ -6977,7 +7002,7 @@ async function repDownloadExcel(selectedRegions){
     var cd = _exParseDate(c.closeDate);
     var closed = (c.status||'').toLowerCase()==='closed';
     if(!od) return;
-    if(!fromD || od >= fromD) return;
+    if(!_exFromD || od >= _exFromD) return;
     if(_exSabiqaYearBound && od < _exSabiqaYearBound) return;
     // Range start tak PENDING tha:
     // - Abhi bhi open/pending → count karo
@@ -6985,7 +7010,7 @@ async function repDownloadExcel(selectedRegions){
     // - Close hua aur closeDate blank ya range se pehle → MAT count karo
     if(!closed) {
       rStats[r].sabiqa++;
-    } else if(cd && cd >= fromD) {
+    } else if(cd && cd >= _exFromD) {
       rStats[r].sabiqa++;
     }
   });
@@ -6995,7 +7020,7 @@ async function repDownloadExcel(selectedRegions){
     rStats[r].kul = rStats[r].sabiqa + rStats[r].moujuda;
   });
 
-  // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
+  // Step 4: حل شدہ — range ke andar close hue cases
   var _exSabYB2 = selYear ? new Date(selYear, 0, 1) : null;
   cc.forEach(function(c){
     var r = c.region||'Unknown';
@@ -7003,11 +7028,13 @@ async function repDownloadExcel(selectedRegions){
     if((c.status||'').toLowerCase()!=='closed') return;
     var od = _exParseDate(c.openDate);
     if(!od) return;
-    var inMoujuda = (!fromD || od >= fromD) && od <= _exRangeEnd;
-    var inSabiqa  = fromD && od < fromD && (!_exSabYB2 || od >= _exSabYB2);
+    var inMoujuda = (!_exFromD || od >= _exFromD) && od <= _exRangeEnd;
+    var inSabiqa  = _exFromD && od < _exFromD && (!_exSabYB2 || od >= _exSabYB2);
+    if(!(inMoujuda || inSabiqa)) return;
     var cd2 = _exParseDate(c.closeDate);
     if(cd2){
-      if(cd2 >= (fromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
+      // closeDate range ke andar hona chahiye
+      if(cd2 >= (_exFromD || new Date(0)) && cd2 <= _exRangeEnd) rStats[r].hal++;
     } else {
       // closeDate blank — sirf moujuda cases count karo
       if(inMoujuda) rStats[r].hal++;
@@ -7218,7 +7245,25 @@ function repDownloadPDF(){
     }
   });
 
+  // Cases detail table
+  var nextY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('Cases Detail ('+fcc.length+' cases)', 14, nextY);
 
+  var caseRows = fcc.slice(0,500).map(function(c,i){
+    return [i+1, c.caseNo||'', c.openDate||'', c.name||'', c.region||'', c.state||'', c.dept||'', c.status||''];
+  });
+
+  doc.autoTable({
+    startY: nextY+3,
+    head:[['#','Case No','Open Date','Name','Region','State','Department','Status']],
+    body: caseRows,
+    theme:'striped',
+    headStyles:{fillColor:[21,101,192],textColor:255,fontStyle:'bold',fontSize:8},
+    bodyStyles:{fontSize:7.5},
+    columnStyles:{0:{cellWidth:8,halign:'center'},1:{cellWidth:20},2:{cellWidth:20},3:{cellWidth:35},4:{cellWidth:20},5:{cellWidth:20},6:{cellWidth:45},7:{cellWidth:20}},
+  });
 
   var fname = 'Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
