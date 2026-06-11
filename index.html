@@ -336,6 +336,8 @@ function initFirebase(){
       });
     }
     db=firebase.firestore();
+    // AUTH: persistence LOCAL — refresh pe auth signed-in bana rahe
+    try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(_p){}
     // Test connection
     fbInit().then(restoreS).catch(function(e){
       console.error('fbInit error:',e);
@@ -2309,6 +2311,14 @@ async function restoreS(){
       localStorage.removeItem('sr_s');
       return;
     }
+    // AUTH: refresh pe Firebase auth async restore hota hai — uska wait karo,
+    // warna cases load karte waqt "insufficient permissions" aata hai.
+    await new Promise(function(res){
+      if(!firebase.auth){ res(); return; }
+      var done=false;
+      var unsub=firebase.auth().onAuthStateChanged(function(){ if(!done){done=true; if(unsub)unsub(); res();} });
+      setTimeout(function(){ if(!done){done=true; if(unsub)unsub(); res();} }, 4000); // safety timeout
+    });
     const sn=await db.collection('users').doc(ud.id).get();
     if(sn.exists&&(sn.data().active!==false)){cu={id:sn.id,...sn.data()};delete cu.password;launch();}
     else localStorage.removeItem('sr_s');
