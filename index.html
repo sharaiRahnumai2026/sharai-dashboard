@@ -4284,31 +4284,22 @@ function rRep(){
     regionStats[r].kulMasail = regionStats[r].sabiqa + regionStats[r].moujuda;
   });
 
-  // Step 4: حل شدہ — sirf کل ke cases mein se jo close hue
-  // Shart: closeDate range ke ANDAR hona chahiye (ya blank to openDate se judge karo)
+  // Step 4: حل شدہ aur پینڈنگ — kul ke andar ke cases mein se.
+  // پینڈنگ ko SEEDHA non-closed ginke nikaalte hain (taaki card pe number aur click
+  // karne pe Search results bilkul match karein). halShuda = kul − pending.
   cc.forEach(function(c){
     var r = c.region||'Unknown';
     if(!regionStats[r]) return;
-    if(!isClosed(c)) return;
     var od = parseLocalDate(c.openDate);
-    var cd = parseLocalDate(c.closeDate);
     if(!od) return;
-    // Case کل mein hona chahiye: ya sabiqa ya moujuda
     var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
     var inSabiqa = fromD && od < fromD && (!_sabiqaYearBound || od >= _sabiqaYearBound);
-    if(!(inMoujuda || inSabiqa)) return;
-    // closeDate check: agar closeDate hai to woh range ke andar hona chahiye
-    // agar closeDate blank hai to status=closed ko hi trust karo (inMoujuda ya inSabiqa dono mein)
-    if(cd){
-      if(cd >= (fromD || new Date(0)) && cd <= _rangeEnd) regionStats[r].halShuda++;
-    } else {
-      // closeDate blank — sirf moujuda cases count karo (range ke andar khule)
-      // sabiqa cases ke liye closeDate zaroori hai, warna count nahi hoga
-      if(inMoujuda) regionStats[r].halShuda++;
-    }
+    if(!(inMoujuda || inSabiqa)) return; // case کل mein nahi
+    if(isClosed(c)) regionStats[r].halShuda++;
+    else regionStats[r].pending++;
   });
 
-  // Step 5: پینڈنگ = کل - حل شدہ
+  // Step 5: ensure consistency — کل = حل شدہ + پینڈنگ
   Object.keys(regionStats).forEach(function(r){
     var s = regionStats[r];
     s.pending = Math.max(0, s.kulMasail - s.halShuda);
