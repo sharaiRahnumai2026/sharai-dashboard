@@ -1999,7 +1999,7 @@ var _CACHE_KEY = 'sab_cases_cache';   // (use _ckData())
 var _CACHE_TS_KEY = 'sab_cases_ts';   // (use _ckTs())
 // No TTL — cache tab tak rehta hai jab tak case save/delete/manual refresh na ho
 
-var _CACHE_TTL = 5 * 60 * 1000; // 5 minutes — iske baad server se fresh data lega
+var _CACHE_TTL = 30 * 60 * 1000; // 30 minutes — reads bachane ke liye (apne edits turant cache update hote hain)
 
 function cacheLoad(){
   try{
@@ -2164,7 +2164,7 @@ function startListener(){
     _processCasesRaw(_cached);
     // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
     var _cacheAge = Date.now() - parseInt(localStorage.getItem(_ckTs())||'0');
-    if(_cacheAge > 4 * 60 * 1000){
+    if(_cacheAge > 25 * 60 * 1000){
       setTimeout(function(){
         casesQuery().get({source:'server'}).then(function(s){
           if(s.docs.length > 0){
@@ -2209,14 +2209,45 @@ function startListener(){
     });
 }
 
+// ===== READ-SAVING: SINGLE-DOC UPDATES =====
+// Pehle har edit/add/delete par poore cases dobara padhe jaate the (mehenga).
+// Ab sirf 1 doc patch karte hain — Firebase reads bahut kam.
+function _rerenderCurrent(){
+  if(_currentPg==='dash'){ updStats(); renderDashYearTabs(); rRegCards(); rDash(); }
+  else if(_currentPg==='cases'){ rCases(); updStats(); }
+  else if(_currentPg==='tawan'){ renderTawan(); }
+  else if(_currentPg==='search'){ doSrch(); }
+  else if(_currentPg==='reports'){ rRep(); }
+  else { updStats(); }
+}
+function _ccResort(){ cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;}); }
+// 1 doc server se laao aur cc + cache mein patch karo (full reload nahi)
+function refreshOneCase(id){
+  return db.collection('cases').doc(id).get().then(function(d){
+    if(!d.exists){ removeOneCase(id); return; }
+    var obj = Object.assign({id:d.id}, d.data());
+    var i = cc.findIndex(function(c){return c.id===id;});
+    if(i>=0) cc[i]=obj; else cc.push(obj);
+    _ccResort();
+    try{ cacheSave(cc.slice()); }catch(e){}
+    _rerenderCurrent();
+  }).catch(function(e){ console.warn('refreshOneCase:',e); reloadCases(); });
+}
+// cc se ek case hatao (0 reads)
+function removeOneCase(id){
+  cc = cc.filter(function(c){return c.id!==id;});
+  try{ cacheSave(cc.slice()); }catch(e){}
+  _rerenderCurrent();
+}
+// ===== END SINGLE-DOC UPDATES =====
+
 function reloadCases(){
-  // Cache invalidate ho chuka hai (save/delete ke baad) — server se fresh lo
+  // Cache invalidate ho chuka hai — server se fresh lo (full reload, rarely needed)
   casesQuery().get({source:'server'}).then(function(s){
     var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-    cacheSave(allCases); // naya cache save karo
+    cacheSave(allCases);
     _processCases(s.docs);
   }).catch(function(){
-    // Server nahi mila — cache se try karo
     casesQuery().get({source:'cache'}).then(function(s){
       if(s.docs.length > 0) _processCases(s.docs);
     }).catch(function(e){ console.warn('reloadCases:',e); });
@@ -4611,10 +4642,10 @@ async function saveCase(){
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
       tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
-    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();reloadCases();toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
+    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection('cases').add(data);cacheInvalidate();reloadCases();
+      var _newRef=await db.collection('cases').add(data);cacheInvalidate();refreshOneCase(_newRef.id);
       toast('✅ Case saved!');
     }
     eId=null;
@@ -4626,7 +4657,7 @@ async function saveCase(){
     goPage(_prevPg);
   }catch(e){toast('❌ '+e.message);}
 }
-async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();cacheInvalidate();reloadCases();toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
+async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();cacheInvalidate();removeOneCase(id);toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
 function editC(id){
   window._savedScrollY = window.scrollY || 0;
   const c=cc.find(x=>x.id===id);if(!c)return;
@@ -5702,7 +5733,12 @@ async function bulkDelete(){
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   var cnt=selectedCases.size;
   if(!confirm(cnt+' cases DELETE karein? Undo nahi hoga!'))return;
-  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).delete();}));reloadCases();
+  var _ids=Array.from(selectedCases);
+  await Promise.all(_ids.map(function(id){return db.collection('cases').doc(id).delete();}));
+  cacheInvalidate();
+  _ids.forEach(function(id){ cc = cc.filter(function(c){return c.id!==id;}); });
+  try{ cacheSave(cc.slice()); }catch(e){}
+  _rerenderCurrent();
   selectedCases.clear();updateBulkBar();toast('🗑️ '+cnt+' cases deleted!');
 }
 
