@@ -462,6 +462,41 @@ function _escC(o){
 }
 // ===== END XSS PROTECTION =====
 
+// Rich-text fields (subject/rahnumai/remarks) mein purana HTML formatting save hai.
+// List/table mein use saaf text dikhane ke liye tags strip karte hain (data untouched).
+function _stripTags(s){
+  s = String(s==null?'':s);
+  s = s.replace(/&nbsp;/gi,' ');                 // &nbsp; -> space
+  s = s.replace(/<br\s*\/?>/gi,' ').replace(/<\/(p|div|li)>/gi,' '); // line breaks -> space
+  s = s.replace(/<[^>]*>/g,'');                  // baaki saare tags hatao
+  s = s.replace(/&amp;/gi,'&');                  // double-encoded & theek karo
+  s = s.replace(/\s+/g,' ').trim();
+  return s;
+}
+// Plain + safe: pehle tags strip, phir escape (XSS-safe text)
+function _eplain(s){ return _e(_stripTags(s)); }
+// Deep clean copy: text fields ko plain-strip + escape, baaki ko normal escape.
+// Display functions isse use karte hain (mRow, viewC, search, tawan).
+var _PLAIN_FIELDS = ['subject','rahnumai','remarks','detail','note'];
+function _cleanC(o){
+  if(o==null) return o;
+  var r = {};
+  for(var k in o){
+    if(!Object.prototype.hasOwnProperty.call(o,k)) continue;
+    var v = o[k];
+    if(typeof v==='string'){
+      r[k] = (_PLAIN_FIELDS.indexOf(k)>-1) ? _eplain(v) : _e(v);
+    } else if(v && typeof v.toDate==='function'){
+      r[k] = v;
+    } else if(Array.isArray(v)){
+      r[k] = v.map(function(x){ return typeof x==='string'?_e(x):x; });
+    } else {
+      r[k] = v;
+    }
+  }
+  return r;
+}
+
 </script>
 </head>
 <body>
@@ -3103,7 +3138,7 @@ function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.
 const THF=['#','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
 function setTH(el,hs){el.innerHTML=hs.map(h=>`<th>${h}</th>`).join('');}
 function mRow(c,i,sh){
-  c=_escC(c); // XSS FIX: saari user-entered values escape (subject, remarks, names, region...)
+  c=_cleanC(c); // XSS FIX: saari user-entered values escape (subject, remarks, names, region...)
   const ab=`${hp('edit')?'<button class="btn bsm" style="background:#e3f2fd;color:var(--blue);padding:3px 7px" onclick="editC(\''+c.id+'\')">✏️</button> ':''}${hp('del')?'<button class="btn bred bsm" style="padding:3px 7px" onclick="delC(\''+c.id+'\')">🗑️</button>':''}`;
   const UF="font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:rtl;text-align:right;line-height:2;font-size:.8rem;";
   const loc=`<div style="font-size:.75rem;line-height:1.5">${c.region?'<span style="color:var(--bd);font-weight:600">'+c.region+'</span><br>':''}${c.state?c.state:''}${c.district?' / '+c.district:''}${c.city?' · <span style="color:var(--mt)">'+c.city+'</span>':''}</div>`;
@@ -4810,7 +4845,7 @@ function editC(id){
 function viewC(id, readOnly){
   resetHideRows();
   var c=cc.find(x=>x.id===id);if(!c)return;
-  c=_escC(c); // XSS FIX: detail modal mein bhi sab escape
+  c=_cleanC(c); // XSS FIX: detail modal mein bhi sab escape
   const yn=v=>v==='yes'?'<span class="badge bg">✅ Yes</span>':v==='no'?'<span class="badge br">❌ No</span>':v==='refused'?'<span class="badge br">⛔ Refused</span>':v==='partial'?'<span class="badge bo">🔸 Partial</span>':'—';
   const tfL={zubani:'Zubani',hr_nama:'HR Tafhim Nama',written:'Written'};
   const pmL={dept:'HR Salary Deduction',fin:'Finance Office',acc:'Account Deposit',other:'Other'};
@@ -6037,7 +6072,7 @@ function renderTawan(){
 
   // Nafila = tTot - tPd (total - received = remaining)
   // Wajiba = tPd (received)
-  tbody.innerHTML = filtered.map((cRaw,i)=>{const c=_escC(cRaw); /* XSS FIX */ return `
+  tbody.innerHTML = filtered.map((cRaw,i)=>{const c=_cleanC(cRaw); /* XSS FIX */ return `
     <tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')">
       <td style="font-weight:800;color:var(--bd)">${i+1}</td>
       <td>${c.mufattish||'—'}</td>
