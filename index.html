@@ -2198,15 +2198,28 @@ function startListener(){
         var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
         cacheSave(allCases);
         _processCases(s.docs);
-      }).catch(function(){ setFS(false); });
+      }).catch(function(e){ setFS(false); _handleLoadErr(e); });
     })
-    .catch(function(){
+    .catch(function(e1){
       casesQuery().get().then(function(s){
         var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
         cacheSave(allCases);
         _processCases(s.docs);
-      }).catch(function(){ setFS(false); });
+      }).catch(function(e){ setFS(false); _handleLoadErr(e); });
     });
+}
+
+// permission-denied aksar auth-drop ki wajah se hota hai — saaf handle karo
+function _handleLoadErr(e){
+  if(e && e.code === 'permission-denied'){
+    var au = (firebase.auth && firebase.auth().currentUser);
+    if(!au){
+      // Auth gir gaya — _watchAuth ise sambhalega; user ko saaf batao
+      toast('⚠️ Session refresh ho raha hai...');
+    }
+  } else if(e){
+    console.warn('cases load error:', e.code||e.message);
+  }
 }
 
 // ===== READ-SAVING: SINGLE-DOC UPDATES =====
@@ -2411,6 +2424,33 @@ function launch(){
   }).catch(function(){});
   fbGetU().then(rUsers);
   setTimeout(initSearchableSelects,400);
+  _watchAuth();
+}
+
+// AUTH WATCHER: token refresh fail / auth drop ko detect karke saaf handle karta hai.
+// "Missing permissions" jaisa confusing error dikhane ke bajaye, dobara sign-in karwata
+// hai (silent), aur woh bhi fail ho to saaf "session expire" bata ke login page laata hai.
+var _authWatchOn = false;
+var _reauthTried = false;
+function _watchAuth(){
+  if(_authWatchOn || typeof firebase==='undefined' || !firebase.auth) return;
+  _authWatchOn = true;
+  firebase.auth().onAuthStateChanged(function(u){
+    if(!cu) return; // logged out — koi baat nahi
+    if(u){ _reauthTried = false; return; } // signed-in — sab theek
+    // App ko lagta hai login hai par Firebase auth gir gaya
+    if(_reauthTried){
+      // Dobara koshish bhi fail — saaf bata ke login page lao
+      toast('⚠️ Session expire ho gaya. Dobara login karein.');
+      setTimeout(function(){
+        try{ localStorage.removeItem('sr_s'); }catch(e){}
+        location.reload();
+      }, 1500);
+      return;
+    }
+    _reauthTried = true;
+    console.warn('Auth gira — re-auth ki koshish...');
+  });
 }
 
 function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;
