@@ -306,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 // Firebase global
 var db=null;
@@ -2255,11 +2256,48 @@ async function doLogin(){
     const ud={id:doc.id,...doc.data()};
     if(ud.active===false){err.style.display='block';err.textContent='❌ Account inactive';btn.textContent='🔐 Login';btn.disabled=false;return;}
     _loginAttempts = 0; localStorage.setItem('sr_la','0'); localStorage.removeItem('sr_ll');
+    // AUTH BRIDGE: Firestore login ke baad Firebase Auth mein bhi sign-in/banao
+    await ensureAuthAccount(u, p);
     // SECURITY FIX: password hash session/memory mein store mat karo
     delete ud.password;
     cu=ud;const sess={...ud,loginAt:Date.now()};localStorage.setItem('sr_s',JSON.stringify(sess));launch();
   }catch(e){console.error('Login error:',e);err.style.display='block';err.textContent='❌ Login failed. Please try again.';btn.textContent='🔐 Login';btn.disabled=false;}
 }
+// ===== FIREBASE AUTH BRIDGE =====
+// App ka primary login Firestore se hota hai. Ye helper uske baad Firebase Auth
+// mein bhi sign-in karta hai — taaki aage Firestore rules (Option B) lag sakein.
+// Account na ho to same username/password se transparently bana deta hai.
+// Firebase email maangta hai, isliye username+'@sab.local' use karte hain.
+async function ensureAuthAccount(username, password){
+  if(typeof firebase==='undefined' || !firebase.auth) return false;
+  var email = (username||'').toLowerCase() + '@sab.local';
+  try{
+    await firebase.auth().signInWithEmailAndPassword(email, password);
+    return true; // account tha, sign-in ho gaya
+  }catch(e){
+    if(e.code==='auth/user-not-found' || e.code==='auth/invalid-credential' || e.code==='auth/invalid-login-credentials'){
+      try{
+        await firebase.auth().createUserWithEmailAndPassword(email, password);
+        return true; // pehli baar — account ban gaya
+      }catch(e2){
+        if(e2.code==='auth/email-already-in-use'){
+          console.warn('Auth account hai par password sync nahi. Settings > Change Password karne pe sync ho jayega.');
+          return false;
+        }
+        console.warn('Auth create fail:', e2.code, e2.message);
+        return false;
+      }
+    }
+    if(e.code==='auth/wrong-password'){
+      console.warn('Auth password purana hai — Change Password karne pe sync ho jayega.');
+      return false;
+    }
+    console.warn('Auth sign-in fail:', e.code, e.message);
+    return false;
+  }
+}
+// ===== END AUTH BRIDGE =====
+
 // URL se page restore — sirf launch() ke baad hoga, yahan nahi
 async function restoreS(){
   const s=localStorage.getItem('sr_s');if(!s)return;
@@ -2314,6 +2352,7 @@ function launch(){
 }
 
 function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;
+  try{ if(typeof firebase!=='undefined' && firebase.auth) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem('sr_s');cu=null;
   document.getElementById('lw').classList.remove('hide');
   document.getElementById('app').style.display='none';
@@ -5148,6 +5187,19 @@ async function chPass(){
     if(!ok){toast('❌ Wrong password');return;}
     const nph=await makePwHash(np);
     await db.collection('users').doc(cu.id).update({password:nph,mustChangePw:false,updatedAt:new Date().toISOString()});
+    // AUTH BRIDGE: Firebase Auth ka password bhi update karo (verify ke baad current user signed-in hai)
+    try{
+      var au=firebase.auth().currentUser;
+      if(au){ await au.updatePassword(np); }
+      else { await ensureAuthAccount(cu.username, np); }
+    }catch(ae){
+      // Agar recent-login chahiye to re-auth karke retry
+      try{
+        var em=(cu.username||'').toLowerCase()+'@sab.local';
+        await firebase.auth().signInWithEmailAndPassword(em, op);
+        await firebase.auth().currentUser.updatePassword(np);
+      }catch(ae2){ console.warn('Auth pw sync fail:', ae2.code||ae2.message); }
+    }
     cu.mustChangePw=false;
     const s=JSON.parse(localStorage.getItem('sr_s')||'{}');delete s.password;s.mustChangePw=false;localStorage.setItem('sr_s',JSON.stringify(s));
     toast('✅ Changed!');['oP','nP','cP'].forEach(id=>document.getElementById(id).value='');
