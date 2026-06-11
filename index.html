@@ -1976,19 +1976,38 @@ async function autoFixRegions(){
 }
 
 // ===== LOCAL CACHE — Firebase reads bachane ke liye =====
-var _CACHE_KEY = 'sab_cases_cache';
-var _CACHE_TS_KEY = 'sab_cases_ts';
+// Per-user cache keys — admin ka cache restricted user ko na mile
+function _ckBase(){ return (cu && cu.id) ? cu.id : 'anon'; }
+function _ckData(){ return 'sab_cases_cache_' + _ckBase(); }
+function _ckTs(){ return 'sab_cases_ts_' + _ckBase(); }
+
+// REGION-SCOPED QUERY: restricted user ke liye sirf apne region ki query banao.
+// Admin / no-region-restriction => poori collection. Warna where('region','in',[...]).
+// Isse restricted user ka full .get() rule se block nahi hota.
+function casesQuery(){
+  try{
+    var regs = (cu && cu.dataRestrict && Array.isArray(cu.dataRestrict.regions)) ? cu.dataRestrict.regions : [];
+    if(regs.length > 0){
+      // Firestore 'in' max 30 values — regions hamesha kam hote hain
+      return db.collection('cases').where('region','in', regs.slice(0,30));
+    }
+  }catch(e){}
+  return db.collection('cases');
+}
+// Legacy var names (purane code ke liye) — ab functions ki taraf point karte hain
+var _CACHE_KEY = 'sab_cases_cache';   // (use _ckData())
+var _CACHE_TS_KEY = 'sab_cases_ts';   // (use _ckTs())
 // No TTL — cache tab tak rehta hai jab tak case save/delete/manual refresh na ho
 
 var _CACHE_TTL = 5 * 60 * 1000; // 5 minutes — iske baad server se fresh data lega
 
 function cacheLoad(){
   try{
-    var ts = parseInt(localStorage.getItem(_CACHE_TS_KEY)||'0');
+    var ts = parseInt(localStorage.getItem(_ckTs())||'0');
     if(!ts) return null;
     // TTL check — agar cache purana hai to null return karo (server se fresh lo)
     if((Date.now() - ts) > _CACHE_TTL) return null;
-    var raw = localStorage.getItem(_CACHE_KEY);
+    var raw = localStorage.getItem(_ckData());
     if(!raw) return null;
     return JSON.parse(raw);
   }catch(e){ return null; }
@@ -1998,16 +2017,16 @@ function cacheSave(cases){
   try{
     var data = JSON.stringify(cases);
     try{
-      localStorage.setItem(_CACHE_KEY, data);
-      localStorage.setItem(_CACHE_TS_KEY, String(Date.now()));
+      localStorage.setItem(_ckData(), data);
+      localStorage.setItem(_ckTs(), String(Date.now()));
     }catch(e){
       if(e.name==='QuotaExceededError'||e.code===22){
         // Storage full — purana cache clear karke retry karo
         try{
-          localStorage.removeItem(_CACHE_KEY);
-          localStorage.removeItem(_CACHE_TS_KEY);
-          localStorage.setItem(_CACHE_KEY, data);
-          localStorage.setItem(_CACHE_TS_KEY, String(Date.now()));
+          localStorage.removeItem(_ckData());
+          localStorage.removeItem(_ckTs());
+          localStorage.setItem(_ckData(), data);
+          localStorage.setItem(_ckTs(), String(Date.now()));
         }catch(e2){ /* silently ignore — cache nahi banega, lekin app chalti rahegi */ }
       }
     }
@@ -2015,7 +2034,7 @@ function cacheSave(cases){
 }
 
 function cacheInvalidate(){
-  localStorage.removeItem(_CACHE_TS_KEY); // force refresh next time
+  localStorage.removeItem(_ckTs()); // force refresh next time
 }
 // ===== END LOCAL CACHE =====
 
@@ -2144,10 +2163,10 @@ function startListener(){
   if(_cached && _cached.length > 0){
     _processCasesRaw(_cached);
     // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
-    var _cacheAge = Date.now() - parseInt(localStorage.getItem(_CACHE_TS_KEY)||'0');
+    var _cacheAge = Date.now() - parseInt(localStorage.getItem(_ckTs())||'0');
     if(_cacheAge > 4 * 60 * 1000){
       setTimeout(function(){
-        db.collection('cases').get({source:'server'}).then(function(s){
+        casesQuery().get({source:'server'}).then(function(s){
           if(s.docs.length > 0){
             var fresh = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
             cacheSave(fresh);
@@ -2160,9 +2179,11 @@ function startListener(){
   }
 
   // PHASE 1: Dashboard ke liye sirf last 10 turant dikhao
-  db.collection('cases')
-    .orderBy('openDate','desc')
-    .limit(10)
+  // Region-restricted user pe orderBy+where ko composite index chahiye, isliye unke
+  // liye orderBy skip karke seedha get karte hain (app khud sort kar leta hai).
+  var _isRestricted = !!(cu && cu.dataRestrict && Array.isArray(cu.dataRestrict.regions) && cu.dataRestrict.regions.length > 0);
+  var _phase1 = _isRestricted ? casesQuery().limit(50) : casesQuery().orderBy('openDate','desc').limit(10);
+  _phase1
     .get()
     .then(function(snap10){
       var quick = snap10.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
@@ -2173,14 +2194,14 @@ function startListener(){
         : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases.</td></tr>';
 
       // PHASE 2: Poora data load karo aur cache mein save karo
-      db.collection('cases').get().then(function(s){
+      casesQuery().get().then(function(s){
         var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
         cacheSave(allCases);
         _processCases(s.docs);
       }).catch(function(){ setFS(false); });
     })
     .catch(function(){
-      db.collection('cases').get().then(function(s){
+      casesQuery().get().then(function(s){
         var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
         cacheSave(allCases);
         _processCases(s.docs);
@@ -2190,13 +2211,13 @@ function startListener(){
 
 function reloadCases(){
   // Cache invalidate ho chuka hai (save/delete ke baad) — server se fresh lo
-  db.collection('cases').get({source:'server'}).then(function(s){
+  casesQuery().get({source:'server'}).then(function(s){
     var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
     cacheSave(allCases); // naya cache save karo
     _processCases(s.docs);
   }).catch(function(){
     // Server nahi mila — cache se try karo
-    db.collection('cases').get({source:'cache'}).then(function(s){
+    casesQuery().get({source:'cache'}).then(function(s){
       if(s.docs.length > 0) _processCases(s.docs);
     }).catch(function(e){ console.warn('reloadCases:',e); });
   });
@@ -5815,7 +5836,7 @@ function rfAll(){
   overlay.style.pointerEvents = 'all';
   toast('صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد');
   var _safetyTimer = setTimeout(function(){ rfHideOverlay(); }, 10000);
-  db.collection('cases').get({source:'server'}).then(function(snap){
+  casesQuery().get({source:'server'}).then(function(snap){
     clearTimeout(_safetyTimer);
     // Cache update karo
     var allCases = snap.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
@@ -6247,7 +6268,7 @@ function clearDeptsCache(){
 }
 async function fixPendingF(){
   if(!confirm('office status ke cases ko pending_o mein merge karo?')) return;
-  var snap = await db.collection('cases').get();
+  var snap = await casesQuery().get();
   var batch = db.batch();
   var count = 0;
   snap.docs.forEach(function(doc){
@@ -6266,7 +6287,7 @@ async function fixPendingF(){
 async function forceSaveDepts33(){
   // Scan cases for all used departments and save only those to Firebase
   if(!confirm('Sirf cases mein use ho rahe departments ko Settings mein save karo?')) return;
-  var snap = await db.collection('cases').get();
+  var snap = await casesQuery().get();
   var allCases = snap.docs.map(function(d){ return d.data(); });
   var deptSet = {};
   allCases.forEach(function(c){
@@ -6316,7 +6337,7 @@ async function fixCaseDepts(){
   const btn = document.getElementById('fixDeptsBtn');
   if(btn){ btn.disabled=true; btn.textContent='⏳ Updating...'; }
   try{
-    const snap = await db.collection('cases').get();
+    const snap = await casesQuery().get();
     const batch = db.batch();
     let count = 0;
     snap.docs.forEach(function(doc){
