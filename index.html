@@ -1164,7 +1164,7 @@ function _cleanC(o){
       </div>
     </div>
     <div class="twrap">
-      <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span></div>
+      <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span><button class="btn" style="margin-left:auto;background:var(--green,#16a34a);color:#fff;padding:5px 12px;font-size:.8rem" onclick="openSrchExport()">⬇️ Export</button></div>
       <!-- srDebug removed in production -->
       <div style="overflow-x:auto"><table><thead><tr id="srTH"></tr></thead><tbody id="srTB"></tbody></table></div>
       <div id="searchPagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 14px;border-top:1px solid var(--bor);flex-wrap:wrap;"></div>
@@ -2563,7 +2563,7 @@ function goPage(pg,el,skipHistory){
   requestAnimationFrame(function(){
     if(pg==='dash')         rDash();
     else if(pg==='cases')   rCases();
-    else if(pg==='reports'){ repClearFilters(); rRep(); }
+    else if(pg==='reports'){ updRepYears(); _repRestoreState(); rRep(); }
     else if(pg==='settings'){
       lmRenderTCategory(); lmRenderTPurpose(); lmLoadFirebaseRegions();
       setTimeout(lmLoadSettings, 30);
@@ -3698,6 +3698,7 @@ function doSrch(){
     var x = a.caseNo||''; var y = b.caseNo||'';
     return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
   });
+  doSrch._lastResults = res; // EXPORT ke liye — abhi jo filter laga hai uska poora data
   // Pagination for search results
   var _srPage = doSrch._page || 1;
   var srTotal = res.length;
@@ -3736,6 +3737,97 @@ function doSrch(){
     }
   }
 }
+// ===== SEARCH EXPORT (column picker) =====
+// Columns: [key, label]. _PLAIN keys ko strip-tags karke saaf text export hota hai.
+var SRCH_EXPORT_COLS = [
+  ['caseNo','Case No'],['openDate','Open Date'],['closeDate','Close Date'],['year','Year'],
+  ['region','Region'],['state','State'],['division','Division'],['district','District'],['city','City'],
+  ['dept','Department'],['mufattish','Mufattish'],['sael','Referred By'],
+  ['name','Name'],['mobile','Mobile'],
+  ['subject','Subject'],['detail','Detail'],['status','Status'],
+  ['remarks','Remarks'],['rahnumai','Rahnumai'],['guide','Rahnumai Type']
+];
+function _srchCell(c, key){
+  var v;
+  if(key==='dept'){ v = (c.depts&&c.depts.length)?c.depts.join(', '):(c.dept||''); }
+  else if(key==='guide'){ v = (c.guides&&c.guides.length)?c.guides.join(', '):(c.guide||''); }
+  else { v = c[key]; }
+  v = (v==null)?'':String(v);
+  if(['subject','detail','remarks','rahnumai'].indexOf(key)>-1) v = _stripTags(v);
+  return v;
+}
+function openSrchExport(){
+  var res = doSrch._lastResults || [];
+  if(!res.length){ toast('❌ Pehle search karo — koi result nahi'); return; }
+  var old = document.getElementById('srchExpModal'); if(old) old.remove();
+  var boxes = SRCH_EXPORT_COLS.map(function(col){
+    return '<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:.85rem;cursor:pointer">'+
+      '<input type="checkbox" class="srchExpCol" value="'+col[0]+'" checked> '+col[1]+'</label>';
+  }).join('');
+  var html = ''+
+    '<div id="srchExpModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">'+
+      '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:88vh;overflow:auto;padding:18px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+          '<h3 style="margin:0">⬇️ Export ('+res.length+' cases)</h3>'+
+          '<button class="btn" style="padding:2px 10px" onclick="document.getElementById(\'srchExpModal\').remove()">✕</button>'+
+        '</div>'+
+        '<p style="font-size:.8rem;opacity:.75;margin:.2rem 0 .6rem">Jo columns chahiye unhe ✓ rakho, baaki hata do:</p>'+
+        '<div style="margin-bottom:8px"><button class="btn bsm" onclick="srchExpToggle(true)">Sab ✓</button> '+
+          '<button class="btn bsm" onclick="srchExpToggle(false)">Sab ✕</button></div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid #eee;border-radius:8px;padding:6px;margin-bottom:14px">'+boxes+'</div>'+
+        '<div style="display:flex;gap:10px;justify-content:flex-end">'+
+          '<button class="btn" style="background:#16a34a;color:#fff;padding:8px 16px" onclick="srchExpRun(\'excel\')">📊 Excel</button>'+
+          '<button class="btn" style="background:#dc2626;color:#fff;padding:8px 16px" onclick="srchExpRun(\'pdf\')">📄 PDF</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function srchExpToggle(on){
+  document.querySelectorAll('.srchExpCol').forEach(function(cb){ cb.checked=on; });
+}
+function _srchExpSelected(){
+  var keys=[];
+  document.querySelectorAll('.srchExpCol:checked').forEach(function(cb){ keys.push(cb.value); });
+  return keys;
+}
+function srchExpRun(type){
+  var res = doSrch._lastResults || [];
+  if(!res.length){ toast('❌ Koi data nahi'); return; }
+  var keys = _srchExpSelected();
+  if(!keys.length){ toast('❌ Kam se kam 1 column select karo'); return; }
+  var labelMap={}; SRCH_EXPORT_COLS.forEach(function(c){ labelMap[c[0]]=c[1]; });
+  var headers = keys.map(function(k){ return labelMap[k]; });
+  var rows = res.map(function(c){ return keys.map(function(k){ return _srchCell(c,k); }); });
+  var stamp = new Date().toISOString().slice(0,10);
+  if(type==='excel'){
+    try{
+      var aoa = [headers].concat(rows);
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = keys.map(function(k){ return {wch: (k==='subject'||k==='detail'||k==='remarks'||k==='rahnumai')?30:16}; });
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Cases');
+      XLSX.writeFile(wb, 'Search_Export_'+stamp+'.xlsx');
+      toast('✅ Excel ready');
+    }catch(e){ toast('❌ Excel: '+e.message); }
+  } else {
+    try{
+      var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || (typeof jsPDF!=='undefined'?jsPDF:null);
+      if(!jsPDFClass){ toast('❌ PDF library load nahi hui'); return; }
+      var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
+      doc.setFontSize(13); doc.text('Search Export — '+res.length+' cases ('+stamp+')', 14, 12);
+      doc.autoTable({
+        head:[headers], body:rows, startY:16, styles:{fontSize:7, cellPadding:1.5, overflow:'linebreak'},
+        headStyles:{fillColor:[37,99,235]}, margin:{left:8,right:8}
+      });
+      doc.save('Search_Export_'+stamp+'.pdf');
+      toast('✅ PDF ready');
+    }catch(e){ toast('❌ PDF: '+e.message); }
+  }
+  var m=document.getElementById('srchExpModal'); if(m) m.remove();
+}
+// ===== END SEARCH EXPORT =====
+
 function srchPgGo(pg){
   var res = doSrch._res||[];
   var totalPages = Math.max(1,Math.ceil(res.length/PAGE_SIZE));
@@ -4043,8 +4135,27 @@ function repGoSearch(regionEnc, filter){
   goPage('search');
   setTimeout(function(){ doSrch(); }, 200);
 }
+function _repSaveState(){
+  try{
+    var st={ y:(document.getElementById('repYear')||{}).value||'', m:(document.getElementById('repMonth')||{}).value||'', f:(document.getElementById('repFilter')||{}).value||'all' };
+    sessionStorage.setItem('sab_rep_filter', JSON.stringify(st));
+  }catch(e){}
+}
+function _repRestoreState(){
+  try{
+    var raw=sessionStorage.getItem('sab_rep_filter'); if(!raw) return;
+    var st=JSON.parse(raw);
+    var yEl=document.getElementById('repYear'), mEl=document.getElementById('repMonth'), fEl=document.getElementById('repFilter');
+    if(yEl && st.y!=null){ yEl.value=st.y; }
+    if(mEl && st.m!=null){ mEl.value=st.m; }
+    if(fEl && st.f!=null){ fEl.value=st.f; }
+    [yEl,mEl,fEl].forEach(function(el){ if(el){ try{ repMarkActive(el); }catch(e){} } });
+  }catch(e){}
+}
 function rRep(){
   var now = new Date();
+  updRepYears();        // year options bharo
+  _repSaveState();      // current filter state yaad rakho (back ke liye)
   var months=['','January','February','March','April','May','June','July','August','September','October','November','December'];
   var selYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
   var selMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
@@ -4443,7 +4554,7 @@ function rRep(){
     {size: Object.keys(bS).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickStatus(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(e[0])+'\',\'all\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: Object.keys(bSt).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+encodeURIComponent(e[0])+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;tawan_all&quot;)" title="Tamam Tawan cases"><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_received&quot;)" title="Received Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_pending&quot;)" title="Pending Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;halfia_all&quot;)" title="Tamam Halfiya cases"><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_done&quot;)" title="Done cases"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_pending&quot;)" title="Pending cases"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>'}
   ];
@@ -5517,6 +5628,7 @@ function gtClickState(state){
   goPage('search'); setTimeout(function(){ doSrch(); }, 200);
 }
 function gtClickDept(dept){
+  try{ dept=decodeURIComponent(dept); }catch(e){}
   doSrch._customFilter=null;
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
   ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
@@ -7430,25 +7542,8 @@ function repDownloadPDF(){
     }
   });
 
-  // Cases detail table
-  var nextY = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(12);
-  doc.setFont('helvetica','bold');
-  doc.text('Cases Detail ('+fcc.length+' cases)', 14, nextY);
-
-  var caseRows = fcc.slice(0,500).map(function(c,i){
-    return [i+1, c.caseNo||'', c.openDate||'', c.name||'', c.region||'', c.state||'', c.dept||'', c.status||''];
-  });
-
-  doc.autoTable({
-    startY: nextY+3,
-    head:[['#','Case No','Open Date','Name','Region','State','Department','Status']],
-    body: caseRows,
-    theme:'striped',
-    headStyles:{fillColor:[21,101,192],textColor:255,fontStyle:'bold',fontSize:8},
-    bodyStyles:{fontSize:7.5},
-    columnStyles:{0:{cellWidth:8,halign:'center'},1:{cellWidth:20},2:{cellWidth:20},3:{cellWidth:35},4:{cellWidth:20},5:{cellWidth:20},6:{cellWidth:45},7:{cellWidth:20}},
-  });
+  // NOTE: Per-case "Cases Detail" table hata diya — Reports PDF mein sirf region-wise
+  // summary aayega. Case-by-case list chahiye to Search page se Export karo.
 
   var fname = 'Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
@@ -8011,13 +8106,19 @@ async function saveClient(){
   try{
     if(_editClientId){
       await db.collection('clients').doc(_editClientId).update(data);
+      // Local list + UI turant update karo (warna purana naam dikhta rehta hai)
+      var _i = _clients.findIndex(function(x){ return x.id===_editClientId; });
+      if(_i>-1) _clients[_i] = Object.assign({}, _clients[_i], data);
       toast('✅ Client update ho gaya!');
     } else {
       data.createdAt = new Date().toISOString();
-      await db.collection('clients').add(data);
+      var _ref = await db.collection('clients').add(data);
+      _clients.push(Object.assign({id:_ref.id}, data));
       toast('✅ Client save ho gaya!');
     }
+    _clients.sort(function(a,b){ return (a.naam||'').localeCompare(b.naam||''); });
     closeClientForm();
+    renderClients();
   } catch(e){ toast('❌ Error: '+e.message); }
 }
 
@@ -8025,6 +8126,8 @@ async function deleteClient(id, naam){
   if(!confirm(naam+' ko delete karna chahte ho?')) return;
   try{
     await db.collection('clients').doc(id).delete();
+    _clients = _clients.filter(function(x){ return x.id!==id; });
+    renderClients();
     toast('🗑️ Client delete ho gaya!');
   } catch(e){ toast('❌ '+e.message); }
 }
