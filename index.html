@@ -303,6 +303,8 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -923,7 +925,7 @@ function _cleanC(o){
               </div>
 
               <!-- COLLECTION METHOD -->
-              <div style="margin-top:12px;border-top:1px solid #90caf9;padding-top:12px">
+              <div id="pooledWasoolWrap" style="margin-top:12px;border-top:1px solid #90caf9;padding-top:12px">
                 <div style="font-size:.74rem;font-weight:800;color:var(--blue);margin-bottom:8px">📥 Wasool ka Tarika</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;padding:6px 12px;border:1.5px solid #90caf9;border-radius:7px;background:#fff">
@@ -1027,12 +1029,30 @@ function _cleanC(o){
               <div class="fgr fw"><label>Notes</label><input id="tNt"></div>
             </div>
 
-            <!-- TAWAN PERSON -->
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:6px">
+            <!-- TAWAN PERSON (purana — chhupा diya, naya per-person system use karo) -->
+            <div style="display:none">
               <label style="color:var(--orange);font-weight:700;font-size:.76rem">👤 Tawan Person (Optional)</label>
               <button type="button" onclick="tawnAddPerson()" style="padding:3px 10px;background:#fff3e0;color:var(--orange);border:1px solid #ffcc80;border-radius:6px;font-size:.72rem;cursor:pointer">+ Add Person</button>
             </div>
-            <div id="tawnPersonRows"></div>
+            <div id="tawnPersonRows" style="display:none"></div>
+
+            <!-- ===== PER-PERSON TAWAN (naya) ===== -->
+            <div style="grid-column:1/-1;margin-top:14px;padding-top:12px;border-top:1px dashed #ffcc80;width:100%">
+              <label style="color:var(--orange);font-weight:700;font-size:.85rem;display:block;margin-bottom:10px">💸 Tawan kis tarah?</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+                <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;cursor:pointer;padding:9px 16px;border:1.5px solid #ffcc80;border-radius:8px;background:#fff;flex:1;min-width:160px;justify-content:center"><input type="radio" name="tawnMode" value="pooled" checked onchange="tawnModeSet('pooled')" style="width:16px;height:16px"> Pooled (ek total)</label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;cursor:pointer;padding:9px 16px;border:1.5px solid #ffcc80;border-radius:8px;background:#fff;flex:1;min-width:160px;justify-content:center"><input type="radio" name="tawnMode" value="perperson" onchange="tawnModeSet('perperson')" style="width:16px;height:16px"> Per-Person (har bande ka alag)</label>
+              </div>
+              <div id="tawnPPWrap" style="display:none;width:100%">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;background:#fff;border:1px solid #ffe0b2;border-radius:8px;padding:10px">
+                  <button type="button" onclick="tawnPPLoad()" style="padding:8px 14px;background:#e3f2fd;color:var(--blue);border:1px solid #90caf9;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer">🔄 Case ke persons laao</button>
+                  <span style="font-size:.74rem;color:var(--mt)">Har bande ka amount neeche alag daalein</span>
+                </div>
+                <div id="tawnPPRows" style="width:100%"></div>
+                <div id="tawnPPSummary" style="margin-top:10px;font-size:.92rem;font-weight:700;color:var(--orange);background:#fff8f0;border:1.5px solid #ffcc80;border-radius:9px;padding:12px 14px"></div>
+              </div>
+            </div>
+            <!-- ===== END PER-PERSON TAWAN ===== -->
 
           </div><!-- end tawnFieldsWrap -->
 
@@ -2471,20 +2491,14 @@ function _watchAuth(){
   if(_authWatchOn || typeof firebase==='undefined' || !firebase.auth) return;
   _authWatchOn = true;
   firebase.auth().onAuthStateChanged(function(u){
-    if(!cu) return; // logged out — koi baat nahi
+    if(!cu) return;      // logged out — koi baat nahi
     if(u){ _reauthTried = false; return; } // signed-in — sab theek
-    // App ko lagta hai login hai par Firebase auth gir gaya
-    if(_reauthTried){
-      // Dobara koshish bhi fail — saaf bata ke login page lao
-      toast('⚠️ Session expire ho gaya. Dobara login karein.');
-      setTimeout(function(){
-        try{ localStorage.removeItem('sr_s'); }catch(e){}
-        location.reload();
-      }, 1500);
-      return;
+    // Auth gir gaya — PAR page kabhi auto-reload mat karo (form ka data ud jata hai).
+    // Token aksar khud refresh ho jata hai. Sirf ek halki si chetawni do, reload user khud kare.
+    if(!_reauthTried){
+      _reauthTried = true;
+      console.warn('Auth blip — token refresh ho raha (auto-reload nahi kiya).');
     }
-    _reauthTried = true;
-    console.warn('Auth gira — re-auth ki koshish...');
   });
 }
 
@@ -3740,12 +3754,12 @@ function doSrch(){
 // ===== SEARCH EXPORT (column picker) =====
 // Columns: [key, label]. _PLAIN keys ko strip-tags karke saaf text export hota hai.
 var SRCH_EXPORT_COLS = [
-  ['caseNo','Case No'],['openDate','Open Date'],['closeDate','Close Date'],['year','Year'],
-  ['region','Region'],['state','State'],['division','Division'],['district','District'],['city','City'],
-  ['dept','Department'],['mufattish','Mufattish'],['sael','Referred By'],
-  ['name','Name'],['mobile','Mobile'],
-  ['subject','Subject'],['detail','Detail'],['status','Status'],
-  ['remarks','Remarks'],['rahnumai','Rahnumai'],['guide','Rahnumai Type']
+  ['caseNo','Case No',1],['openDate','Open Date',1],['closeDate','Close Date',0],['year','Year',1],
+  ['region','Region',1],['state','State',1],['division','Division',1],['district','District',0],['city','City',0],
+  ['dept','Department',1],['mufattish','Mufattish',0],['sael','Referred By',0],
+  ['name','Name',0],['mobile','Mobile',0],
+  ['subject','Subject',1],['detail','Detail',0],['status','Status',1],
+  ['remarks','Remarks',0],['rahnumai','Rahnumai',0],['guide','Rahnumai Type',0]
 ];
 function _srchCell(c, key){
   var v;
@@ -3762,7 +3776,7 @@ function openSrchExport(){
   var old = document.getElementById('srchExpModal'); if(old) old.remove();
   var boxes = SRCH_EXPORT_COLS.map(function(col){
     return '<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:.85rem;cursor:pointer">'+
-      '<input type="checkbox" class="srchExpCol" value="'+col[0]+'" checked> '+col[1]+'</label>';
+      '<input type="checkbox" class="srchExpCol" value="'+col[0]+'" '+(col[2]?'checked':'')+'> '+col[1]+'</label>';
   }).join('');
   var html = ''+
     '<div id="srchExpModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">'+
@@ -3811,17 +3825,37 @@ function srchExpRun(type){
       toast('✅ Excel ready');
     }catch(e){ toast('❌ Excel: '+e.message); }
   } else {
+    // PDF: jsPDF Urdu ko shape nahi kar pata (letters tut jaate hain).
+    // Isliye browser ke print se banate hain — Urdu bilkul sahi (app jaisा) aayega.
     try{
-      var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || (typeof jsPDF!=='undefined'?jsPDF:null);
-      if(!jsPDFClass){ toast('❌ PDF library load nahi hui'); return; }
-      var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
-      doc.setFontSize(13); doc.text('Search Export — '+res.length+' cases ('+stamp+')', 14, 12);
-      doc.autoTable({
-        head:[headers], body:rows, startY:16, styles:{fontSize:7, cellPadding:1.5, overflow:'linebreak'},
-        headStyles:{fillColor:[37,99,235]}, margin:{left:8,right:8}
-      });
-      doc.save('Search_Export_'+stamp+'.pdf');
-      toast('✅ PDF ready');
+      var thead = '<tr>'+headers.map(function(h){ return '<th>'+_e(h)+'</th>'; }).join('')+'</tr>';
+      var tbody = rows.map(function(r){
+        return '<tr>'+r.map(function(cell){ return '<td dir="auto">'+_e(cell)+'</td>'; }).join('')+'</tr>';
+      }).join('');
+      var w = window.open('', '_blank');
+      if(!w){ toast('❌ Popup block hai — allow karo'); return; }
+      w.document.write(
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Search Export</title>'+
+        '<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">'+
+        '<style>'+
+        '*{box-sizing:border-box}'+
+        'body{font-family:Arial,sans-serif;margin:14px;color:#111}'+
+        'h2{font-size:15px;margin:0 0 10px}'+
+        'table{border-collapse:collapse;width:100%;font-size:10px}'+
+        'th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}'+
+        'th{background:#1565c0;color:#fff;font-size:10px}'+
+        'tr:nth-child(even) td{background:#f3f6fb}'+
+        // Urdu cells: app ka font + fallback
+        'td{font-family:"Jameel Noori Nastaleeq","Noto Nastaliq Urdu",Arial,sans-serif;line-height:1.9}'+
+        '@media print{@page{size:A4 landscape;margin:8mm} body{margin:0}}'+
+        '</style></head><body>'+
+        '<h2>Search Export — '+res.length+' cases ('+stamp+')</h2>'+
+        '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>'+
+        '<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>'+
+        '</body></html>'
+      );
+      w.document.close();
+      toast('✅ Print window khula — "Save as PDF" chuno');
     }catch(e){ toast('❌ PDF: '+e.message); }
   }
   var m=document.getElementById('srchExpModal'); if(m) m.remove();
@@ -4088,9 +4122,16 @@ function repGoSearch(regionEnc, filter){
   }
   // ===== END FILTER =====
 
+  // BUCKET-ID MATCH: card number aur click bilkul same set dikhayein.
+  // _repBkt[region][bucket] mein wahi case-ids hain jo card pe gine the.
+  var _bktMap = {all:'all', closed:'closed', pending:'pending', sabiqa:'sabiqa', moujuda:'moujuda'};
+  if(_bktMap[filter] && _repBkt[region] && _repBkt[region][_bktMap[filter]]){
+    var _ids = {}; _repBkt[region][_bktMap[filter]].forEach(function(id){ _ids[id]=1; });
+    _pendingFilters = {rg: short, customFilter: function(c){ return !!_ids[c.id]; }};
+    goPage('search'); setTimeout(function(){ doSrch(); }, 200); return;
+  }
+
   if(filter === 'all'){
-    _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c); }};
-  } else if(filter === 'pending'){
     _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && (c.status||'').toLowerCase() !== 'closed'; }};
   } else if(filter === 'closed'){
     _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c) && (c.status||'').toLowerCase() === 'closed'; }};
@@ -4135,6 +4176,9 @@ function repGoSearch(regionEnc, filter){
   goPage('search');
   setTimeout(function(){ doSrch(); }, 200);
 }
+// Reports: bucket-of-ids (card number aur click-through ko match karne ke liye)
+var _repBkt = {};      // region -> {sabiqa,moujuda,all,closed,pending} (arrays of case ids)
+var _repBktAll = {};   // grand total (sab regions ka union)
 function _repSaveState(){
   try{
     var st={ y:(document.getElementById('repYear')||{}).value||'', m:(document.getElementById('repMonth')||{}).value||'', f:(document.getElementById('repFilter')||{}).value||'all' };
@@ -4352,69 +4396,65 @@ function rRep(){
   // For "All" filter: range end = today, range start = null (no limit)
   var _rangeEnd = toD || new Date(); // range ka aakhri din
 
-  // Step 1: موجودہ — range ke andar khule cases (openDate between fromD and toD)
-  cc.forEach(function(c){
-    var r = c.region||'Unknown';
-    if(!regionStats[r]) regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
-    var od = parseLocalDate(c.openDate);
-    if(!od) return;
-    var inRange = (!fromD || od >= fromD) && od <= _rangeEnd;
-    if(inRange) regionStats[r].moujuda++;
-  });
-
-  // Step 2: سابقہ — range se PEHLE ke jo cases range start tak PENDING the
-  // Matlab: openDate < fromD AND (closeDate >= fromD OR not closed)
-  // Agar Year select hai to sirf us saal ke cases
+  // ===== ID-BUCKET LOGIC =====
+  // Har bucket ke ASLI case-ids store karte hain. Card number = ids.length, aur
+  // click karne pe SEEDHE wahi ids dikhते hain → number aur Search results 100% match.
+  _repBkt = {};   // region -> {sabiqa:Set, moujuda:Set, all:Set, closed:Set, pending:Set}
+  function _bkt(r){
+    if(!_repBkt[r]) _repBkt[r] = {sabiqa:[],moujuda:[],all:[],closed:[],pending:[]};
+    return _repBkt[r];
+  }
   var _sabiqaYearBound = selYear ? new Date(selYear, 0, 1) : null;
 
   cc.forEach(function(c){
     var r = c.region||'Unknown';
     if(!regionStats[r]) regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
+    if(!od) return;
     var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
-    if(!od) return;
-    // Range se pehle khula hona chahiye
-    if(!fromD || od >= fromD) return;
-    // Year bound: agar year select hai to us saal se pehle wale mat lo
-    if(_sabiqaYearBound && od < _sabiqaYearBound) return;
-    // Range start tak PENDING tha:
-    // - Abhi bhi open/pending hai → count karo
-    // - Close hua lekin closeDate range ke ANDAR ya baad hai → count karo (range start par pending tha)
-    // - Close hua aur closeDate range se PEHLE ya blank hai → MAT count karo (pehle hi hal ho chuka tha)
-    if(!closed) {
-      regionStats[r].sabiqa++; // abhi bhi pending
-    } else if(cd && cd >= fromD) {
-      regionStats[r].sabiqa++; // range ke baad close hua — range start par pending tha
-    }
-    // closed=true aur cd=null ya cd<fromD → range se pehle close → sabiqa nahi
-  });
+    var b = _bkt(r);
 
-  // Step 3: کل = سابقہ + موجودہ
-  Object.keys(regionStats).forEach(function(r){
-    regionStats[r].kulMasail = regionStats[r].sabiqa + regionStats[r].moujuda;
-  });
-
-  // Step 4: حل شدہ aur پینڈنگ — kul ke andar ke cases mein se.
-  // پینڈنگ ko SEEDHA non-closed ginke nikaalte hain (taaki card pe number aur click
-  // karne pe Search results bilkul match karein). halShuda = kul − pending.
-  cc.forEach(function(c){
-    var r = c.region||'Unknown';
-    if(!regionStats[r]) return;
-    var od = parseLocalDate(c.openDate);
-    if(!od) return;
+    // موجودہ — range ke andar khule
     var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
-    var inSabiqa = fromD && od < fromD && (!_sabiqaYearBound || od >= _sabiqaYearBound);
-    if(!(inMoujuda || inSabiqa)) return; // case کل mein nahi
-    if(isClosed(c)) regionStats[r].halShuda++;
-    else regionStats[r].pending++;
+    // سابقہ — range se pehle khule jo range start tak pending the
+    var inSabiqa = false;
+    if(fromD && od < fromD){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;            // abhi bhi pending
+        else if(cd && cd >= fromD) inSabiqa = true; // range ke baad close hua
+      }
+    }
+    if(inMoujuda) b.moujuda.push(c.id);
+    if(inSabiqa)  b.sabiqa.push(c.id);
+    if(inMoujuda || inSabiqa){                   // کل
+      b.all.push(c.id);
+      // حل شدہ = sirf woh jo is RANGE ke andar band hue.
+      // Range ke BAAD band hue (ya abhi pending) → us waqt pending the → پینڈنگ.
+      var closedInRange = closed && cd && (!fromD || cd >= fromD) && cd <= _rangeEnd;
+      if(closedInRange) b.closed.push(c.id);
+      else              b.pending.push(c.id);
+    }
   });
 
-  // Step 5: ensure consistency — کل = حل شدہ + پینڈنگ
-  Object.keys(regionStats).forEach(function(r){
-    var s = regionStats[r];
-    s.pending = Math.max(0, s.kulMasail - s.halShuda);
+  // counts = id-list lengths (guaranteed consistent with click-through)
+  Object.keys(_repBkt).forEach(function(r){
+    var b=_repBkt[r];
+    if(!regionStats[r]) regionStats[r]={};
+    regionStats[r].sabiqa    = b.sabiqa.length;
+    regionStats[r].moujuda   = b.moujuda.length;
+    regionStats[r].kulMasail = b.all.length;
+    regionStats[r].halShuda  = b.closed.length;
+    regionStats[r].pending   = b.pending.length;
   });
+  // Grand-total buckets (sab regions ka union) — grand total click ke liye
+  _repBktAll = {sabiqa:[],moujuda:[],all:[],closed:[],pending:[]};
+  Object.keys(_repBkt).forEach(function(r){
+    ['sabiqa','moujuda','all','closed','pending'].forEach(function(k){
+      _repBktAll[k] = _repBktAll[k].concat(_repBkt[r][k]);
+    });
+  });
+  // ===== END ID-BUCKET LOGIC =====
 
   // ===== bR ko regionStats se sync karo =====
   // By Region bar chart = region cards ke saath bilkul same numbers
@@ -4552,9 +4592,9 @@ function rRep(){
 
   var cards = [
     {size: Object.keys(bS).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📊 By Status</h3>'+Object.entries(bS).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickStatus(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+(sL[e[0]]||e[0])+'</span>'+bar(e[1],sC[e[0]]||'#999',tot)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(e[0])+'\',\'all\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bR).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🗺️ By Region</h3>'+Object.entries(bR).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(e[0]).replace(/'/g,'%27')+'\',\'all\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue)',mxR)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: Object.keys(bSt).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">📍 By State</h3>'+Object.entries(bSt).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickState(\''+e[0]+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--blue2)',mxSt)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
-    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+encodeURIComponent(e[0])+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
+    {size: Object.keys(bD).length * 10, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr"><h3 style="font-size:.85rem;color:var(--bd);margin-bottom:11px;border-bottom:1px solid var(--bor);padding-bottom:6px">🏢 By Department</h3>'+Object.entries(bD).sort(function(a,b){return b[1]-a[1];}).map(function(e){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;width:100%;cursor:pointer" onclick="gtClickDept(\''+encodeURIComponent(e[0]).replace(/'/g,'%27')+'\')" title="Click to filter"><span style="width:130px;font-size:.72rem;flex-shrink:0">'+e[0]+'</span>'+bar(e[1],'var(--orange)',mxD)+'<strong style="width:30px;font-size:.79rem;text-align:right;flex-shrink:0">'+e[1]+'</strong></div>';}).join('')+'</div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--orange)"><h3 style="font-size:.85rem;color:var(--orange);margin-bottom:11px">💰 Tawan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;tawan_all&quot;)" title="Tamam Tawan cases"><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">₹'+tTot.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_received&quot;)" title="Received Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">₹'+tPd.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Received</div></div><div style="cursor:pointer" onclick="gtClick(&quot;tawan_pending&quot;)" title="Pending Tawan"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">₹'+tRm.toLocaleString()+'</div><div style="font-size:.7rem;color:var(--mt)">Remaining</div></div></div></div>'},
     {size: 1, html: '<div style="background:var(--card);border-radius:var(--r);padding:15px;box-shadow:var(--sh);border:1px solid var(--bor);direction:ltr;border-left:4px solid var(--purple)"><h3 style="font-size:.85rem;color:var(--purple);margin-bottom:11px">📜 Halfiya Bayan Report</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;text-align:center"><div style="cursor:pointer" onclick="gtClick(&quot;halfia_all&quot;)" title="Tamam Halfiya cases"><div style="font-size:1.25rem;font-weight:700;color:var(--purple)">'+hC.length+'</div><div style="font-size:.7rem;color:var(--mt)">Total</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_done&quot;)" title="Done cases"><div style="font-size:1.25rem;font-weight:700;color:var(--green)">'+hD+'</div><div style="font-size:.7rem;color:var(--mt)">Done</div></div><div style="cursor:pointer" onclick="gtClick(&quot;halfia_pending&quot;)" title="Pending cases"><div style="font-size:1.25rem;font-weight:700;color:var(--red)">'+(hC.length-hD)+'</div><div style="font-size:.7rem;color:var(--mt)">Pending</div></div></div></div>'}
   ];
@@ -4684,7 +4724,12 @@ function resetF(){
   initDeptMS();
   setGuideValues([]);
   setPersons([{name:'',mobile:'',empCode:''}]);
-  document.getElementById('fStat').value='pending_z';
+  // Tawan mode reset to pooled
+  _tawnMode='pooled';
+  var _pr=document.querySelector('input[name="tawnMode"][value="pooled"]'); if(_pr) _pr.checked=true;
+  var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
+  var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='none';
+  var _ppt=document.getElementById('tawnPPTotalIn'); if(_ppt) _ppt.value='';
   // Ensure pending_z is set even if options load late
   setTimeout(function(){ 
     var s=document.getElementById('fStat'); 
@@ -4817,7 +4862,7 @@ async function saveCase(){
       tWapasAshiyaDesc:document.getElementById('tWapasAshiyaDesc')?document.getElementById('tWapasAshiyaDesc').value.trim():'',
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
-      tawnPersons:getTawnPersons(),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
@@ -4937,6 +4982,17 @@ function editC(id){
   onCollMethod();
   // Load tawn persons
   if(c.tawnPersons&&c.tawnPersons.length) setTawnPersons(c.tawnPersons); else document.getElementById('tawnPersonRows').innerHTML='';
+  // Per-person tawan restore
+  _tawnMode = c.tawnMode || 'pooled';
+  var _ppRadio = document.querySelector('input[name="tawnMode"][value="'+_tawnMode+'"]');
+  if(_ppRadio) _ppRadio.checked = true;
+  if(_tawnMode==='perperson' && c.tawnSplit && c.tawnSplit.length){
+    setTawnSplit(c.tawnSplit, c.tTot||'');
+    var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='block';
+  } else {
+    var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
+    var _ppw2=document.getElementById('tawnPPWrap'); if(_ppw2) _ppw2.style.display='none';
+  }
           ssRef('hSt'); ssRef('halfiaSt'); ssRef('tawnSt');
           ssRef('tfT'); ssRef('tfD'); ssRef('tbO'); ssRef('tbD');
         }, 100);
@@ -5692,6 +5748,17 @@ function gtClick(type){
 
   // Region restriction apply karo
   _applyRegionFilter();
+
+  // BUCKET-ID MATCH: grand total number aur click bilkul same set.
+  // _repBktAll mein wahi case-ids hain jo grand total mein gine the.
+  var _gtMap = {all:'all', closed:'closed', pending:'pending', abiq:'sabiqa', mojuda:'moujuda'};
+  if(_gtMap[type] && _repBktAll && _repBktAll[_gtMap[type]]){
+    var _gids = {}; _repBktAll[_gtMap[type]].forEach(function(id){ _gids[id]=1; });
+    doSrch._customFilter = function(c){ return !!_gids[c.id]; };
+    goPage('search');
+    setTimeout(function(){ doSrch(); }, 200);
+    return;
+  }
 
   if(type==='all'){
     var _df0=_repDateFilter();
@@ -7726,6 +7793,245 @@ function initDeptMS(){
 
 // ===== MULTI-PERSON ROWS =====
 // ===== TAWAN PERSON =====
+// ===== PER-PERSON TAWAN MODULE =====
+var _tawnMode = 'pooled';
+function tawnModeSet(mode){
+  _tawnMode = mode;
+  var w = document.getElementById('tawnPPWrap');
+  if(w) w.style.display = (mode==='perperson') ? 'block' : 'none';
+  // Per-Person mode mein upar wala pooled "Wasool ka Tarika" chhupa do (confusion na ho)
+  var pw = document.getElementById('pooledWasoolWrap');
+  if(pw) pw.style.display = (mode==='perperson') ? 'none' : 'block';
+  if(mode==='perperson'){
+    var rows = document.getElementById('tawnPPRows');
+    if(rows && !rows.children.length) tawnPPLoad();
+  }
+}
+
+// Ek person ka card HTML banao (idx = unique). d = saved data (optional).
+function _ppCardHTML(p, idx, d){
+  d = d || {};
+  var checked = (d.checked!==undefined) ? d.checked : true;
+  // methods: array (multiple). Koi default select NAHI — user khud chunega.
+  var methods = d.methods || (d.method ? [d.method] : []);
+  function hasM(m){ return methods.indexOf(m)>-1; }
+  var amt = d.amount || '';
+  var hrMonthly=d.hrMonthly||'', hrStart=d.hrStart||'', hrEnd=d.hrEnd||'', hrJV=d.hrJV||'', hrPaid=d.hrPaid||'';
+  var fAmt=d.fullAmt||'', fDate=d.fullDate||'', fRef=d.fullRef||'', fMode=d.fullMode||'';
+  var insts = d.insts||[];
+  function modeOpts(sel){
+    return ['','upi','neft','imps','cash','cheque','other'].map(function(m){
+      var lbl={'':'Mode...','upi':'UPI','neft':'NEFT/RTGS','imps':'IMPS','cash':'Cash','cheque':'Cheque','other':'Other'}[m];
+      return '<option value="'+m+'" '+(sel===m?'selected':'')+'>'+lbl+'</option>';
+    }).join('');
+  }
+  var instRows = insts.map(function(it){ return _ppInstRowHTML(it); }).join('');
+  return '<div class="tawnPP-row" data-idx="'+idx+'" data-name="'+_e(p.name||'')+'" data-mobile="'+_e(p.mobile||'')+'" data-emp="'+_e(p.empCode||'')+'" '+
+    'style="padding:14px 16px;margin-bottom:12px;background:#fff8f0;border:1.5px solid #ffcc80;border-radius:10px">'+
+    // Row 1: checkbox + naam (poori line)
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+      '<input type="checkbox" class="ppChk" '+(checked?'checked':'')+' onchange="tawnPPCalc()" style="width:17px;height:17px;flex-shrink:0">'+
+      '<span style="font-size:.95rem;font-weight:700">👤 '+_e(p.name||'(no name)')+'</span>'+
+      '<span class="ppStat" style="font-size:.8rem;font-weight:700;margin-left:auto"></span>'+
+    '</div>'+
+    // Row 2: Tawan amount (poori line)
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+      '<label style="font-size:.78rem;color:var(--mt);font-weight:600;min-width:90px">Tawan (₹)</label>'+
+      '<input type="number" class="ppAmt" value="'+amt+'" placeholder="kitna tawan" oninput="tawnPPCalc()" style="flex:1;max-width:200px;padding:8px 10px;border:1.5px solid var(--bor);border-radius:7px;font-size:.85rem">'+
+    '</div>'+
+    '<div class="ppBreak" style="font-size:.75rem;font-weight:600;color:#e65100;margin-bottom:10px"></div>'+
+    // Row 3: wasool tareeka (checkbox, poori width)
+    '<div style="font-size:.74rem;color:var(--mt);font-weight:600;margin-bottom:6px">Wasool ka tareeka (jo lागू ho chuno):</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer;padding:8px 14px;border:1.5px solid #90caf9;border-radius:8px;background:#fff;flex:1;min-width:120px;justify-content:center"><input type="checkbox" class="ppMethod" value="hr" '+(hasM('hr')?'checked':'')+' onchange="ppMethodCh('+idx+')"> 🏢 HR</label>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer;padding:8px 14px;border:1.5px solid #90caf9;border-radius:8px;background:#fff;flex:1;min-width:120px;justify-content:center"><input type="checkbox" class="ppMethod" value="inst" '+(hasM('inst')?'checked':'')+' onchange="ppMethodCh('+idx+')"> 💸 Installment</label>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer;padding:8px 14px;border:1.5px solid #90caf9;border-radius:8px;background:#fff;flex:1;min-width:120px;justify-content:center"><input type="checkbox" class="ppMethod" value="full" '+(hasM('full')?'checked':'')+' onchange="ppMethodCh('+idx+')"> 💯 Full & Final</label>'+
+    '</div>'+
+    '<div class="ppHR" style="display:'+(hasM('hr')?'block':'none')+';background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:11px;margin-bottom:7px">'+
+      '<div style="font-size:.74rem;font-weight:700;color:#2e7d32;margin-bottom:8px">🏢 HR Deduction</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px">'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Monthly (₹)<input type="number" class="ppHrMonthly" value="'+hrMonthly+'" placeholder="0" oninput="tawnPPCalc()" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.8rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Start Month<input type="month" class="ppHrStart" value="'+hrStart+'" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">End Month<input type="month" class="ppHrEnd" value="'+hrEnd+'" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">JV / Ref No<input class="ppHrJV" value="'+_e(hrJV)+'" placeholder="JV No" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Ab tak kata (₹)<input type="number" class="ppHrPaid" value="'+hrPaid+'" placeholder="0" oninput="tawnPPCalc()" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.8rem"></label>'+
+      '</div>'+
+    '</div>'+
+    '<div class="ppInst" style="display:'+(hasM('inst')?'block':'none')+';background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:11px;margin-bottom:7px">'+
+      '<div style="font-size:.74rem;font-weight:700;color:#2e7d32;margin-bottom:8px">💸 Installment (thoda-thoda)</div>'+
+      '<div class="ppInstList">'+instRows+'</div>'+
+      '<button type="button" onclick="ppInstAdd(this)" style="margin-top:6px;padding:5px 12px;background:#fff;color:var(--green);border:1px solid #a5d6a7;border-radius:6px;font-size:.74rem;cursor:pointer">+ Installment</button>'+
+    '</div>'+
+    '<div class="ppFull" style="display:'+(hasM('full')?'block':'none')+';background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:11px;margin-bottom:7px">'+
+      '<div style="font-size:.74rem;font-weight:700;color:#2e7d32;margin-bottom:8px">💯 Full & Final</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px">'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Received (₹)<input type="number" class="ppFullAmt" value="'+fAmt+'" placeholder="0" oninput="tawnPPCalc()" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.8rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Date<input type="date" class="ppFullDate" value="'+fDate+'" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Ref / UTR<input class="ppFullRef" value="'+_e(fRef)+'" placeholder="UTR..." style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem"></label>'+
+        '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Mode<select class="ppFullMode" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem">'+modeOpts(fMode)+'</select></label>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+function _ppInstRowHTML(it){
+  it = it||{};
+  var modes=[['','Mode'],['upi','UPI'],['neft','NEFT'],['imps','IMPS'],['cash','Cash'],['cheque','Cheque'],['other','Other']];
+  var opt=modes.map(function(m){return '<option value="'+m[0]+'" '+(it.mode===m[0]?'selected':'')+'>'+m[1]+'</option>';}).join('');
+  return '<div class="ppInstRow" style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">'+
+    '<input type="date" class="ppInstDate" value="'+(it.date||'')+'" style="padding:3px 5px;border:1.5px solid var(--bor);border-radius:5px;font-size:.72rem">'+
+    '<span style="font-size:.72rem">₹<input type="number" class="ppInstAmt" value="'+(it.amt||'')+'" placeholder="0" oninput="tawnPPCalc()" style="width:75px;padding:3px 5px;border:1.5px solid var(--bor);border-radius:5px;font-size:.72rem"></span>'+
+    '<select class="ppInstMode" style="padding:3px 5px;border:1.5px solid var(--bor);border-radius:5px;font-size:.72rem">'+opt+'</select>'+
+    '<button type="button" onclick="this.parentNode.remove();tawnPPCalc();" style="padding:2px 8px;background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:5px;font-size:.7rem;cursor:pointer">✕</button>'+
+  '</div>';
+}
+function ppInstAdd(btn){
+  var list = btn.parentNode.querySelector('.ppInstList');
+  list.insertAdjacentHTML('beforeend', _ppInstRowHTML({}));
+  tawnPPCalc();
+}
+function ppMethodCh(idx){
+  var card = document.querySelector('.tawnPP-row[data-idx="'+idx+'"]'); if(!card) return;
+  var on = {};
+  card.querySelectorAll('.ppMethod').forEach(function(cb){ if(cb.checked) on[cb.value]=1; });
+  card.querySelector('.ppHR').style.display   = on['hr']?'block':'none';
+  card.querySelector('.ppFull').style.display = on['full']?'block':'none';
+  card.querySelector('.ppInst').style.display = on['inst']?'block':'none';
+  tawnPPCalc();
+}
+// Ek card ka "mila" (ab tak) — sab chune methods ka JOD
+function _ppCardPaid(card){
+  var on = {};
+  card.querySelectorAll('.ppMethod').forEach(function(cb){ if(cb.checked) on[cb.value]=1; });
+  var paid = 0;
+  if(on['full']) paid += parseFloat((card.querySelector('.ppFullAmt')||{}).value)||0;
+  if(on['hr'])   paid += parseFloat((card.querySelector('.ppHrPaid')||{}).value)||0;
+  if(on['inst']){ card.querySelectorAll('.ppInstAmt').forEach(function(i){ paid += parseFloat(i.value)||0; }); }
+  return paid;
+}
+// Case ke Person list se cards banao (purane values preserve)
+function tawnPPLoad(){
+  var rows = document.getElementById('tawnPPRows'); if(!rows) return;
+  var prev = {};
+  getTawnSplitRaw().forEach(function(p){ prev[(p.name||'').trim().toLowerCase()] = p; });
+  var persons = (typeof getPersons==='function') ? getPersons() : [];
+  if(!persons.length){ rows.innerHTML = '<div style="font-size:.78rem;color:var(--red);padding:6px">⚠️ Pehle upar "Person" section mein log add karo, phir ye button dabao.</div>'; tawnPPCalc(); return; }
+  rows.innerHTML = persons.map(function(p,i){
+    var old = prev[(p.name||'').trim().toLowerCase()] || {};
+    return _ppCardHTML(p, i, old);
+  }).join('');
+  tawnPPCalc();
+}
+// Barabar baato: total ko checked persons ke Tawan amount mein equal
+function tawnPPSplit(){
+  var total = parseFloat((document.getElementById('tawnPPTotalIn')||{}).value)||0;
+  var cards = [].slice.call(document.querySelectorAll('#tawnPPRows .tawnPP-row'));
+  var checked = cards.filter(function(r){ return r.querySelector('.ppChk').checked; });
+  if(!checked.length){ toast('❌ Pehle kuch log select karo'); return; }
+  if(total<=0){ toast('❌ Upar total amount daalo'); return; }
+  var share = Math.floor(total/checked.length);
+  var rem = total - share*checked.length;
+  checked.forEach(function(r,i){ r.querySelector('.ppAmt').value = share + (i===0?rem:0); });
+  tawnPPCalc();
+}
+// Sum + status
+// Ek card ka method-wise paisa: {hr, inst, full}
+function _ppCardPaidBreak(card){
+  var on = {};
+  card.querySelectorAll('.ppMethod').forEach(function(cb){ if(cb.checked) on[cb.value]=1; });
+  var hr=0, inst=0, full=0;
+  if(on['full']) full = parseFloat((card.querySelector('.ppFullAmt')||{}).value)||0;
+  if(on['hr'])   hr   = parseFloat((card.querySelector('.ppHrPaid')||{}).value)||0;
+  if(on['inst']){ card.querySelectorAll('.ppInstAmt').forEach(function(i){ inst += parseFloat(i.value)||0; }); }
+  return {hr:hr, inst:inst, full:full, total:hr+inst+full};
+}
+function tawnPPCalc(){
+  var cards = [].slice.call(document.querySelectorAll('#tawnPPRows .tawnPP-row'));
+  var totAmt=0, totPaid=0, gHr=0, gInst=0, gFull=0;
+  cards.forEach(function(r){
+    var on = r.querySelector('.ppChk').checked;
+    r.style.opacity = on ? '1' : '.45';
+    var amt = parseFloat(r.querySelector('.ppAmt').value)||0;
+    var bk = _ppCardPaidBreak(r);
+    var paid = bk.total;
+    var stat = r.querySelector('.ppStat');
+    if(on){
+      totAmt += amt; totPaid += paid; gHr+=bk.hr; gInst+=bk.inst; gFull+=bk.full;
+      var pend = amt - paid;
+      if(amt>0 && pend<=0){ stat.textContent='✅ Pura'; stat.style.color='var(--green)'; }
+      else if(paid>0){ stat.textContent='⏳ Baqi ₹'+pend; stat.style.color='#e65100'; }
+      else { stat.textContent='🔴 Pending'; stat.style.color='var(--red)'; }
+      // Card ke andar method-wise breakdown dikhao
+      var brk = r.querySelector('.ppBreak');
+      if(brk){
+        var parts=[];
+        if(bk.hr)   parts.push('🏢 HR ₹'+bk.hr);
+        if(bk.inst) parts.push('💸 Inst ₹'+bk.inst);
+        if(bk.full) parts.push('💯 Full ₹'+bk.full);
+        brk.textContent = parts.length ? ('Mila: '+parts.join('  •  ')) : '';
+      }
+    } else { stat.textContent=''; var b2=r.querySelector('.ppBreak'); if(b2) b2.textContent=''; }
+  });
+  if(_tawnMode==='perperson'){
+    var tTot=document.getElementById('tTot'); if(tTot) tTot.value = totAmt||'';
+    var tPd=document.getElementById('tPd'); if(tPd) tPd.value = totPaid||'';
+    var tRm=document.getElementById('tRm'); if(tRm) tRm.value = (totAmt-totPaid)||'';
+    var tPdD=document.getElementById('tPdDirect'); if(tPdD) tPdD.value = totPaid||'';
+    var tRmD=document.getElementById('tRmDirect'); if(tRmD) tRmD.value = (totAmt-totPaid)||'';
+  }
+  var sum=document.getElementById('tawnPPSummary');
+  if(sum){
+    sum.innerHTML = 'Kul: ₹'+totAmt+'  |  Mila: ₹'+totPaid+'  |  Baqi: ₹'+(totAmt-totPaid)+
+      '<div style="font-size:.72rem;font-weight:600;color:var(--mt);margin-top:3px">'+
+      '🏢 HR se: ₹'+gHr+'   •   💸 Installment se: ₹'+gInst+'   •   💯 Full & Final se: ₹'+gFull+'</div>';
+  }
+}
+// Ek card ka poora data padho
+function _ppReadCard(r){
+  var methods = [];
+  r.querySelectorAll('.ppMethod').forEach(function(cb){ if(cb.checked) methods.push(cb.value); });
+  var insts = [].slice.call(r.querySelectorAll('.ppInstRow')).map(function(ir){
+    return {
+      date:(ir.querySelector('.ppInstDate')||{}).value||'',
+      amt: parseFloat((ir.querySelector('.ppInstAmt')||{}).value)||0,
+      mode:(ir.querySelector('.ppInstMode')||{}).value||''
+    };
+  }).filter(function(it){ return it.amt||it.date; });
+  return {
+    name: r.getAttribute('data-name')||'',
+    mobile: r.getAttribute('data-mobile')||'',
+    empCode: r.getAttribute('data-emp')||'',
+    checked: r.querySelector('.ppChk').checked,
+    amount: parseFloat(r.querySelector('.ppAmt').value)||0,
+    methods: methods,
+    hrMonthly: parseFloat((r.querySelector('.ppHrMonthly')||{}).value)||0,
+    hrStart: (r.querySelector('.ppHrStart')||{}).value||'',
+    hrEnd: (r.querySelector('.ppHrEnd')||{}).value||'',
+    hrJV: (r.querySelector('.ppHrJV')||{}).value||'',
+    hrPaid: parseFloat((r.querySelector('.ppHrPaid')||{}).value)||0,
+    fullAmt: parseFloat((r.querySelector('.ppFullAmt')||{}).value)||0,
+    fullDate: (r.querySelector('.ppFullDate')||{}).value||'',
+    fullRef: (r.querySelector('.ppFullRef')||{}).value||'',
+    fullMode: (r.querySelector('.ppFullMode')||{}).value||'',
+    insts: insts,
+    paid: _ppCardPaid(r)
+  };
+}
+function getTawnSplitRaw(){
+  return [].slice.call(document.querySelectorAll('#tawnPPRows .tawnPP-row')).map(_ppReadCard);
+}
+function getTawnSplit(){
+  return getTawnSplitRaw().filter(function(p){ return p.checked; });
+}
+function setTawnSplit(arr, total){
+  var rows=document.getElementById('tawnPPRows'); if(!rows) return;
+  if(document.getElementById('tawnPPTotalIn')) document.getElementById('tawnPPTotalIn').value = total||'';
+  rows.innerHTML = (arr||[]).map(function(p,i){
+    return _ppCardHTML({name:p.name,mobile:p.mobile,empCode:p.empCode}, i, Object.assign({checked:true}, p));
+  }).join('');
+  tawnPPCalc();
+}
+// ===== END PER-PERSON TAWAN MODULE =====
+
 function tawnAddPerson(){
   var rows = document.getElementById('tawnPersonRows');
   if(!rows) return;
@@ -7964,6 +8270,25 @@ function clearClientSearch(){
   ['cSNaam','cSPhone','cSEmpCode','cSDesig'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   renderClients();
 }
+// Client ke cases match karne ka tareeka: mobile/empCode (jo nahi badalte) PEHLE,
+// phir naam (fallback). Isse naam Eng<->Urdu badalne par bhi cases jude rehte hain.
+function _caseMatchesClient(cs, c){
+  var cph = (c.phone||'').replace(/\D/g,'');
+  var cemp = (c.empCode||'').trim().toLowerCase();
+  var cnm = (c.naam||'').trim().toLowerCase();
+  function chk(name, mob, emp){
+    if(cph && mob && (mob||'').replace(/\D/g,'')===cph) return true;
+    if(cemp && emp && (emp||'').trim().toLowerCase()===cemp) return true;
+    if(cnm && name && (name||'').trim().toLowerCase()===cnm) return true;
+    return false;
+  }
+  var persons = cs.persons||[];
+  if(persons.some(function(p){ return chk(p.name, p.mobile||p.phone, p.empCode); })) return true;
+  if(chk(cs.name, cs.mobile||cs.phone, cs.empCode)) return true;
+  return false;
+}
+function _clientCases(c){ return (cc||[]).filter(function(cs){ return _caseMatchesClient(cs, c); }); }
+
 function renderClients(){
   var list = document.getElementById('clientList');
   if(!list) return;
@@ -7984,12 +8309,8 @@ function renderClients(){
   }
   list.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'
     + filtered.map(function(c){
-      // Count cases for this client
-      var clientCases = (cc||[]).filter(function(cs){
-        var persons = cs.persons||[];
-        return persons.some(function(p){ return (p.name||'').toLowerCase()===(c.naam||'').toLowerCase(); })
-          || (cs.name||'').toLowerCase()===(c.naam||'').toLowerCase();
-      });
+      // Count cases for this client (mobile/empCode/naam se match)
+      var clientCases = _clientCases(c);
       var total = clientCases.length;
       var closed = clientCases.filter(function(cs){ return isClosedCase(cs); }).length;
       var pending = total - closed;
@@ -8015,11 +8336,7 @@ function renderClients(){
 function showClientCases(clientId){
   var c = _clients.find(function(x){ return x.id===clientId; });
   if(!c) return;
-  var clientCases = (cc||[]).filter(function(cs){
-    var persons = cs.persons||[];
-    return persons.some(function(p){ return (p.name||'').toLowerCase()===(c.naam||'').toLowerCase(); })
-      || (cs.name||'').toLowerCase()===(c.naam||'').toLowerCase();
-  }).sort(function(a,b){ return (b.openDate||'').localeCompare(a.openDate||''); });
+  var clientCases = _clientCases(c).sort(function(a,b){ return (b.openDate||'').localeCompare(a.openDate||''); });
 
   var total = clientCases.length;
   var closed = clientCases.filter(function(cs){ return isClosedCase(cs); }).length;
