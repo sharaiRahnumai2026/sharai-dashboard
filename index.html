@@ -179,7 +179,7 @@ input[type="date"]::-moz-calendar-picker-indicator{width:100%;height:100%;opacit
 .fgr textarea{resize:vertical;min-height:68px;}
 .sbox{background:#f7f9ff;border:1px solid #c5d5f0;border-radius:10px;padding:13px;margin:10px 0;}
 .sbox-title{font-size:.76rem;font-weight:700;color:var(--bd);margin-bottom:9px;display:flex;align-items:center;gap:5px;direction:ltr!important;text-align:left!important;}
-.rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:11px;margin-bottom:16px;}
+.rcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;margin-bottom:16px;}
 .rcard{background:var(--card);border-radius:var(--r);padding:11px;box-shadow:var(--sh);border:1px solid var(--bor);border-left:4px solid var(--blue);transition:all .2s;overflow:hidden;}
 .rcard:hover{transform:translateY(-2px);}
 .rcard h4{font-size:.79rem;color:var(--bd);margin-bottom:7px;cursor:pointer;}
@@ -608,7 +608,7 @@ function _cleanC(o){
         </div>
       </div>
     </div>
-    <div class="stitle"><h2>🗺️ Region Overview</h2></div>
+    <div class="stitle"><h2>🗺️ Region Overview</h2><button onclick="toggleHiddenRegions()" id="hidRegBtn" style="margin-left:auto;padding:4px 11px;font-size:.72rem;border:1.5px solid var(--blue);background:#fff;color:var(--blue);border-radius:7px;cursor:pointer;font-weight:600">👁️ Hidden regions</button></div>
     <div class="rcards" id="regCards"></div>
     <div class="stitle"><h2>📝 Recent Cases</h2><span id='dashNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="eId=null;goPage('newcase')">➕ New Case</button></span></div>
     <div class="twrap">
@@ -2633,7 +2633,7 @@ function initDD(){
   const sGd=document.getElementById('sGd');
   if(sGd){const cur=sGd.value;sGd.innerHTML='<option value="">All</option>';RTYPES.forEach(r=>{const o=document.createElement('option');o.value=r.v;o.textContent=r.l;sGd.appendChild(o);});if(cur)sGd.value=cur;}
   // Region — sRg uses short names (as stored in cases), fReg uses HIER keys
-  const fRegEl=document.getElementById('fReg');if(fRegEl){fRegEl.innerHTML='<option value="">Select...</option>';Object.keys(HIER).forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;fRegEl.appendChild(o);});}
+  const fRegEl=document.getElementById('fReg');if(fRegEl){fRegEl.innerHTML='<option value="">Select...</option>';Object.keys(HIER).forEach(r=>{if(_isHiddenRegion(r)&&!eId)return;const o=document.createElement('option');o.value=r;o.textContent=r;fRegEl.appendChild(o);});}
   const sRgEl=document.getElementById('sRg');
   if(sRgEl){
     sRgEl.innerHTML='<option value="">All</option>';
@@ -3063,6 +3063,25 @@ function updRepYears(){
   });
 }
 // ===== DASHBOARD YEAR FILTER =====
+// ===== HIDDEN REGIONS (cards chhupao — data nahi hatega, total same rahega) =====
+// In regions ke CARDS dashboard/reports mein chhupte hain. Data/total pe koi asar nahi.
+// Search aur case-entry mein ye regions rehte hain. Toggle se dikha sakte ho.
+var HIDDEN_REGIONS = ['Bareilly Region','Nagpur Region'];
+var _showHiddenRegions = false;
+function toggleHiddenRegions(){
+  _showHiddenRegions = !_showHiddenRegions;
+  rRegCards();
+  if(typeof rRep==='function' && _currentPg==='reports') rRep();
+  if(typeof initDD==='function') initDD(); // region dropdown bhi update karo
+  var btns=document.querySelectorAll('#hidRegBtn'); 
+  if(btns[0]) btns[0].textContent = _showHiddenRegions ? '🙈 Hidden chhupao' : '👁️ Hidden regions';
+}
+function _isHiddenRegion(r){
+  if(_showHiddenRegions) return false;
+  return HIDDEN_REGIONS.indexOf(r) > -1;
+}
+// ===== END HIDDEN REGIONS =====
+
 var dashYear = ''; // '' = all years
 
 function dashFilterYear(yr){
@@ -3312,6 +3331,8 @@ function rRegCards(){
     var seen = {};
     src.forEach(function(c){ if(c.region && !seen[c.region]){ seen[c.region]=true; _allowedRegs.push(c.region); }});
   }
+  // Hidden regions (Bareilly/Nagpur) ke cards chhupao — data/total pe asar nahi
+  _allowedRegs = _allowedRegs.filter(function(r){ return !_isHiddenRegion(r); });
   document.getElementById('regCards').innerHTML=_allowedRegs.map(rRaw=>{
     const r=_e(rRaw); // XSS FIX: region naam data se aata hai
     const s=rs[rRaw]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
@@ -4493,7 +4514,10 @@ function rRep(){
     }
   });
 
-  var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+  // Hidden regions (Bareilly/Nagpur) ke cards chhupao — Grand Total/calc pe asar nahi
+  regionKeys = regionKeys.filter(function(r){ return !_isHiddenRegion(r); });
+
+  var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span><button onclick="toggleHiddenRegions()" style="margin-left:auto;padding:3px 10px;font-size:.68rem;border:1.5px solid var(--blue);background:#fff;color:var(--blue);border-radius:6px;cursor:pointer;font-weight:600">👁️ Hidden regions</button></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
 
   // Build per-region tawan/halfiya stats — same filtered cases (fcc) use karo
   var regionTawn = {}, regionHalf = {};
@@ -4729,7 +4753,7 @@ function resetF(){
   var _pr=document.querySelector('input[name="tawnMode"][value="pooled"]'); if(_pr) _pr.checked=true;
   var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
   var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='none';
-  var _ppt=document.getElementById('tawnPPTotalIn'); if(_ppt) _ppt.value='';
+  var _pwShow=document.getElementById('pooledWasoolWrap'); if(_pwShow) _pwShow.style.display='block';
   // Ensure pending_z is set even if options load late
   setTimeout(function(){ 
     var s=document.getElementById('fStat'); 
@@ -4989,9 +5013,11 @@ function editC(id){
   if(_tawnMode==='perperson' && c.tawnSplit && c.tawnSplit.length){
     setTawnSplit(c.tawnSplit, c.tTot||'');
     var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='block';
+    var _pwH=document.getElementById('pooledWasoolWrap'); if(_pwH) _pwH.style.display='none';
   } else {
     var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
     var _ppw2=document.getElementById('tawnPPWrap'); if(_ppw2) _ppw2.style.display='none';
+    var _pwS=document.getElementById('pooledWasoolWrap'); if(_pwS) _pwS.style.display='block';
   }
           ssRef('hSt'); ssRef('halfiaSt'); ssRef('tawnSt');
           ssRef('tfT'); ssRef('tfD'); ssRef('tbO'); ssRef('tbD');
@@ -7919,18 +7945,6 @@ function tawnPPLoad(){
     var old = prev[(p.name||'').trim().toLowerCase()] || {};
     return _ppCardHTML(p, i, old);
   }).join('');
-  tawnPPCalc();
-}
-// Barabar baato: total ko checked persons ke Tawan amount mein equal
-function tawnPPSplit(){
-  var total = parseFloat((document.getElementById('tawnPPTotalIn')||{}).value)||0;
-  var cards = [].slice.call(document.querySelectorAll('#tawnPPRows .tawnPP-row'));
-  var checked = cards.filter(function(r){ return r.querySelector('.ppChk').checked; });
-  if(!checked.length){ toast('❌ Pehle kuch log select karo'); return; }
-  if(total<=0){ toast('❌ Upar total amount daalo'); return; }
-  var share = Math.floor(total/checked.length);
-  var rem = total - share*checked.length;
-  checked.forEach(function(r,i){ r.querySelector('.ppAmt').value = share + (i===0?rem:0); });
   tawnPPCalc();
 }
 // Sum + status
