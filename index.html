@@ -4994,6 +4994,7 @@ async function saveCase(){
       tHREnd:document.getElementById('tHREnd')?document.getElementById('tHREnd').value:'',
       tHRMonthly:document.getElementById('tHRMonthly')?document.getElementById('tHRMonthly').value:'',
       tHRJV:document.getElementById('tHRJV')?document.getElementById('tHRJV').value.trim():'',
+      tDirectAmt:document.getElementById('tDirectAmt')?document.getElementById('tDirectAmt').value:'',
       tDirectDate:document.getElementById('tDirectDate')?document.getElementById('tDirectDate').value:'',
       tDirectRef:document.getElementById('tDirectRef')?document.getElementById('tDirectRef').value.trim():'',
       tDirectNotes:document.getElementById('tDirectNotes')?document.getElementById('tDirectNotes').value.trim():'',
@@ -5155,6 +5156,16 @@ function editC(id){
     if(el) el.checked = methods.includes(val);
   });
   onCollMethod();
+  // Full & Final received amount/date/ref wapas bharo (edit pe blank na ho)
+  (function(){
+    var _da=document.getElementById('tDirectAmt'); if(_da) _da.value=(c.tDirectAmt!=null?c.tDirectAmt:'');
+    // purane cases jisme tDirectAmt save nahi tha par tPd hai aur method direct tha — tPd se bhar do
+    if(_da && (!_da.value||_da.value==='') && (c.tCollMethod||'').indexOf('direct')>-1 && c.tPd){ _da.value=c.tPd; }
+    var _dd=document.getElementById('tDirectDate'); if(_dd) _dd.value=c.tDirectDate||'';
+    var _dr=document.getElementById('tDirectRef'); if(_dr) _dr.value=c.tDirectRef||'';
+    var _dn=document.getElementById('tDirectNotes'); if(_dn) _dn.value=c.tDirectNotes||'';
+    if(typeof calcDirectTotal==='function') calcDirectTotal();
+  })();
   // Load tawn persons
   if(c.tawnPersons&&c.tawnPersons.length) setTawnPersons(c.tawnPersons); else document.getElementById('tawnPersonRows').innerHTML='';
   // Per-person tawan restore
