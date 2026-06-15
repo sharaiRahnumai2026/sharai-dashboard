@@ -8005,7 +8005,7 @@ function _ppCardHTML(p, idx, d){
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
       '<input type="checkbox" class="ppChk" '+(checked?'checked':'')+' onchange="tawnPPCalc()" style="width:17px;height:17px;flex-shrink:0">'+
       '<span style="font-size:.95rem;font-weight:700">👤 '+_e(p.name||'(no name)')+'</span>'+
-      '<span class="ppStat" style="font-size:.8rem;font-weight:700;margin-left:auto"></span>'+
+      '<span class="ppStat" style="font-size:.92rem;font-weight:800;margin-left:auto;padding:3px 10px;border-radius:20px"></span>'+
     '</div>'+
     // Row 2: Tawan amount (poori line)
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
@@ -8050,11 +8050,11 @@ function _ppInstRowHTML(it){
   it = it||{};
   var modes=[['','Mode'],['upi','UPI'],['neft','NEFT'],['imps','IMPS'],['cash','Cash'],['cheque','Cheque'],['other','Other']];
   var opt=modes.map(function(m){return '<option value="'+m[0]+'" '+(it.mode===m[0]?'selected':'')+'>'+m[1]+'</option>';}).join('');
-  return '<div class="ppInstRow" style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">'+
-    '<input type="date" class="ppInstDate" value="'+(it.date||'')+'" style="padding:3px 5px;border:1.5px solid var(--bor);border-radius:5px;font-size:.72rem">'+
-    '<span style="font-size:.72rem">₹<input type="number" class="ppInstAmt" value="'+(it.amt||'')+'" placeholder="0" oninput="tawnPPCalc()" style="width:75px;padding:3px 5px;border:1.5px solid var(--bor);border-radius:5px;font-size:.72rem"></span>'+
-    '<select class="ppInstMode" style="padding:3px 5px;border:1.5px solid var(--bor);border-radius:5px;font-size:.72rem">'+opt+'</select>'+
-    '<button type="button" onclick="this.parentNode.remove();tawnPPCalc();" style="padding:2px 8px;background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:5px;font-size:.7rem;cursor:pointer">✕</button>'+
+  return '<div class="ppInstRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px;align-items:end;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed #c8e6c9">'+
+    '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Date<input type="date" class="ppInstDate" value="'+(it.date||'')+'" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem"></label>'+
+    '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Received (₹)<input type="number" class="ppInstAmt" value="'+(it.amt||'')+'" placeholder="0" oninput="tawnPPCalc()" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.8rem"></label>'+
+    '<label style="font-size:.7rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Mode<select class="ppInstMode" style="padding:6px 8px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem">'+opt+'</select></label>'+
+    '<label style="font-size:.7rem;color:transparent;display:flex;flex-direction:column;gap:3px">_<button type="button" onclick="this.closest(\'.ppInstRow\').remove();tawnPPCalc();" style="padding:6px 8px;background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:6px;font-size:.74rem;cursor:pointer">✕ Hatao</button></label>'+
   '</div>';
 }
 function ppInstAdd(btn){
@@ -8121,10 +8121,10 @@ function tawnPPCalc(){
     if(on){
       totAmt += amt; totPaid += paid; gHr+=bk.hr; gInst+=bk.inst; gFull+=bk.full;
       var pend = amt - paid;
-      if(amt>0 && paid>amt){ var extra=paid-amt; stat.textContent='⚠️ ₹'+extra+' zyada! Note mein likhein'; stat.style.color='var(--red)'; }
-      else if(amt>0 && pend<=0){ stat.textContent='✅ Pura'; stat.style.color='var(--green)'; }
-      else if(paid>0){ stat.textContent='⏳ Baqi ₹'+pend; stat.style.color='#e65100'; }
-      else { stat.textContent='🔴 Pending'; stat.style.color='var(--red)'; }
+      if(amt>0 && paid>amt){ var extra=paid-amt; stat.textContent='⚠️ ₹'+extra+' ZYADA — Note mein likhein'; stat.style.color='#fff'; stat.style.background='var(--red)'; }
+      else if(amt>0 && pend<=0){ stat.textContent='✅ Pura'; stat.style.color='#fff'; stat.style.background='var(--green)'; }
+      else if(paid>0){ stat.textContent='⏳ Baqi ₹'+pend; stat.style.color='#fff'; stat.style.background='#e65100'; }
+      else { stat.textContent='🔴 Pending'; stat.style.color='#fff'; stat.style.background='var(--red)'; }
       // Card ke andar method-wise breakdown dikhao
       var brk = r.querySelector('.ppBreak');
       if(brk){
@@ -8134,7 +8134,7 @@ function tawnPPCalc(){
         if(bk.full) parts.push('💯 Full ₹'+bk.full);
         brk.textContent = parts.length ? ('Mila: '+parts.join('  •  ')) : '';
       }
-    } else { stat.textContent=''; var b2=r.querySelector('.ppBreak'); if(b2) b2.textContent=''; }
+    } else { stat.textContent=''; stat.style.background=''; var b2=r.querySelector('.ppBreak'); if(b2) b2.textContent=''; }
   });
   if(_tawnMode==='perperson'){
     // Total ko overwrite MAT karo — woh upar Nafila/Maddat se aata hai. Sirf paid/remaining update karo.
@@ -8146,7 +8146,11 @@ function tawnPPCalc(){
   }
   var sum=document.getElementById('tawnPPSummary');
   if(sum){
-    sum.innerHTML = 'Kul: ₹'+totAmt+'  |  Mila: ₹'+totPaid+'  |  Baqi: ₹'+(totAmt-totPaid)+
+    var _diff = totAmt-totPaid;
+    var _baqiHtml = _diff < 0
+      ? '<span style="color:var(--red);font-weight:700">Zyada wapas: ₹'+(-_diff)+'</span>'
+      : 'Baqi: ₹'+_diff;
+    sum.innerHTML = 'Kul: ₹'+totAmt+'  |  Mila: ₹'+totPaid+'  |  '+_baqiHtml+
       '<div style="font-size:.72rem;font-weight:600;color:var(--mt);margin-top:3px">'+
       '🏢 HR se: ₹'+gHr+'   •   💸 Installment se: ₹'+gInst+'   •   💯 Full & Final se: ₹'+gFull+'</div>';
   }
