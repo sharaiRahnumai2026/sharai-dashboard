@@ -2888,10 +2888,15 @@ function _ppSyncWithTotal(total){
   if(_tawnMode!=='perperson') return;
   var cards = document.querySelectorAll('#tawnPPRows .tawnPP-row');
   if(total<=0){
-    // Upar khaali → neeche ke amount khaali + lock
+    // Upar khaali → neeche ke amount khaali + lock + method bhi lock
     cards.forEach(function(r){
       var amt = r.querySelector('.ppAmt');
       if(amt){ amt.value=''; amt.disabled=true; amt.placeholder='Pehle upar Total bharein'; amt.style.background='#f0f0f0'; }
+      // method checkboxes uncheck + disable, unke boxes hide
+      r.querySelectorAll('.ppMethod').forEach(function(cb){ cb.checked=false; cb.disabled=true; });
+      var idx=r.getAttribute('data-idx');
+      if(typeof ppMethodCh==='function' && idx!=null) ppMethodCh(idx);
+      r.style.opacity='.6';
     });
     var hint=document.getElementById('ppLockHint'); if(hint) hint.style.display='block';
     if(typeof tawnPPCalc==='function') tawnPPCalc();
@@ -2900,6 +2905,8 @@ function _ppSyncWithTotal(total){
     cards.forEach(function(r){
       var amt = r.querySelector('.ppAmt');
       if(amt){ amt.disabled=false; amt.placeholder='kitna tawan'; amt.style.background=''; }
+      r.querySelectorAll('.ppMethod').forEach(function(cb){ cb.disabled=false; });
+      r.style.opacity='1';
     });
     var hint=document.getElementById('ppLockHint'); if(hint) hint.style.display='none';
   }
