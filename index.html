@@ -969,6 +969,7 @@ function _cleanC(o){
                     <div class="fgr"><label style="color:var(--red);font-weight:700">Remaining (₹)</label>
                       <input type="number" id="tRm" readonly style="background:#fff;font-weight:700;color:var(--red)"></div>
                   </div>
+                  <div id="tPooledOver" style="display:none;margin-top:8px;background:var(--red);color:#fff;font-weight:800;font-size:.9rem;padding:8px 14px;border-radius:8px"></div>
                 </div>
 
                 <!-- Direct Account Fields -->
@@ -3113,6 +3114,12 @@ function calcT(){
   // Update both boxes
   ['tPd','tPdDirect'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=pd||''; });
   ['tRm','tRmDirect'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=tot>0?rm:''; });
+  // Zyada wasool warning (per-person jaisa)
+  var ovr=document.getElementById('tPooledOver');
+  if(ovr){
+    if(tot>0 && pd>tot){ ovr.style.display='block'; ovr.textContent='⚠️ ₹'+(pd-tot).toLocaleString('en-IN')+' ZYADA wasool — Note mein likhein'; }
+    else { ovr.style.display='none'; ovr.textContent=''; }
+  }
   // update installment count badge
   const cnt=document.getElementById('tInstCount');
   if(cnt)cnt.textContent=insts.length;
