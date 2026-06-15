@@ -525,7 +525,7 @@ function _cleanC(o){
 <div class="sidebar" id="sb">
   <div class="sbh" onclick="rfAll()" title="Click to Refresh" style="cursor:pointer;transition:opacity .2s" onmouseenter="this.style.opacity='.8'" onmouseleave="this.style.opacity='1'">
     <div class="sblogo"><img id="sbLogo" src="" alt=""></div>
-    <div class="sbtitle">SHARI'AH ADVISORY<span>Case Management</span></div>
+    <div class="sbtitle" onclick="forceRefreshCases(this)" title="Click karein — taaza data laane ke liye" style="cursor:pointer">SHARI'AH ADVISORY<span>Case Management</span></div>
   </div>
   <div class="sbnav">
     <div class="sbi on" onclick="goPage('dash',this)" data-p="dash"><span class="ic">🏠</span><span class="lb">Dashboard</span></div>
@@ -1388,6 +1388,13 @@ function _cleanC(o){
     <div class="stitle"><h2>⚙️ Settings</h2></div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;grid-auto-rows:auto">
 
+    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);grid-column:1/-1">
+      <h3 style="color:var(--bd);margin-bottom:6px;font-size:.87rem">💾 Data Backup</h3>
+      <p style="font-size:.74rem;color:var(--mt);margin-bottom:12px">Saara data (cases, clients, users, settings) ek file mein download karein. Hafte mein ek baar backup lena behtar hai — data kabhi kho jaye to wapas laaya ja sake.</p>
+      <button class="btn bpri" onclick="downloadBackup(this)" style="font-size:.82rem">💾 Backup Download Karein</button>
+      <span id="backupStatus" style="margin-left:12px;font-size:.76rem;color:var(--mt)"></span>
+    </div>
+
     <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
       <h3 style="color:var(--bd);margin-bottom:12px;font-size:.87rem">🖼️ Company Logo</h3>
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
@@ -1575,7 +1582,7 @@ function _cleanC(o){
 <!-- DETAIL MODAL -->
 <div class="mo" id="mDet">
   <div class="modal" style="max-width:860px;position:relative;z-index:10000;margin-top:10px">
-    <div class="mh"><h3>📄 Case Details</h3><button class="mcl" onclick="cmo('mDet')">✕</button></div>
+    <div class="mh"><h3 id="detModalTitle">📄 Case Details</h3><button class="mcl" onclick="cmo('mDet')">✕</button></div>
     <!-- HIDE ROWS BAR -->
     <div id="detHideBar" style="background:#f3f6fb;border-bottom:1px solid var(--bor);padding:8px 18px;align-items:center;flex-wrap:wrap;gap:10px;display:none">
       <span style="font-size:.72rem;font-weight:700;color:var(--mt);text-transform:uppercase;margin-right:4px">Hide:</span>
@@ -1690,7 +1697,7 @@ function _cleanC(o){
 <div class="toast" id="toast"></div>
 
 <script>
-const HIER={"Ajmer Region": {"states": {"Gujarat": {"divs": {"101 Ahmedabad": ["Ahmedabad", "Gandhi Nagar"], "102 North Gujarat Modasa": ["Mehsana", "Patan", "Banaskantha", "Sabarkantha", "Aravalli"], "106 Central Gujarat": ["Anand", "Kheda", "Vadodara", "Dahod", "Panchmahal"], "107 Kutchh": ["Kutch"], "110 Saurashtra": ["Rajkot", "Jamnagar", "Junagadh", "Amreli", "Bhavnagar", "Porbandar", "Gir Somnath", "Morbi", "Devbhoomi Dwarka", "Botad"], "112 South Gujarat Surat": ["Surat", "Navsari", "Valsad", "Tapi", "Narmada", "Bharuch"]}}, "Rajasthan": {"divs": {"103 Jaipur": ["Jaipur", "Alwar", "Dausa", "Sikar", "Jhunjhunu"], "105 Kota": ["Kota", "Bundi", "Baran", "Jhalawar"], "108 Jodhpur": ["Jodhpur", "Barmer", "Jaisalmer", "Jalore", "Sirohi", "Pali"], "111 Ajmer": ["Ajmer", "Nagaur", "Tonk", "Bhilwara"], "117 Bharatpur": ["Bharatpur", "Dholpur", "Karauli", "Sawai Madhopur"], "118 Bikaner": ["Bikaner", "Churu", "Sri Ganganagar", "Hanumangarh"], "120 Udaipur": ["Udaipur", "Rajsamand", "Chittorgarh", "Dungarpur", "Banswara", "Pratapgarh"]}}, "Punjab": {"divs": {"119 Punjab": ["Amritsar", "Ludhiana", "Jalandhar", "Patiala", "Bathinda", "Gurdaspur", "Hoshiarpur", "Faridkot", "Ferozepur", "Moga", "Muktsar", "Kapurthala", "Fatehgarh Sahib", "Rupnagar", "SAS Nagar (Mohali)", "Sangrur", "Barnala", "Mansa", "Pathankot", "Tarn Taran", "Shahid Bhagat Singh Nagar"]}}, "M.P": {"divs": {"104 Indore": ["Indore", "Dhar", "Khargone", "Barwani", "Alirajpur", "Jhabua"], "109 Jabalpur": ["Jabalpur", "Chhindwara", "Seoni", "Narsinghpur", "Mandla", "Dindori", "Balaghat"], "113 Bhopal": ["Bhopal", "Sehore", "Raisen", "Vidisha", "Rajgarh"], "114 Gwalior": ["Gwalior", "Datia", "Guna", "Ashoknagar", "Shivpuri"], "115 Sagar": ["Sagar", "Damoh", "Chhatarpur", "Panna", "Tikamgarh", "Niwari"], "116 Ujjain": ["Ujjain", "Dewas", "Shajapur", "Agar Malwa", "Mandsaur", "Neemuch", "Ratlam"]}}}}, "Mumbai Region": {"states": {"Maharashtra": {"divs": {"201 Mumbai Western": ["Mumbai City", "Mumbai Suburban", "Thane", "Raigad", "Palghar"], "205 Amravati": ["Amravati", "Akola", "Washim", "Buldhana", "Yavatmal"], "207 Pune": ["Pune", "Satara", "Sangli", "Solapur", "Kolhapur"], "206 Thane": ["Thane", "Raigad", "Palghar"], "208 Nagpur": ["Nagpur", "Wardha", "Bhandara", "Gondiya", "Chandrapur", "Gadchiroli"], "211 Mumbai City": ["Mumbai City", "Mumbai Suburban"], "212 Nashik": ["Nashik", "Ahmednagar", "Dhule", "Nandurbar", "Jalgaon"], "213 Aurangabad": ["Aurangabad", "Jalna", "Beed", "Latur", "Osmanabad", "Nanded", "Hingoli", "Parbhani"], "203 Ratnagiri": ["Ratnagiri", "Sindhudurg"], "209 Palghar": ["Palghar"], "Mumbai Suburbun 1": ["Andheri", "Borivali", "Kandivali", "Malad", "Goregaon"], "Mumbai Suburbun 2": ["Bandra", "Kurla", "Chembur", "Ghatkopar", "Vikhroli"]}}, "Chhatisgarh": {"divs": {"210 Bilaspur": ["Bilaspur", "Korba", "Janjgir-Champa", "Raigarh", "Mungeli"], "Raipur & Chhatisgarh": ["Raipur", "Durg", "Baloda Bazar", "Gariaband", "Mahasamund"], "Durg": ["Durg", "Rajnandgaon", "Kabirdham", "Bemetara"], "Surguja": ["Surguja", "Surajpur", "Balrampur", "Korea", "Jashpur"], "Bastar": ["Bastar", "Kondagaon", "Kanker", "Narayanpur", "Bijapur", "Sukma", "Dantewada"]}}}}, "Bengaluru Region": {"states": {"Karnataka": {"divs": {"401 Belgaum": ["Belagavi", "Dharwad", "Gadag", "Haveri", "Uttara Kannada"], "402 Bengaluru": ["Bengaluru Urban", "Bengaluru Rural", "Ramanagara", "Tumkur", "Chikkaballapura", "Kolar"], "403 Gulbarga": ["Kalaburagi", "Bidar", "Raichur", "Koppal", "Yadgir", "Vijayapura", "Bagalkot"]}}, "Kerala": {"divs": {"404 Goa & Kerala": ["North Goa", "South Goa"]}}, "Goa": {"divs": {"404 Goa & Kerala": ["North Goa", "South Goa"]}}}}, "Delhi Region": {"states": {"Jammu & Kashmir": {"divs": {"307 Jammu": ["Jammu", "Samba", "Kathua", "Udhampur", "Reasi", "Rajouri", "Poonch", "Doda", "Kishtwar", "Ramban"], "308 South Kashmir": ["Anantnag", "Kulgam", "Pulwama", "Shopian"], "309 North Kashmir": ["Srinagar", "Budgam", "Ganderbal", "Bandipora", "Baramulla", "Kupwara"]}}, "Himachal Pradesh": {"divs": {"Himachal Pradesh": ["Shimla", "Mandi", "Kangra", "Kullu", "Solan", "Sirmaur", "Bilaspur", "Hamirpur", "Una", "Chamba", "Kinnaur", "Lahaul & Spiti"]}}, "Uttar Pradesh": {"divs": {"311 Bareilly": ["Bareilly", "Pilibhit", "Shahjahanpur", "Badaun"], "313 Kanpur": ["Kanpur Nagar", "Kanpur Dehat", "Etawah", "Farrukhabad", "Kannauj", "Auraiya"], "316 Banaras": ["Varanasi", "Chandauli", "Ghazipur", "Jaunpur", "Sant Ravidas Nagar"], "303 Moradabad": ["Moradabad", "Rampur", "Amroha", "Sambhal", "Bijnor"], "304 Aligarh": ["Aligarh", "Hathras", "Kasganj", "Etah", "Mainpuri", "Firozabad", "Mathura", "Agra"], "314 Lucknow": ["Lucknow", "Unnao", "Rae Bareli", "Sitapur", "Hardoi", "Lakhimpur Kheri"], "315 Gorakhpur": ["Gorakhpur", "Deoria", "Kushinagar", "Maharajganj", "Sant Kabir Nagar"], "306 Agra": ["Agra", "Mathura", "Firozabad", "Mainpuri"], "312 Jhansi": ["Jhansi", "Lalitpur", "Hamirpur", "Mahoba", "Banda", "Chitrakoot"], "302 Meerut": ["Meerut", "Ghaziabad", "Gautam Buddha Nagar (Noida)", "Bulandshahr", "Hapur", "Baghpat"], "317 Ayodhya": ["Ayodhya", "Ambedkar Nagar", "Sultanpur", "Amethi", "Barabanki"], "319 Allahbad (Prayagraj)": ["Prayagraj", "Fatehpur", "Kaushambi", "Pratapgarh"], "322 Gonda": ["Gonda", "Balrampur", "Shravasti", "Bahraich", "Siddharth Nagar", "Basti", "Sant Kabir Nagar"], "320 Mirzapur": ["Mirzapur", "Sonbhadra", "Bhadohi"], "321 Azamgarh": ["Azamgarh", "Mau", "Ballia"], "Moradabad (FKI)": ["Moradabad", "Amroha", "Rampur", "Sambhal"]}}, "Haryana": {"divs": {"Haryana": ["Gurugram", "Faridabad", "Sonipat", "Rohtak", "Hisar", "Ambala", "Karnal", "Panipat", "Yamunanagar", "Kurukshetra", "Kaithal", "Jind", "Bhiwani", "Charkhi Dadri", "Mahendragarh", "Rewari", "Jhajjar", "Nuh", "Palwal", "Fatehabad", "Sirsa"]}}, "Uttarakhand": {"divs": {"310 Uttarakhand": ["Dehradun", "Haridwar", "Rishikesh", "Roorkee", "Nainital", "Almora", "Pithoragarh", "Chamoli", "Rudraprayag", "Tehri", "Pauri", "Uttarkashi", "Bageshwar", "Champawat"]}}, "Delhi": {"divs": {"301 Delhi": ["Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi", "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"]}}, "Bihar": {"divs": {"318 Bihar": ["Patna", "Nalanda", "Gaya", "Nawada", "Aurangabad", "Arwal", "Jehanabad", "Bhojpur", "Buxar", "Rohtas", "Kaimur", "Muzaffarpur", "Sitamarhi", "Sheohar", "Vaishali", "Saran", "Siwan", "Gopalganj", "Darbhanga", "Madhubani", "Samastipur", "Begusarai", "Bhagalpur", "Banka", "Munger", "Lakhisarai", "Sheikhpura", "Jamui", "Purnia", "Katihar", "Araria", "Kishanganj", "Supaul", "Madhepura", "Saharsa", "Khagaria", "Motihari (East Champaran)", "Bettiah (West Champaran)"]}}}}, "Hyderabad Region": {"states": {"Telangana": {"divs": {"602 Hyderabad": ["Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad"], "603 Mahbub Nagar": ["Mahabubnagar", "Nagarkurnool", "Wanaparthy", "Gadwal", "Narayanpet"]}}, "Andhra Pradesh": {"divs": {"604 Andhra (Vijaywada)": ["Krishna", "Guntur", "West Godavari", "East Godavari", "Visakhapatnam", "Vizianagaram", "Srikakulam", "Kurnool", "Kadapa", "Nellore", "Chittoor", "Prakasam", "Alluri Sitharama Raju", "Anakapalli", "Kakinada", "Konaseema", "Eluru", "NTR", "Palnadu", "Sri Sathya Sai", "Annamayya", "Tirupati"]}}, "Tamil Nadu": {"divs": {"601 Chennai": ["Chennai", "Thiruvallur", "Kancheepuram", "Chengalpattu", "Coimbatore", "Tirupur", "Erode", "Salem", "Namakkal", "Dharmapuri", "Krishnagiri", "Vellore", "Ranipet", "Tirupattur", "Villupuram", "Cuddalore", "Madurai", "Dindigul", "Theni", "Virudhunagar", "Ramanathapuram", "Sivaganga", "Thoothukudi", "Tirunelveli", "Tenkasi", "Kanyakumari", "Thanjavur", "Tiruvarur", "Nagapattinam", "Mayiladuthurai", "Ariyalur", "Perambalur", "Tiruchirappalli", "Karur", "Pudukkottai", "Tiruvannamalai", "Kallakurichi", "The Nilgiris"]}}}}, "Kolkata Region": {"states": {"Jharkhand": {"divs": {"502 Tata Nagar (Kolhan)": ["East Singhbhum", "West Singhbhum", "Seraikela-Kharsawan"], "507 Dhanbad (North Chotanagpur)": ["Dhanbad", "Bokaro", "Hazaribagh", "Chatra", "Koderma", "Giridih", "Ramgarh"], "510 Palamu": ["Palamu", "Latehar", "Garhwa"], "511 South Chotanagpur": ["Ranchi", "Khunti", "Gumla", "Simdega", "Lohardaga"]}}, "West Bengal": {"divs": {"501 Kolkata (Presidency)": ["Kolkata", "North 24 Parganas", "South 24 Parganas", "Howrah", "Hooghly"], "503 Asansol (Malda)": ["Paschim Bardhaman", "Purba Bardhaman", "Birbhum", "Murshidabad", "Malda"], "506 Howrah (Burdwan)": ["Howrah", "Hooghly", "Nadia", "Purba Bardhaman"], "512 Jalpaiguri": ["Jalpaiguri", "Cooch Behar", "Alipurduar", "Darjeeling", "Kalimpong"], "513 Medinipur": ["Paschim Medinipur", "Purba Medinipur", "Jhargram", "Bankura", "Purulia"]}}, "Odisha": {"divs": {"504 Cuttack": ["Cuttack", "Kendrapara", "Jagatsinghpur", "Puri", "Khordha", "Nayagarh", "Boudh", "Angul", "Dhenkanal", "Jajpur", "Bhadrak", "Balasore", "Mayurbhanj", "Keonjhar", "Sundargarh", "Sambalpur", "Bargarh", "Jharsuguda", "Deogarh", "Sonepur", "Balangir", "Nuapada", "Kalahandi", "Rayagada", "Koraput", "Malkangiri", "Nabarangpur", "Gajapati", "Kandhamal"]}}, "Assam": {"divs": {"305 Assam": ["Kamrup Metro", "Kamrup", "Nalbari", "Barpeta", "Bongaigaon", "Chirang", "Baksa", "Morigaon", "Nagaon", "Hojai", "Cachar", "Hailakandi", "Karimganj", "Dibrugarh", "Sivasagar", "Jorhat", "Golaghat", "Majuli", "Sonitpur", "Biswanath", "Lakhimpur", "Dhemaji", "Tinsukia", "Charaideo", "Darrang", "Udalguri", "Karbi Anglong", "West Karbi Anglong", "Dima Hasao", "Dhubri", "South Salmara", "Goalpara", "Kokrajhar"]}}, "Meghalaya": {"divs": {"Meghalaya": ["East Khasi Hills", "West Khasi Hills", "South West Khasi Hills", "Ri Bhoi", "East Jaintia Hills", "West Jaintia Hills", "East Garo Hills", "West Garo Hills", "South Garo Hills", "North Garo Hills", "Eastern West Khasi Hills"]}}, "Manipur": {"divs": {"Manipur": ["Imphal East", "Imphal West", "Thoubal", "Bishnupur", "Churachandpur", "Senapati", "Ukhrul", "Tamenglong", "Jiribam", "Kangpokpi", "Kakching", "Noney", "Pherzawl", "Tengnoupal", "Kamjong", "Chandel"]}}, "Arunachal Pradesh": {"divs": {"Arunachal Pradesh": ["Itanagar (Papum Pare)", "East Kameng", "West Kameng", "Tawang", "Upper Subansiri", "Lower Subansiri", "East Siang", "West Siang", "Upper Siang", "Dibang Valley", "Lower Dibang Valley", "Lohit", "Anjaw", "Changlang", "Tirap", "Longding", "Namsai", "Lepa Rada", "Pakke-Kessang", "Shi Yomi", "Siang", "Kamle", "Kra Daadi", "Kurung Kumey"]}}}}};
+const HIER={"Ajmer Region": {"states": {"Gujarat": {"divs": {"101 Ahmedabad": ["Ahmedabad", "Gandhi Nagar"], "102 North Gujarat Modasa": ["Mehsana", "Patan", "Banaskantha", "Sabarkantha", "Aravalli"], "106 Central Gujarat": ["Anand", "Kheda", "Vadodara", "Dahod", "Panchmahal"], "107 Kutchh": ["Kutch"], "110 Saurashtra": ["Rajkot", "Jamnagar", "Junagadh", "Amreli", "Bhavnagar", "Porbandar", "Gir Somnath", "Morbi", "Devbhoomi Dwarka", "Botad"], "112 South Gujarat Surat": ["Surat", "Navsari", "Valsad", "Tapi", "Narmada", "Bharuch"]}}, "Rajasthan": {"divs": {"103 Jaipur": ["Jaipur", "Alwar", "Dausa", "Sikar", "Jhunjhunu"], "105 Kota": ["Kota", "Bundi", "Baran", "Jhalawar"], "108 Jodhpur": ["Jodhpur", "Barmer", "Jaisalmer", "Jalore", "Sirohi", "Pali"], "111 Ajmer": ["Ajmer", "Nagaur", "Tonk", "Bhilwara"], "117 Bharatpur": ["Bharatpur", "Dholpur", "Karauli", "Sawai Madhopur"], "118 Bikaner": ["Bikaner", "Churu", "Sri Ganganagar", "Hanumangarh"], "120 Udaipur": ["Udaipur", "Rajsamand", "Chittorgarh", "Dungarpur", "Banswara", "Pratapgarh"]}}, "Punjab": {"divs": {"119 Punjab": ["Amritsar", "Ludhiana", "Jalandhar", "Patiala", "Bathinda", "Gurdaspur", "Hoshiarpur", "Faridkot", "Ferozepur", "Moga", "Muktsar", "Kapurthala", "Fatehgarh Sahib", "Rupnagar", "SAS Nagar (Mohali)", "Sangrur", "Barnala", "Mansa", "Pathankot", "Tarn Taran", "Shahid Bhagat Singh Nagar"]}}, "M.P": {"divs": {"104 Indore": ["Indore", "Dhar", "Khargone", "Barwani", "Alirajpur", "Jhabua"], "109 Jabalpur": ["Jabalpur", "Chhindwara", "Seoni", "Narsinghpur", "Mandla", "Dindori", "Balaghat"], "113 Bhopal": ["Bhopal", "Sehore", "Raisen", "Vidisha", "Rajgarh"], "114 Gwalior": ["Gwalior", "Datia", "Guna", "Ashoknagar", "Shivpuri"], "115 Sagar": ["Sagar", "Damoh", "Chhatarpur", "Panna", "Tikamgarh", "Niwari"], "116 Ujjain": ["Ujjain", "Dewas", "Shajapur", "Agar Malwa", "Mandsaur", "Neemuch", "Ratlam"]}}}}, "Mumbai Region": {"states": {"Maharashtra": {"divs": {"201 Mumbai Western": ["Mumbai City", "Mumbai Suburban", "Thane", "Raigad", "Palghar"], "205 Amravati": ["Amravati", "Akola", "Washim", "Buldhana", "Yavatmal"], "207 Pune": ["Pune", "Satara", "Sangli", "Solapur", "Kolhapur"], "206 Thane": ["Thane", "Raigad", "Palghar"], "208 Nagpur": ["Nagpur", "Wardha", "Bhandara", "Gondiya", "Chandrapur", "Gadchiroli"], "211 Mumbai City": ["Mumbai City", "Mumbai Suburban"], "212 Nashik": ["Nashik", "Ahmednagar", "Dhule", "Nandurbar", "Jalgaon"], "213 Aurangabad": ["Aurangabad", "Jalna", "Beed", "Latur", "Osmanabad", "Nanded", "Hingoli", "Parbhani"], "203 Ratnagiri": ["Ratnagiri", "Sindhudurg"], "209 Palghar": ["Palghar"], "Mumbai Suburbun 1": ["Andheri", "Borivali", "Kandivali", "Malad", "Goregaon"], "Mumbai Suburbun 2": ["Bandra", "Kurla", "Chembur", "Ghatkopar", "Vikhroli"]}}, "Chhattisgarh": {"divs": {"210 Bilaspur": ["Bilaspur", "Korba", "Janjgir-Champa", "Raigarh", "Mungeli"], "Raipur & Chhattisgarh": ["Raipur", "Durg", "Baloda Bazar", "Gariaband", "Mahasamund"], "Durg": ["Durg", "Rajnandgaon", "Kabirdham", "Bemetara"], "Surguja": ["Surguja", "Surajpur", "Balrampur", "Korea", "Jashpur"], "Bastar": ["Bastar", "Kondagaon", "Kanker", "Narayanpur", "Bijapur", "Sukma", "Dantewada"]}}}}, "Bengaluru Region": {"states": {"Karnataka": {"divs": {"401 Belgaum": ["Belagavi", "Dharwad", "Gadag", "Haveri", "Uttara Kannada"], "402 Bengaluru": ["Bengaluru Urban", "Bengaluru Rural", "Ramanagara", "Tumkur", "Chikkaballapura", "Kolar"], "403 Gulbarga": ["Kalaburagi", "Bidar", "Raichur", "Koppal", "Yadgir", "Vijayapura", "Bagalkot"]}}, "Kerala": {"divs": {"404 Goa & Kerala": ["North Goa", "South Goa"]}}, "Goa": {"divs": {"404 Goa & Kerala": ["North Goa", "South Goa"]}}}}, "Delhi Region": {"states": {"Jammu & Kashmir": {"divs": {"307 Jammu": ["Jammu", "Samba", "Kathua", "Udhampur", "Reasi", "Rajouri", "Poonch", "Doda", "Kishtwar", "Ramban"], "308 South Kashmir": ["Anantnag", "Kulgam", "Pulwama", "Shopian"], "309 North Kashmir": ["Srinagar", "Budgam", "Ganderbal", "Bandipora", "Baramulla", "Kupwara"]}}, "Himachal Pradesh": {"divs": {"Himachal Pradesh": ["Shimla", "Mandi", "Kangra", "Kullu", "Solan", "Sirmaur", "Bilaspur", "Hamirpur", "Una", "Chamba", "Kinnaur", "Lahaul & Spiti"]}}, "Uttar Pradesh": {"divs": {"311 Bareilly": ["Bareilly", "Pilibhit", "Shahjahanpur", "Badaun"], "313 Kanpur": ["Kanpur Nagar", "Kanpur Dehat", "Etawah", "Farrukhabad", "Kannauj", "Auraiya"], "316 Banaras": ["Varanasi", "Chandauli", "Ghazipur", "Jaunpur", "Sant Ravidas Nagar"], "303 Moradabad": ["Moradabad", "Rampur", "Amroha", "Sambhal", "Bijnor"], "304 Aligarh": ["Aligarh", "Hathras", "Kasganj", "Etah", "Mainpuri", "Firozabad", "Mathura", "Agra"], "314 Lucknow": ["Lucknow", "Unnao", "Rae Bareli", "Sitapur", "Hardoi", "Lakhimpur Kheri"], "315 Gorakhpur": ["Gorakhpur", "Deoria", "Kushinagar", "Maharajganj", "Sant Kabir Nagar"], "306 Agra": ["Agra", "Mathura", "Firozabad", "Mainpuri"], "312 Jhansi": ["Jhansi", "Lalitpur", "Hamirpur", "Mahoba", "Banda", "Chitrakoot"], "302 Meerut": ["Meerut", "Ghaziabad", "Gautam Buddha Nagar (Noida)", "Bulandshahr", "Hapur", "Baghpat"], "317 Ayodhya": ["Ayodhya", "Ambedkar Nagar", "Sultanpur", "Amethi", "Barabanki"], "319 Allahbad (Prayagraj)": ["Prayagraj", "Fatehpur", "Kaushambi", "Pratapgarh"], "322 Gonda": ["Gonda", "Balrampur", "Shravasti", "Bahraich", "Siddharth Nagar", "Basti", "Sant Kabir Nagar"], "320 Mirzapur": ["Mirzapur", "Sonbhadra", "Bhadohi"], "321 Azamgarh": ["Azamgarh", "Mau", "Ballia"], "Moradabad (FKI)": ["Moradabad", "Amroha", "Rampur", "Sambhal"]}}, "Haryana": {"divs": {"Haryana": ["Gurugram", "Faridabad", "Sonipat", "Rohtak", "Hisar", "Ambala", "Karnal", "Panipat", "Yamunanagar", "Kurukshetra", "Kaithal", "Jind", "Bhiwani", "Charkhi Dadri", "Mahendragarh", "Rewari", "Jhajjar", "Nuh", "Palwal", "Fatehabad", "Sirsa"]}}, "Uttarakhand": {"divs": {"310 Uttarakhand": ["Dehradun", "Haridwar", "Rishikesh", "Roorkee", "Nainital", "Almora", "Pithoragarh", "Chamoli", "Rudraprayag", "Tehri", "Pauri", "Uttarkashi", "Bageshwar", "Champawat"]}}, "Delhi": {"divs": {"301 Delhi": ["Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi", "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"]}}, "Bihar": {"divs": {"318 Bihar": ["Patna", "Nalanda", "Gaya", "Nawada", "Aurangabad", "Arwal", "Jehanabad", "Bhojpur", "Buxar", "Rohtas", "Kaimur", "Muzaffarpur", "Sitamarhi", "Sheohar", "Vaishali", "Saran", "Siwan", "Gopalganj", "Darbhanga", "Madhubani", "Samastipur", "Begusarai", "Bhagalpur", "Banka", "Munger", "Lakhisarai", "Sheikhpura", "Jamui", "Purnia", "Katihar", "Araria", "Kishanganj", "Supaul", "Madhepura", "Saharsa", "Khagaria", "Motihari (East Champaran)", "Bettiah (West Champaran)"]}}}}, "Hyderabad Region": {"states": {"Telangana": {"divs": {"602 Hyderabad": ["Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad"], "603 Mahbub Nagar": ["Mahabubnagar", "Nagarkurnool", "Wanaparthy", "Gadwal", "Narayanpet"]}}, "Andhra Pradesh": {"divs": {"604 Andhra (Vijaywada)": ["Krishna", "Guntur", "West Godavari", "East Godavari", "Visakhapatnam", "Vizianagaram", "Srikakulam", "Kurnool", "Kadapa", "Nellore", "Chittoor", "Prakasam", "Alluri Sitharama Raju", "Anakapalli", "Kakinada", "Konaseema", "Eluru", "NTR", "Palnadu", "Sri Sathya Sai", "Annamayya", "Tirupati"]}}, "Tamil Nadu": {"divs": {"601 Chennai": ["Chennai", "Thiruvallur", "Kancheepuram", "Chengalpattu", "Coimbatore", "Tirupur", "Erode", "Salem", "Namakkal", "Dharmapuri", "Krishnagiri", "Vellore", "Ranipet", "Tirupattur", "Villupuram", "Cuddalore", "Madurai", "Dindigul", "Theni", "Virudhunagar", "Ramanathapuram", "Sivaganga", "Thoothukudi", "Tirunelveli", "Tenkasi", "Kanyakumari", "Thanjavur", "Tiruvarur", "Nagapattinam", "Mayiladuthurai", "Ariyalur", "Perambalur", "Tiruchirappalli", "Karur", "Pudukkottai", "Tiruvannamalai", "Kallakurichi", "The Nilgiris"]}}}}, "Kolkata Region": {"states": {"Jharkhand": {"divs": {"502 Tata Nagar (Kolhan)": ["East Singhbhum", "West Singhbhum", "Seraikela-Kharsawan"], "507 Dhanbad (North Chotanagpur)": ["Dhanbad", "Bokaro", "Hazaribagh", "Chatra", "Koderma", "Giridih", "Ramgarh"], "510 Palamu": ["Palamu", "Latehar", "Garhwa"], "511 South Chotanagpur": ["Ranchi", "Khunti", "Gumla", "Simdega", "Lohardaga"]}}, "West Bengal": {"divs": {"501 Kolkata (Presidency)": ["Kolkata", "North 24 Parganas", "South 24 Parganas", "Howrah", "Hooghly"], "503 Asansol (Malda)": ["Paschim Bardhaman", "Purba Bardhaman", "Birbhum", "Murshidabad", "Malda"], "506 Howrah (Burdwan)": ["Howrah", "Hooghly", "Nadia", "Purba Bardhaman"], "512 Jalpaiguri": ["Jalpaiguri", "Cooch Behar", "Alipurduar", "Darjeeling", "Kalimpong"], "513 Medinipur": ["Paschim Medinipur", "Purba Medinipur", "Jhargram", "Bankura", "Purulia"]}}, "Odisha": {"divs": {"504 Cuttack": ["Cuttack", "Kendrapara", "Jagatsinghpur", "Puri", "Khordha", "Nayagarh", "Boudh", "Angul", "Dhenkanal", "Jajpur", "Bhadrak", "Balasore", "Mayurbhanj", "Keonjhar", "Sundargarh", "Sambalpur", "Bargarh", "Jharsuguda", "Deogarh", "Sonepur", "Balangir", "Nuapada", "Kalahandi", "Rayagada", "Koraput", "Malkangiri", "Nabarangpur", "Gajapati", "Kandhamal"]}}, "Assam": {"divs": {"305 Assam": ["Kamrup Metro", "Kamrup", "Nalbari", "Barpeta", "Bongaigaon", "Chirang", "Baksa", "Morigaon", "Nagaon", "Hojai", "Cachar", "Hailakandi", "Karimganj", "Dibrugarh", "Sivasagar", "Jorhat", "Golaghat", "Majuli", "Sonitpur", "Biswanath", "Lakhimpur", "Dhemaji", "Tinsukia", "Charaideo", "Darrang", "Udalguri", "Karbi Anglong", "West Karbi Anglong", "Dima Hasao", "Dhubri", "South Salmara", "Goalpara", "Kokrajhar"]}}, "Meghalaya": {"divs": {"Meghalaya": ["East Khasi Hills", "West Khasi Hills", "South West Khasi Hills", "Ri Bhoi", "East Jaintia Hills", "West Jaintia Hills", "East Garo Hills", "West Garo Hills", "South Garo Hills", "North Garo Hills", "Eastern West Khasi Hills"]}}, "Manipur": {"divs": {"Manipur": ["Imphal East", "Imphal West", "Thoubal", "Bishnupur", "Churachandpur", "Senapati", "Ukhrul", "Tamenglong", "Jiribam", "Kangpokpi", "Kakching", "Noney", "Pherzawl", "Tengnoupal", "Kamjong", "Chandel"]}}, "Arunachal Pradesh": {"divs": {"Arunachal Pradesh": ["Itanagar (Papum Pare)", "East Kameng", "West Kameng", "Tawang", "Upper Subansiri", "Lower Subansiri", "East Siang", "West Siang", "Upper Siang", "Dibang Valley", "Lower Dibang Valley", "Lohit", "Anjaw", "Changlang", "Tirap", "Longding", "Namsai", "Lepa Rada", "Pakke-Kessang", "Shi Yomi", "Siang", "Kamle", "Kra Daadi", "Kurung Kumey"]}}}}};
 // HIER_KEY_MAP: "Mumbai Region" => "Mumbai" (jo cases mein store hota hai)
 const HIER_KEY_MAP={};
 (function(){
@@ -2054,7 +2061,7 @@ var _CACHE_KEY = 'sab_cases_cache';   // (use _ckData())
 var _CACHE_TS_KEY = 'sab_cases_ts';   // (use _ckTs())
 // No TTL — cache tab tak rehta hai jab tak case save/delete/manual refresh na ho
 
-var _CACHE_TTL = 30 * 60 * 1000; // 30 minutes — reads bachane ke liye (apne edits turant cache update hote hain)
+var _CACHE_TTL = 12 * 60 * 60 * 1000; // 12 ghante — reads bachane ke liye (pehle 30 min tha jo har 25-30 min pe 3307 reads leta tha = quota khatam). Apne edits turant cache mein update hote hain. Doosron ke edits dekhne ke liye "🔄 Refresh" button ya page band-khol.
 
 function cacheLoad(){
   try{
@@ -2219,7 +2226,7 @@ function startListener(){
     _processCasesRaw(_cached);
     // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
     var _cacheAge = Date.now() - parseInt(localStorage.getItem(_ckTs())||'0');
-    if(_cacheAge > 25 * 60 * 1000){
+    if(_cacheAge > 6 * 60 * 60 * 1000){
       setTimeout(function(){
         casesQuery().get({source:'server'}).then(function(s){
           if(s.docs.length > 0){
@@ -2309,8 +2316,53 @@ function removeOneCase(id){
 }
 // ===== END SINGLE-DOC UPDATES =====
 
+// Manual refresh — logo pe click se. Cache clear karke server se 1 baar taaza data lao.
+// DATA SAFE: ye sirf server se FRESH cases laata hai (read), kuch delete/modify NAHI karta.
+function forceRefreshCases(el){
+  try{ localStorage.removeItem(_ckTs()); localStorage.removeItem(_ckData()); }catch(e){}
+  if(typeof toast==='function') toast('🔄 Taaza data laa raha...');
+  reloadCases();
+}
+// ===== DATA BACKUP (Settings) =====
+// Saara data ek JSON file mein download. Sirf READ — kuch delete/modify nahi.
+async function downloadBackup(btn){
+  var st = document.getElementById('backupStatus');
+  if(btn){ btn.disabled=true; var _o=btn.textContent; btn.textContent='⏳ Backup ban raha...'; }
+  if(st) st.textContent='Data laa raha hai...';
+  try{
+    var out = { backupDate:new Date().toISOString(), app:'SAB Case Management' };
+    // cases — cache se lo agar hai (reads bachao), warna server se
+    if(cc && cc.length){
+      out.cases = cc.slice();
+    } else {
+      var cs = await db.collection('cases').get();
+      out.cases = cs.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    }
+    // clients
+    try{ var cl = await db.collection('clients').get(); out.clients = cl.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }); }catch(e){ out.clients=[]; }
+    // users (password hash mat daalo — security)
+    try{ var us = await db.collection('users').get(); out.users = us.docs.map(function(d){ var x=Object.assign({id:d.id}, d.data()); delete x.password; return x; }); }catch(e){ out.users=[]; }
+    // settings
+    try{ var se = await db.collection('settings').get(); out.settings = {}; se.docs.forEach(function(d){ out.settings[d.id]=d.data(); }); }catch(e){ out.settings={}; }
+
+    var blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'SAB_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+
+    if(st) st.textContent = '✅ '+ (out.cases?out.cases.length:0) +' cases backup ho gaye ('+new Date().toLocaleDateString()+')';
+    if(typeof toast==='function') toast('✅ Backup download ho gaya');
+  }catch(e){
+    console.error('Backup error:', e);
+    if(st) st.textContent = '❌ Backup fail. Net check karein, dobara try karein.';
+    if(typeof toast==='function') toast('❌ Backup fail hua');
+  }
+  if(btn){ btn.disabled=false; btn.textContent=_o; }
+}
+// ===== END DATA BACKUP =====
 function reloadCases(){
-  // Cache invalidate ho chuka hai — server se fresh lo (full reload, rarely needed)
   casesQuery().get({source:'server'}).then(function(s){
     var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
     cacheSave(allCases);
@@ -3125,7 +3177,7 @@ function updStats(){
     var gs=m.guides&&m.guides.length?m.guides:(m.guide?[m.guide]:[]);
     if(gs.indexOf('tawan')>-1)c[6]++;
     if(gs.indexOf('halfia')>-1)c[7]++;
-    if(gs.indexOf('tafhim')>-1){c[8]++;if(m.tafhimSt==='closed')c.tafhimCl=(c.tafhimCl||0)+1;else c.tafhimOp=(c.tafhimOp||0)+1;}
+    if(gs.indexOf('tafhim')>-1){c[8]++;var _tfDone=(m.tafhimSt==='closed')||(m.tfD==='yes');if(_tfDone)c.tafhimCl=(c.tafhimCl||0)+1;else c.tafhimOp=(c.tafhimOp||0)+1;}
     if(gs.indexOf('tabadla')>-1){c[9]++;if(m.tabadlaSt==='closed')c.transCl=(c.transCl||0)+1;else c.transOp=(c.transOp||0)+1;}
     if(gs.indexOf('mazratnama')>-1){c[12]++;if(m.mazSt==='closed')c.mazCl=(c.mazCl||0)+1;else c.mazOp=(c.mazOp||0)+1;}
   });
@@ -3194,6 +3246,7 @@ function rDash(){
   });
   const r=sorted.slice(0,10);
   document.getElementById('dTB').innerHTML=r.length?r.map((c,i)=>mRow(c,i+1,true)).join(''):`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases. Add your first case!</td></tr>`;
+  if(typeof updStats==='function') updStats(); // top number cards bhi refresh (naya case turant dikhe)
   rRegCards();
 }
 var _rCasesHash = '';
@@ -3711,8 +3764,10 @@ function doSrch(){
     if(_halfSt==='closed' && c.halfiaSt!=='closed') return false;
     if(_tawnSt==='pending' && c.tawnSt==='closed') return false;
     if(_tawnSt==='closed' && c.tawnSt!=='closed') return false;
-    if(_tafhimSt==='pending' && c.tafhimSt==='closed') return false;
-    if(_tafhimSt==='closed' && c.tafhimSt!=='closed') return false;
+    if(_tafhimSt){ var _tfD=(c.tafhimSt==='closed')||(c.tfD==='yes');
+      if(_tafhimSt==='pending' && _tfD) return false;
+      if(_tafhimSt==='closed' && !_tfD) return false;
+    }
     if(_tabadlaSt==='pending' && c.tabadlaSt==='closed') return false;
     if(_tabadlaSt==='closed' && c.tabadlaSt!=='closed') return false;
     if(_mazSt==='pending' && c.mazSt==='closed') return false;
@@ -5030,6 +5085,9 @@ function viewC(id, readOnly){
   resetHideRows();
   var c=cc.find(x=>x.id===id);if(!c)return;
   c=_cleanC(c); // XSS FIX: detail modal mein bhi sab escape
+  // Case No header mein dikhao (scroll pe upar tika rahe — chhupe nahi)
+  var _dmt=document.getElementById('detModalTitle');
+  if(_dmt) _dmt.textContent='📄 '+(c.caseNo||'Case Details');
   const yn=v=>v==='yes'?'<span class="badge bg">✅ Yes</span>':v==='no'?'<span class="badge br">❌ No</span>':v==='refused'?'<span class="badge br">⛔ Refused</span>':v==='partial'?'<span class="badge bo">🔸 Partial</span>':'—';
   const tfL={zubani:'Zubani',hr_nama:'HR Tafhim Nama',written:'Written'};
   const pmL={dept:'HR Salary Deduction',fin:'Finance Office',acc:'Account Deposit',other:'Other'};
@@ -8100,13 +8158,10 @@ function nmAutoComplete(inp){
   var q = (inp.value||'').trim().toLowerCase();
   var box = inp.parentNode.querySelector('.nm-sug');
   if(!box) return;
-  // Agar field khali kar diya to baaki fields bhi clear karo
+  // Field khali — sirf suggestion box chhupao. Baaki fields ko HAATH MAT LAGAO
+  // (warna pehle bhare mob/designation ud jaate the — data loss bug).
   if(!q){
     box.style.display='none';
-    var row = inp.closest('.person-row');
-    if(row){
-      row.querySelectorAll('input').forEach(function(f){ if(f!==inp) f.value=''; });
-    }
     return;
   }
   if(q.length < 2){ box.style.display='none'; return; }
