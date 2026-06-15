@@ -7971,9 +7971,13 @@ function tawnModeSet(mode){
     var _tt=parseFloat((document.getElementById('tTot')||{}).value)||0;
     _ppSyncWithTotal(_tt);
   } else {
-    // Pooled mode — wasool lock state apply
-    var _tt2=parseFloat((document.getElementById('tTot')||{}).value)||0;
-    if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(_tt2);
+    // Pooled mode — Total wapas Nafila/Maddat se compute (per-person ka value na rahe)
+    var waj=parseFloat((document.getElementById('tWaj')||{}).value)||0;
+    var naf=parseFloat((document.getElementById('tNaf')||{}).value)||0;
+    var mad=parseFloat((document.getElementById('tMaddat')||{}).value)||0;
+    var _ptot=(waj+naf+mad)||0;
+    var tTotEl=document.getElementById('tTot'); if(tTotEl) tTotEl.value=_ptot||'';
+    if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(_ptot);
   }
 }
 
@@ -8133,11 +8137,12 @@ function tawnPPCalc(){
     } else { stat.textContent=''; var b2=r.querySelector('.ppBreak'); if(b2) b2.textContent=''; }
   });
   if(_tawnMode==='perperson'){
-    var tTot=document.getElementById('tTot'); if(tTot) tTot.value = totAmt||'';
+    // Total ko overwrite MAT karo — woh upar Nafila/Maddat se aata hai. Sirf paid/remaining update karo.
+    var _realTot = parseFloat((document.getElementById('tTot')||{}).value)||0;
     var tPd=document.getElementById('tPd'); if(tPd) tPd.value = totPaid||'';
-    var tRm=document.getElementById('tRm'); if(tRm) tRm.value = (totAmt-totPaid)||'';
+    var tRm=document.getElementById('tRm'); if(tRm) tRm.value = (_realTot-totPaid)||'';
     var tPdD=document.getElementById('tPdDirect'); if(tPdD) tPdD.value = totPaid||'';
-    var tRmD=document.getElementById('tRmDirect'); if(tRmD) tRmD.value = (totAmt-totPaid)||'';
+    var tRmD=document.getElementById('tRmDirect'); if(tRmD) tRmD.value = (_realTot-totPaid)||'';
   }
   var sum=document.getElementById('tawnPPSummary');
   if(sum){
