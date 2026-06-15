@@ -2806,9 +2806,14 @@ function calcDirectTotal(){
   var summary = document.getElementById('tDirectSummary');
   if(!summary) return;
   if(amt > 0 && tot > 0){
-    var rem = Math.max(0, tot - amt);
-    summary.textContent = rem === 0 ? '✅ Poora amount cover ho gaya!' : '⚠️ Remaining: ₹'+rem.toLocaleString('en-IN');
-    summary.style.color = rem === 0 ? 'var(--green)' : 'var(--orange)';
+    if(amt > tot){
+      summary.textContent = '⚠️ ₹'+(amt-tot).toLocaleString('en-IN')+' ZYADA wasool — Note mein likhein';
+      summary.style.color = 'var(--red)';
+    } else {
+      var rem = tot - amt;
+      summary.textContent = rem === 0 ? '✅ Poora amount cover ho gaya!' : '⚠️ Remaining: ₹'+rem.toLocaleString('en-IN');
+      summary.style.color = rem === 0 ? 'var(--green)' : 'var(--orange)';
+    }
   } else {
     summary.textContent = '';
   }
