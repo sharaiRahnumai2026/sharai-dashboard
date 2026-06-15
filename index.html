@@ -927,6 +927,7 @@ function _cleanC(o){
               <!-- COLLECTION METHOD -->
               <div id="pooledWasoolWrap" style="margin-top:12px;border-top:1px solid #90caf9;padding-top:12px">
                 <div style="font-size:.74rem;font-weight:800;color:var(--blue);margin-bottom:8px">📥 Wasool ka Tarika</div>
+                <div id="pooledLockHint" style="display:none;background:#fff3cd;border:1px solid #ffe69c;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:.78rem;color:#856404">🔒 Pehle upar <b>Total Tawan</b> (Nafila/Maddat) bharein — tabhi Wasool ka Tarika chun paayenge.</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;padding:6px 12px;border:1.5px solid #90caf9;border-radius:7px;background:#fff">
                     <input type="checkbox" id="tCollHR" value="hr" onchange="onCollMethod()" style="accent-color:var(--blue);width:15px;height:15px"> 🏢 H.R. Entry
@@ -1048,6 +1049,7 @@ function _cleanC(o){
                   <button type="button" onclick="tawnPPLoad()" style="padding:8px 14px;background:#e3f2fd;color:var(--blue);border:1px solid #90caf9;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer">🔄 Case ke persons laao</button>
                   <span style="font-size:.74rem;color:var(--mt)">Har bande ka amount neeche alag daalein</span>
                 </div>
+                <div id="ppLockHint" style="display:none;background:#fff3cd;border:1px solid #ffe69c;border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:.78rem;color:#856404">🔒 Pehle upar <b>Total Tawan</b> (Nafila/Maddat) bharein — tabhi neeche har bande ka amount bhar paayenge.</div>
                 <div id="tawnPPRows" style="width:100%"></div>
                 <div id="tawnPPSummary" style="margin-top:10px;font-size:.92rem;font-weight:700;color:var(--orange);background:#fff8f0;border:1.5px solid #ffcc80;border-radius:9px;padding:12px 14px"></div>
               </div>
@@ -2852,8 +2854,72 @@ function calcTawnTotal(){
   var waj = parseFloat(document.getElementById('tWaj').value)||0;
   var naf = parseFloat(document.getElementById('tNaf').value)||0;
   var mad = parseFloat(document.getElementById('tMaddat').value)||0;
-  document.getElementById('tTot').value = (waj + naf + mad) || '';
+  var total = (waj + naf + mad) || 0;
+  document.getElementById('tTot').value = total || '';
   calcT();
+  // Per-Person ko upar ke Total se control karo
+  if(typeof _ppSyncWithTotal==='function') _ppSyncWithTotal(total);
+  // Pooled wasool ko bhi upar ke Total se control karo
+  if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(total);
+}
+// Pooled mode — upar Total bhare bina Wasool ka Tarika lock
+function _pooledSyncWithTotal(total){
+  if(_tawnMode==='perperson') return;
+  var ids=['tCollHR','tCollInst','tCollDirect'];
+  var hint=document.getElementById('pooledLockHint');
+  if(total<=0){
+    // lock + uncheck (neeche khaali)
+    ids.forEach(function(id){
+      var cb=document.getElementById(id);
+      if(cb){ if(cb.checked){ cb.checked=false; } cb.disabled=true; if(cb.parentNode) cb.parentNode.style.opacity='.5'; }
+    });
+    if(typeof onCollMethod==='function') onCollMethod(); // boxes hide ho jayein
+    if(hint) hint.style.display='block';
+  } else {
+    ids.forEach(function(id){
+      var cb=document.getElementById(id);
+      if(cb){ cb.disabled=false; if(cb.parentNode) cb.parentNode.style.opacity='1'; }
+    });
+    if(hint) hint.style.display='none';
+  }
+}
+// Upar Total ke hisaab se per-person fields lock/unlock + khaali
+function _ppSyncWithTotal(total){
+  if(_tawnMode!=='perperson') return;
+  var cards = document.querySelectorAll('#tawnPPRows .tawnPP-row');
+  if(total<=0){
+    // Upar khaali → neeche ke amount khaali + lock
+    cards.forEach(function(r){
+      var amt = r.querySelector('.ppAmt');
+      if(amt){ amt.value=''; amt.disabled=true; amt.placeholder='Pehle upar Total bharein'; amt.style.background='#f0f0f0'; }
+    });
+    var hint=document.getElementById('ppLockHint'); if(hint) hint.style.display='block';
+    if(typeof tawnPPCalc==='function') tawnPPCalc();
+  } else {
+    // Upar bhara → neeche khol do
+    cards.forEach(function(r){
+      var amt = r.querySelector('.ppAmt');
+      if(amt){ amt.disabled=false; amt.placeholder='kitna tawan'; amt.style.background=''; }
+    });
+    var hint=document.getElementById('ppLockHint'); if(hint) hint.style.display='none';
+  }
+}
+// Per-person ka total upar wale Total se zyada na ho — rok do
+function _ppCheckOverTotal(changedInput){
+  var topTotal = parseFloat(document.getElementById('tTot').value)||0;
+  if(topTotal<=0) return;
+  var cards = [].slice.call(document.querySelectorAll('#tawnPPRows .tawnPP-row'));
+  var sum=0;
+  cards.forEach(function(r){ if(r.querySelector('.ppChk').checked) sum += parseFloat(r.querySelector('.ppAmt').value)||0; });
+  if(sum > topTotal){
+    // zyada — is field ko itna kam karo ki total na bigde
+    var over = sum - topTotal;
+    var cur = parseFloat(changedInput.value)||0;
+    var fixed = cur - over;
+    changedInput.value = fixed>0 ? fixed : '';
+    if(typeof toast==='function') toast('⚠️ Total upar wale ₹'+topTotal+' se zyada nahi ho sakta');
+    if(typeof tawnPPCalc==='function') tawnPPCalc();
+  }
 }
 
 function onAshiyaMili(){ /* legacy */ }
@@ -7889,6 +7955,12 @@ function tawnModeSet(mode){
   if(mode==='perperson'){
     var rows = document.getElementById('tawnPPRows');
     if(rows && !rows.children.length) tawnPPLoad();
+    var _tt=parseFloat((document.getElementById('tTot')||{}).value)||0;
+    _ppSyncWithTotal(_tt);
+  } else {
+    // Pooled mode — wasool lock state apply
+    var _tt2=parseFloat((document.getElementById('tTot')||{}).value)||0;
+    if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(_tt2);
   }
 }
 
@@ -7921,7 +7993,7 @@ function _ppCardHTML(p, idx, d){
     // Row 2: Tawan amount (poori line)
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
       '<label style="font-size:.78rem;color:var(--mt);font-weight:600;min-width:90px">Tawan (₹)</label>'+
-      '<input type="number" class="ppAmt" value="'+amt+'" placeholder="kitna tawan" oninput="tawnPPCalc()" style="flex:1;max-width:200px;padding:8px 10px;border:1.5px solid var(--bor);border-radius:7px;font-size:.85rem">'+
+      '<input type="number" class="ppAmt" value="'+amt+'" placeholder="kitna tawan" oninput="_ppCheckOverTotal(this);tawnPPCalc()" style="flex:1;max-width:200px;padding:8px 10px;border:1.5px solid var(--bor);border-radius:7px;font-size:.85rem">'+
     '</div>'+
     '<div class="ppBreak" style="font-size:.75rem;font-weight:600;color:#e65100;margin-bottom:10px"></div>'+
     // Row 3: wasool tareeka (checkbox, poori width)
@@ -8004,6 +8076,9 @@ function tawnPPLoad(){
     return _ppCardHTML(p, i, old);
   }).join('');
   tawnPPCalc();
+  // Upar ke Total ke hisaab se lock/unlock
+  var _tt=parseFloat((document.getElementById('tTot')||{}).value)||0;
+  _ppSyncWithTotal(_tt);
 }
 // Sum + status
 // Ek card ka method-wise paisa: {hr, inst, full}
