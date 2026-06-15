@@ -4875,6 +4875,8 @@ function resetF(){
   var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
   var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='none';
   var _pwShow=document.getElementById('pooledWasoolWrap'); if(_pwShow) _pwShow.style.display='block';
+  // Gating: form khulte hi Total khaali hai → Wasool lock karo
+  if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(0);
   // Ensure pending_z is set even if options load late
   setTimeout(function(){ 
     var s=document.getElementById('fStat'); 
@@ -5140,6 +5142,10 @@ function editC(id){
     var _ppw2=document.getElementById('tawnPPWrap'); if(_ppw2) _ppw2.style.display='none';
     var _pwS=document.getElementById('pooledWasoolWrap'); if(_pwS) _pwS.style.display='block';
   }
+  // Gating: edit-load pe Total ke hisaab se lock/unlock
+  var _editTot=parseFloat((document.getElementById('tTot')||{}).value)||0;
+  if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(_editTot);
+  if(typeof _ppSyncWithTotal==='function') _ppSyncWithTotal(_editTot);
           ssRef('hSt'); ssRef('halfiaSt'); ssRef('tawnSt');
           ssRef('tfT'); ssRef('tfD'); ssRef('tbO'); ssRef('tbD');
         }, 100);
@@ -8104,7 +8110,8 @@ function tawnPPCalc(){
     if(on){
       totAmt += amt; totPaid += paid; gHr+=bk.hr; gInst+=bk.inst; gFull+=bk.full;
       var pend = amt - paid;
-      if(amt>0 && pend<=0){ stat.textContent='✅ Pura'; stat.style.color='var(--green)'; }
+      if(amt>0 && paid>amt){ var extra=paid-amt; stat.textContent='⚠️ ₹'+extra+' zyada! Note mein likhein'; stat.style.color='var(--red)'; }
+      else if(amt>0 && pend<=0){ stat.textContent='✅ Pura'; stat.style.color='var(--green)'; }
       else if(paid>0){ stat.textContent='⏳ Baqi ₹'+pend; stat.style.color='#e65100'; }
       else { stat.textContent='🔴 Pending'; stat.style.color='var(--red)'; }
       // Card ke andar method-wise breakdown dikhao
