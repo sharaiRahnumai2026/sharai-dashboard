@@ -2155,10 +2155,22 @@ function _applyRestriction(arr){
   return arr;
 }
 
+function _caseNoNum(c){
+  // Case No ka aakhri numeric part nikaalo (MSR/H/26/0303 -> 303). Year bhi jod do taaki saal-wise alag rahe.
+  var cn=(c.caseNo||'');
+  var parts=cn.split('/');
+  var last=parseInt((parts[parts.length-1]||'').replace(/\D/g,''),10)||0;
+  var yr=parseInt((c.year||'').toString().replace(/\D/g,''),10)||0;
+  return yr*100000 + last;
+}
+function _sortByCaseNoDesc(arr){
+  arr.sort(function(a,b){ return _caseNoNum(b) - _caseNoNum(a); });
+  return arr;
+}
 function _processCasesRaw(rawArr){
   // Direct processing — no fake docs, no double mapping
   cc = rawArr.slice(); // already plain objects
-  cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
+  _sortByCaseNoDesc(cc);
   cc = _applyRestriction(cc);
 
   // Year dropdown hamesha cc load hone ke baad refresh karo
@@ -2187,7 +2199,7 @@ function _processCasesRaw(rawArr){
 
 function _processCases(docs){
   cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-  cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;});
+  _sortByCaseNoDesc(cc);
   cc = _applyRestriction(cc);
 
   // MultiSelects — sirf ek baar init karo
@@ -2298,7 +2310,7 @@ function _rerenderCurrent(){
   else if(_currentPg==='reports'){ rRep(); }
   else { updStats(); }
 }
-function _ccResort(){ cc.sort(function(a,b){var x=b.openDate||'';var y=a.openDate||'';return x>y?1:x<y?-1:0;}); }
+function _ccResort(){ _sortByCaseNoDesc(cc); }
 // 1 doc server se laao aur cc + cache mein patch karo (full reload nahi)
 function refreshOneCase(id){
   return db.collection('cases').doc(id).get().then(function(d){
@@ -2586,6 +2598,8 @@ document.addEventListener('DOMContentLoaded', _initPgCache);
 
 var _lastPgBeforeNewCase = 'cases'; // default
 function goPage(pg,el,skipHistory){
+  // Mobile: page khulte hi sidebar band karo (overlap na rahe)
+  if(window.innerWidth<=768){ var _sb=document.getElementById('sb'); if(_sb) _sb.classList.remove('mob'); }
   // Clients page se nikal rahe hain — search clear karo
   if(_currentPg === 'clients' && pg !== 'clients'){
     clearClientSearch();
@@ -2657,7 +2671,16 @@ window.addEventListener('popstate',function(e){
   var pg=(e.state&&e.state.pg)||'dash';
   goPage(pg,null,true);
 });
-function toggleSB(){document.getElementById('sb').classList.toggle('col');document.getElementById('mw').classList.toggle('col');}
+function toggleSB(){
+  var sb=document.getElementById('sb'), mw=document.getElementById('mw');
+  if(window.innerWidth<=768){
+    sb.classList.toggle('mob');
+  } else {
+    sb.classList.remove('mob');
+    sb.classList.toggle('col');
+    if(mw) mw.classList.toggle('col');
+  }
+}
 
 // Dropdowns
 function initDD(){
@@ -3298,9 +3321,9 @@ function gBdg(g){const m={tawan:['bo','💰 Tawan'],halfia:['bpu','📜 Halfiya 
 function hp(p){return cu&&(cu.role==='admin'||!!(cu.perms&&cu.perms[p]));}
 
 // Tables
-const THS=['#','Case No','Date / Days','Location','Person','Subject','Status'];
+const THS=['Sr.','Case No','Date / Days','Location','Person','Subject','Status'];
 function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.closeDate&&(c.status||'').toLowerCase()==='closed')?new Date(c.closeDate):new Date();const d=Math.floor((e-s)/(86400000));if(d<0)return'0d';const col=d<=7?'var(--green)':d<=30?'var(--yellow)':d<=90?'var(--orange)':'var(--red)';return'<span style="font-weight:700;color:'+col+'">'+(d)+'d</span>'+((c.status||'').toLowerCase()==='closed'?'<br><span style="font-size:.6rem;color:var(--green)">✅closed</span>':'');}
-const THF=['#','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
+const THF=['Sr.','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
 function setTH(el,hs){el.innerHTML=hs.map(h=>`<th>${h}</th>`).join('');}
 function mRow(c,i,sh){
   c=_cleanC(c); // XSS FIX: saari user-entered values escape (subject, remarks, names, region...)
@@ -3320,10 +3343,7 @@ function mRow(c,i,sh){
 function rDash(){
   setTH(document.getElementById('dTH'),THS);
   var src = dashYear ? cc.filter(function(c){ return c.year===dashYear; }) : cc;
-  var sorted = src.slice().sort(function(a,b){
-    var x=a.caseNo||''; var y=b.caseNo||'';
-    return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
-  });
+  var sorted = _sortByCaseNoDesc(src.slice());
   const r=sorted.slice(0,10);
   document.getElementById('dTB').innerHTML=r.length?r.map((c,i)=>mRow(c,i+1,true)).join(''):`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases. Add your first case!</td></tr>`;
   if(typeof updStats==='function') updStats(); // top number cards bhi refresh (naya case turant dikhe)
@@ -3331,11 +3351,8 @@ function rDash(){
 }
 var _rCasesHash = '';
 function rCases(){
-  // cc se sorted list banao
-  var sorted = cc.slice().sort(function(a,b){
-    var x=a.caseNo||''; var y=b.caseNo||'';
-    return y.localeCompare(x, undefined, {numeric:true, sensitivity:'base'});
-  });
+  // cc se sorted list banao — Case No naya-se-purana (numeric)
+  var sorted = _sortByCaseNoDesc(cc.slice());
   _casesFiltered = sorted;
 
   var totalPages = Math.max(1, Math.ceil(_casesFiltered.length / PAGE_SIZE));
