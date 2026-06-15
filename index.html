@@ -2672,14 +2672,11 @@ window.addEventListener('popstate',function(e){
   goPage(pg,null,true);
 });
 function toggleSB(){
-  var sb=document.getElementById('sb'), mw=document.getElementById('mw');
+  var sb=document.getElementById('sb');
   if(window.innerWidth<=768){
-    sb.classList.toggle('mob');
-  } else {
-    sb.classList.remove('mob');
-    sb.classList.toggle('col');
-    if(mw) mw.classList.toggle('col');
+    sb.classList.toggle('mob');   // mobile: overlay slide in/out
   }
+  // 768 se upar: sidebar hamesha full, hamburger kuch na kare
 }
 
 // Dropdowns
