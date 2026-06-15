@@ -6255,7 +6255,10 @@ function detPDF(){
   style.innerHTML = `
     @media print {
       body > *:not(#printArea) { display: none !important; }
-      #printArea { display: block !important; font-size:11px; padding:16px; }
+      @page { size: A4 portrait; margin: 10mm; }
+      html, body { width:100% !important; margin:0 !important; padding:0 !important; }
+      #printArea { display: block !important; font-size:11px; padding:0; width:100% !important; max-width:100% !important; margin:0 auto !important; box-sizing:border-box; }
+      #printArea > * { width:100% !important; max-width:100% !important; margin-left:0 !important; margin-right:0 !important; box-sizing:border-box; }
       #printArea .sbox-title { color:#0d47a1; font-weight:700; margin-bottom:7px; }
       #printArea .detgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
       #printArea .di .dl { font-size:9px; color:#607090; text-transform:uppercase; }
