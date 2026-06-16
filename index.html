@@ -338,15 +338,6 @@ function initFirebase(){
       });
     }
     db=firebase.firestore();
-    // SPEED: Firestore offline persistence ON — data IndexedDB mein local rehta hai,
-    // agli baar TURANT local se aata (mili-second), phir background mein sync.
-    // localStorage ke 5MB limit ka jhanjhat nahi (IndexedDB 50MB+).
-    try{
-      firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(err){
-        // failed-precondition = ek se zyada tab khule; unimplemented = browser support nahi. Dono mein app normal chalega.
-        console.warn('Persistence:', err && err.code);
-      });
-    }catch(_pp){}
     // AUTH: persistence LOCAL — refresh pe auth signed-in bana rahe
     try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(_p){}
     // Test connection
@@ -1182,6 +1173,7 @@ function _cleanC(o){
           <input type="date" id="sDF" onchange="doSrch()">
         </div>
         <div class="fi"><label>Date To</label><input type="date" id="sDT" onchange="doSrch()"></div>
+        <div class="fi"><label>⏰ Din se purana</label><input type="number" id="sOldDays" min="1" placeholder="e.g. 30, 101..." oninput="doSrch()" style="border:1.5px solid #ffb74d"></div>
         <!-- Purana Location Filter — 2022/2023 mein show hoga -->
         <div id="oldLocFilters" style="display:none;grid-column:1/-1;background:#fffde7;border:1.5px dashed #ffe082;border-radius:8px;padding:10px;margin-top:4px">
           <div style="font-size:.68rem;font-weight:700;color:#9c7a00;margin-bottom:8px">📍 Purana Location Filter (2022/2023)</div>
@@ -1319,6 +1311,7 @@ function _cleanC(o){
     <div id="repFutureWarn" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:#e65100;font-size:.85rem;font-weight:600">
       ⚠️ Yeh mahina abhi aaya nahi hai — is liye koi data nahi hoga. Pichla mahina ya saal select karein.
     </div>
+    <div id="rpYearCompare" style="margin-bottom:14px"></div>
     <div id="rpRC" style="margin-bottom:14px"></div>
     <div id="rpC" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:start;direction:ltr"></div>
     <!-- Trend Chart & Mufattish Breakdown -->
@@ -2244,40 +2237,33 @@ function startListener(){
   if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
   setFS(true);
 
-  // localStorage cache (agar fit hua to) — turant
+  // CACHE CHECK: Agar fresh cache hai to Firebase se mat poocho
   var _cached = cacheLoad();
   if(_cached && _cached.length > 0){
     _processCasesRaw(_cached);
+    // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
     var _cacheAge = Date.now() - parseInt(localStorage.getItem(_ckTs())||'0');
     if(_cacheAge > 6 * 60 * 60 * 1000){
-      setTimeout(function(){ _serverRefreshCases(); }, 2000);
+      setTimeout(function(){
+        casesQuery().get({source:'server'}).then(function(s){
+          if(s.docs.length > 0){
+            var fresh = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+            cacheSave(fresh);
+            _processCasesRaw(fresh);
+          }
+        }).catch(function(){});
+      }, 2000);
     }
     return;
   }
 
-  // SPEED: Pehle IndexedDB cache se TURANT load (mili-second), phir server se update.
-  // Firestore offline persistence ON hai, to {source:'cache'} local IndexedDB se instant deta.
-  casesQuery().get({source:'cache'})
-    .then(function(cs){
-      if(cs && !cs.empty && cs.docs.length>0){
-        // Local cache se turant dikhao
-        var arr = cs.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-        try{ cacheSave(arr); }catch(_c){}
-        _processCases(cs.docs);
-        // Background mein server se taaza data
-        setTimeout(function(){ _serverRefreshCases(); }, 300);
-      } else {
-        // Cache khaali (pehli baar) — server se lo
-        _loadFromServerFirstTime();
-      }
-    })
-    .catch(function(){ _loadFromServerFirstTime(); });
-}
-// Server se poora data (pehli baar ya jab cache khaali)
-function _loadFromServerFirstTime(){
+  // PHASE 1: Dashboard ke liye sirf last 10 turant dikhao
+  // Region-restricted user pe orderBy+where ko composite index chahiye, isliye unke
+  // liye orderBy skip karke seedha get karte hain (app khud sort kar leta hai).
   var _isRestricted = !!(cu && cu.dataRestrict && Array.isArray(cu.dataRestrict.regions) && cu.dataRestrict.regions.length > 0);
   var _phase1 = _isRestricted ? casesQuery().limit(50) : casesQuery().orderBy('openDate','desc').limit(10);
-  _phase1.get()
+  _phase1
+    .get()
     .then(function(snap10){
       var quick = snap10.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
       quick = _applyRestriction(quick);
@@ -2285,17 +2271,21 @@ function _loadFromServerFirstTime(){
       document.getElementById('dTB').innerHTML = quick.length
         ? quick.map(function(c,i){ return mRow(c,i+1,true); }).join('')
         : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases.</td></tr>';
-      _serverRefreshCases();
+
+      // PHASE 2: Poora data load karo aur cache mein save karo
+      casesQuery().get().then(function(s){
+        var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+        cacheSave(allCases);
+        _processCases(s.docs);
+      }).catch(function(e){ setFS(false); _handleLoadErr(e); });
     })
-    .catch(function(){ _serverRefreshCases(); });
-}
-// Server se taaza data lao + cache update (background)
-function _serverRefreshCases(){
-  casesQuery().get({source:'server'}).then(function(s){
-    var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-    try{ cacheSave(allCases); }catch(_c){}
-    _processCases(s.docs);
-  }).catch(function(e){ setFS(false); _handleLoadErr(e); });
+    .catch(function(e1){
+      casesQuery().get().then(function(s){
+        var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+        cacheSave(allCases);
+        _processCases(s.docs);
+      }).catch(function(e){ setFS(false); _handleLoadErr(e); });
+    });
 }
 
 // permission-denied aksar auth-drop ki wajah se hota hai — saaf handle karo
@@ -3826,6 +3816,7 @@ function doSrch(){
   const rgs=msGet('ms-sRg'),sts=msGet('ms-sSt'),dvs=msGet('ms-sDv'),dis=msGet('ms-sDi');
   const dps=msGet('ms-sDp'),sss=msGet('ms-sStat'),gds=msGet('ms-sGd');
   const df=document.getElementById('sDF').value,dt=document.getElementById('sDT').value;
+  const oldDays=parseInt((document.getElementById('sOldDays')||{}).value,10)||0;
   const dateType=(document.getElementById('sDateType')||{}).value||'open';
   const cdf='',cdt='';
   // Purana location filters
@@ -3899,6 +3890,12 @@ function doSrch(){
     } else {
       if(df&&(!c.closeDate||c.closeDate<df))return false;
       if(dt&&(!c.closeDate||c.closeDate>dt))return false;
+    }
+    // ⏰ Din se purana: opening date se oldDays+ din purane (status user khud lagaye)
+    if(oldDays>0){
+      if(!c.openDate) return false;
+      var _days=Math.floor((new Date()-new Date(c.openDate))/86400000);
+      if(_days < oldDays) return false;
     }
     return true;
   });
@@ -4153,7 +4150,7 @@ function srchPgGo(pg){
 function clrSrch(){
   doSrch._page=1; doSrch._res=[];
   doSrch._customFilter=null; doSrch._halfSt=null; doSrch._tawnSt=null; doSrch._tafhimSt=null; doSrch._tabadlaSt=null; doSrch._mazSt=null;
-  ['sq','sCN','sDF','sDT','sCDF','sCDT','sOldReg','sOldDiv','sOldKab','sOldShh','sInst'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['sq','sCN','sDF','sDT','sOldDays','sCDF','sCDT','sOldReg','sOldDiv','sOldKab','sOldShh','sInst'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){msClearAll(id);});
   msSetOptions('ms-sSt',[]);msSetOptions('ms-sDv',[]);msSetOptions('ms-sDi',[]);
 }
@@ -4456,6 +4453,150 @@ function _repRestoreState(){
     if(fEl && st.f!=null){ fEl.value=st.f; }
     [yEl,mEl,fEl].forEach(function(el){ if(el){ try{ repMarkActive(el); }catch(e){} } });
   }catch(e){}
+}
+function renderYearCompare(){
+  var box=document.getElementById('rpYearCompare');
+  if(!box) return;
+  // Saal-wise count: total, closed, pending — opening date ke year se
+  var byYear={};
+  cc.forEach(function(c){
+    var y=(c.year||'').toString().trim() || (c.openDate?c.openDate.substring(0,4):'');
+    if(!y) return;
+    if(!byYear[y]) byYear[y]={total:0,closed:0,open:0,days:0,daysN:0};
+    byYear[y].total++;
+    if(isClosed(c)){
+      byYear[y].closed++;
+      if(c.openDate&&c.closeDate){ var d=Math.floor((new Date(c.closeDate)-new Date(c.openDate))/86400000); if(d>=0){ byYear[y].days+=d; byYear[y].daysN++; } }
+    } else byYear[y].open++;
+  });
+  var years=Object.keys(byYear).sort();
+  if(!years.length){ box.innerHTML=''; return; }
+  var rows=years.map(function(y){
+    var d=byYear[y];
+    var pct=d.total?Math.round(d.closed/d.total*100):0;
+    var avg=d.daysN?Math.round(d.days/d.daysN):'—';
+    return '<tr>'+
+      '<td style="font-weight:700;color:var(--blue)">'+y+'</td>'+
+      '<td style="text-align:center;font-weight:700">'+d.total+'</td>'+
+      '<td style="text-align:center;color:var(--green)">'+d.closed+'</td>'+
+      '<td style="text-align:center;color:var(--red)">'+d.open+'</td>'+
+      '<td style="text-align:center">'+pct+'%</td>'+
+      '<td style="text-align:center">'+avg+(avg!=='—'?'d':'')+'</td>'+
+    '</tr>';
+  }).join('');
+  box.innerHTML='<div style="background:#fff;border:1.5px solid var(--bor);border-radius:12px;padding:14px;overflow-x:auto">'+
+    '<div style="font-weight:800;color:#1a1a1a;margin-bottom:10px;font-size:.95rem">📊 Saal-dar-Saal Comparison</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:.82rem">'+
+    '<thead><tr style="background:#f5f7fa;border-bottom:2px solid var(--bor)">'+
+    '<th style="padding:8px;text-align:left">Saal</th>'+
+    '<th style="padding:8px">Total</th>'+
+    '<th style="padding:8px;color:var(--green)">Band</th>'+
+    '<th style="padding:8px;color:var(--red)">Pending</th>'+
+    '<th style="padding:8px">Band %</th>'+
+    '<th style="padding:8px">Avg Band Time</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>'+_tawnSummaryHtml()+_repExtraAnalytics();
+}
+function _miniBar(label,val,max,color){
+  var pct=max?Math.round(val/max*100):0;
+  return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.78rem">'+
+    '<div style="width:120px;flex-shrink:0;text-align:right;color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+label+'</div>'+
+    '<div style="flex:1;background:#f0f0f0;border-radius:6px;height:18px;position:relative">'+
+      '<div style="width:'+pct+'%;background:'+color+';height:100%;border-radius:6px;min-width:2px"></div>'+
+    '</div>'+
+    '<div style="width:50px;text-align:right;font-weight:700">'+val+'</div></div>';
+}
+function _repCardWrap(title,inner){
+  return '<div style="background:#fff;border:1.5px solid var(--bor);border-radius:12px;padding:14px;margin-top:14px;overflow-x:auto">'+
+    '<div style="font-weight:800;color:#1a1a1a;margin-bottom:12px;font-size:.95rem">'+title+'</div>'+inner+'</div>';
+}
+function _repExtraAnalytics(){
+  var out='';
+  // ---- 1. Saal-wise BAR CHART (total) ----
+  var yrTot={};
+  cc.forEach(function(c){var y=(c.year||'').toString().trim()||(c.openDate?c.openDate.substring(0,4):'');if(y)yrTot[y]=(yrTot[y]||0)+1;});
+  var yrs=Object.keys(yrTot).sort();
+  if(yrs.length){
+    var mx=Math.max.apply(null,yrs.map(function(y){return yrTot[y];}));
+    out+=_repCardWrap('📈 Saal-wise Cases (Bar)', yrs.map(function(y){return _miniBar(y,yrTot[y],mx,'var(--blue)');}).join(''));
+  }
+  // ---- 2. TOP REGIONS (ranking) ----
+  var regC={};
+  cc.forEach(function(c){var r=(c.region||'').trim();if(r)regC[r]=(regC[r]||0)+1;});
+  var regArr=Object.keys(regC).map(function(r){return{r:r,n:regC[r]};}).sort(function(a,b){return b.n-a.n;});
+  if(regArr.length){
+    var rmx=regArr[0].n;
+    out+=_repCardWrap('🏆 Top Regions (cases)', regArr.slice(0,10).map(function(x){return _miniBar(x.r,x.n,rmx,'var(--green)');}).join(''));
+  }
+  // ---- 3. LATKE CASES (region-wise pending) ----
+  var regPend={};
+  cc.forEach(function(c){if(isClosed(c))return;var r=(c.region||'').trim()||'(no region)';regPend[r]=(regPend[r]||0)+1;});
+  var pendArr=Object.keys(regPend).map(function(r){return{r:r,n:regPend[r]};}).sort(function(a,b){return b.n-a.n;});
+  if(pendArr.length){
+    var pmx=pendArr[0].n;
+    out+=_repCardWrap('📉 Pending (Latke) — Region-wise', pendArr.slice(0,10).map(function(x){return _miniBar(x.r,x.n,pmx,'var(--red)');}).join(''));
+  }
+  // ---- 4. MAHINE ka pattern (kis mahine zyada cases) ----
+  var mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var monC=new Array(12).fill(0);
+  cc.forEach(function(c){if(!c.openDate)return;var m=parseInt(c.openDate.substring(5,7),10);if(m>=1&&m<=12)monC[m-1]++;});
+  var monMx=Math.max.apply(null,monC);
+  if(monMx>0){
+    out+=_repCardWrap('📅 Mahine ka Pattern (sab saal mila ke)', monC.map(function(n,i){return _miniBar(mNames[i],n,monMx,'#9c27b0');}).join(''));
+  }
+  // ---- 5. MUFATTISH performance (band/pending) ----
+  var mufC={};
+  cc.forEach(function(c){var m=(c.mufattish||'').trim();if(!m)return;if(!mufC[m])mufC[m]={t:0,cl:0};mufC[m].t++;if(isClosed(c))mufC[m].cl++;});
+  var mufArr=Object.keys(mufC).map(function(m){return{m:m,t:mufC[m].t,cl:mufC[m].cl};}).sort(function(a,b){return b.t-a.t;});
+  if(mufArr.length){
+    var mrows=mufArr.slice(0,15).map(function(x){var pct=x.t?Math.round(x.cl/x.t*100):0;return '<tr><td style="padding:6px;font-weight:600">'+x.m+'</td><td style="padding:6px;text-align:center">'+x.t+'</td><td style="padding:6px;text-align:center;color:var(--green)">'+x.cl+'</td><td style="padding:6px;text-align:center;color:var(--red)">'+(x.t-x.cl)+'</td><td style="padding:6px;text-align:center">'+pct+'%</td></tr>';}).join('');
+    out+=_repCardWrap('👤 Mufattish Performance', '<table style="width:100%;border-collapse:collapse;font-size:.8rem"><thead><tr style="background:#f5f7fa;border-bottom:2px solid var(--bor)"><th style="padding:6px;text-align:left">Mufattish</th><th style="padding:6px">Total</th><th style="padding:6px;color:var(--green)">Band</th><th style="padding:6px;color:var(--red)">Pending</th><th style="padding:6px">Band %</th></tr></thead><tbody>'+mrows+'</tbody></table>');
+  }
+  // ---- 6. DEPT comparison ----
+  var depC={};
+  cc.forEach(function(c){var d=(c.dept||'').trim();if(!d)return;if(!depC[d])depC[d]={t:0,cl:0};depC[d].t++;if(isClosed(c))depC[d].cl++;});
+  var depArr=Object.keys(depC).map(function(d){return{d:d,t:depC[d].t,cl:depC[d].cl};}).sort(function(a,b){return b.t-a.t;});
+  if(depArr.length){
+    var drows=depArr.slice(0,15).map(function(x){return '<tr><td style="padding:6px;font-weight:600">'+x.d+'</td><td style="padding:6px;text-align:center">'+x.t+'</td><td style="padding:6px;text-align:center;color:var(--green)">'+x.cl+'</td><td style="padding:6px;text-align:center;color:var(--red)">'+(x.t-x.cl)+'</td></tr>';}).join('');
+    out+=_repCardWrap('📋 Department Comparison', '<table style="width:100%;border-collapse:collapse;font-size:.8rem"><thead><tr style="background:#f5f7fa;border-bottom:2px solid var(--bor)"><th style="padding:6px;text-align:left">Department</th><th style="padding:6px">Total</th><th style="padding:6px;color:var(--green)">Band</th><th style="padding:6px;color:var(--red)">Pending</th></tr></thead><tbody>'+drows+'</tbody></table>');
+  }
+  return out;
+}
+function _tawnSummaryHtml(){
+  // Saal-wise tawan: total (tTot), wasool (tPd), baqi
+  var byYear={};
+  cc.forEach(function(c){
+    var gs=(c.guides||c.guide||[]); if(typeof gs==='string') gs=[gs];
+    var hasTawan=(gs.indexOf&&gs.indexOf('tawan')>-1)||c.tTot||c.tPd;
+    if(!hasTawan) return;
+    var y=(c.year||'').toString().trim() || (c.openDate?c.openDate.substring(0,4):'');
+    if(!y) return;
+    var tot=parseFloat(c.tTot)||0, pd=parseFloat(c.tPd)||0;
+    if(tot===0 && pd===0) return;
+    if(!byYear[y]) byYear[y]={tot:0,pd:0,cnt:0};
+    byYear[y].tot+=tot; byYear[y].pd+=pd; byYear[y].cnt++;
+  });
+  var years=Object.keys(byYear).sort();
+  if(!years.length) return '';
+  var rows=years.map(function(y){
+    var d=byYear[y]; var baqi=d.tot-d.pd;
+    return '<tr>'+
+      '<td style="font-weight:700;color:var(--blue)">'+y+'</td>'+
+      '<td style="text-align:center">'+d.cnt+'</td>'+
+      '<td style="text-align:right;font-weight:700">₹'+d.tot.toLocaleString('en-IN')+'</td>'+
+      '<td style="text-align:right;color:var(--green);font-weight:700">₹'+d.pd.toLocaleString('en-IN')+'</td>'+
+      '<td style="text-align:right;color:'+(baqi>0?'var(--red)':'var(--green)')+';font-weight:700">₹'+baqi.toLocaleString('en-IN')+'</td>'+
+    '</tr>';
+  }).join('');
+  return '<div style="background:#fff;border:1.5px solid var(--bor);border-radius:12px;padding:14px;margin-top:14px;overflow-x:auto">'+
+    '<div style="font-weight:800;color:#1a1a1a;margin-bottom:10px;font-size:.95rem">💰 Tawan Summary (Saal-wise)</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:.82rem">'+
+    '<thead><tr style="background:#f5f7fa;border-bottom:2px solid var(--bor)">'+
+    '<th style="padding:8px;text-align:left">Saal</th>'+
+    '<th style="padding:8px">Cases</th>'+
+    '<th style="padding:8px;text-align:right">Total Tawan</th>'+
+    '<th style="padding:8px;text-align:right;color:var(--green)">Wasool</th>'+
+    '<th style="padding:8px;text-align:right;color:var(--red)">Baqi</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function rRep(){
   var now = new Date();
@@ -4865,6 +5006,7 @@ function rRep(){
   // Sort by size descending - biggest first
   cards.sort(function(a,b){ return b.size - a.size; });
   document.getElementById('rpC').innerHTML = cards.map(function(c){ return c.html; }).join('');
+  renderYearCompare();
 
   // ===== TREND CHART (Monthly) =====
   var monthlyData = {};
