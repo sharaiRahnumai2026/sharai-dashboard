@@ -3278,7 +3278,7 @@ function updStats(){
     if(gs.indexOf('tawan')>-1)c[6]++;
     if(gs.indexOf('halfia')>-1)c[7]++;
     if(gs.indexOf('tafhim')>-1){c[8]++;var _tfDone=(m.tafhimSt==='closed')||(m.tfD==='yes');if(_tfDone)c.tafhimCl=(c.tafhimCl||0)+1;else c.tafhimOp=(c.tafhimOp||0)+1;}
-    if(gs.indexOf('tabadla')>-1){c[9]++;if(m.tabadlaSt==='closed')c.transCl=(c.transCl||0)+1;else c.transOp=(c.transOp||0)+1;}
+    if(gs.indexOf('tabadla')>-1){c[9]++;var _tbDone=(m.tabadlaSt==='closed')||(m.tbD==='yes');if(_tbDone)c.transCl=(c.transCl||0)+1;else c.transOp=(c.transOp||0)+1;}
     if(gs.indexOf('mazratnama')>-1){c[12]++;if(m.mazSt==='closed')c.mazCl=(c.mazCl||0)+1;else c.mazOp=(c.mazOp||0)+1;}
   });
   for(let i=0;i<12;i++){const e=document.getElementById('sc'+i);if(e)e.textContent=c[i];}
@@ -3862,8 +3862,9 @@ function doSrch(){
       if(_tafhimSt==='pending' && _tfD) return false;
       if(_tafhimSt==='closed' && !_tfD) return false;
     }
-    if(_tabadlaSt==='pending' && c.tabadlaSt==='closed') return false;
-    if(_tabadlaSt==='closed' && c.tabadlaSt!=='closed') return false;
+    var _tbClosed=(c.tabadlaSt==='closed')||(c.tbD==='yes');
+    if(_tabadlaSt==='pending' && _tbClosed) return false;
+    if(_tabadlaSt==='closed' && !_tbClosed) return false;
     if(_mazSt==='pending' && c.mazSt==='closed') return false;
     if(_mazSt==='closed' && c.mazSt!=='closed') return false;
 
@@ -5039,7 +5040,7 @@ async function saveCase(){
       tWapasAshiyaDesc:document.getElementById('tWapasAshiyaDesc')?document.getElementById('tWapasAshiyaDesc').value.trim():'',
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
-      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
