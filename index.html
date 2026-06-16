@@ -4013,7 +4013,7 @@ function srchExpRun(type){
         ws.getRow(1).eachCell(function(cell){
           cell.font={bold:true,size:13,name:'Arial',color:{argb:'FF1A1A1A'}};
           cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF200'}};
-          cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+          cell.alignment={horizontal:'center',vertical:'middle'};
           cell.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
         });
         ws.getRow(1).height=26;
@@ -4025,7 +4025,7 @@ function srchExpRun(type){
             var key=(colNo===1)?'_sr':keys[colNo-2];
             var isUrdu=urduKeys.indexOf(key)>-1;
             cell.font={size:isUrdu?13:11,name:isUrdu?'Jameel Noori Nastaleeq':'Arial'};
-            cell.alignment={horizontal:isUrdu?'right':'center',vertical:'middle',wrapText:true,readingOrder:isUrdu?2:1};
+            cell.alignment={horizontal:isUrdu?'right':'center',vertical:'middle',readingOrder:isUrdu?2:1};
             cell.border={top:{style:'thin',color:{argb:'FFD9D9D9'}},bottom:{style:'thin',color:{argb:'FFD9D9D9'}},left:{style:'thin',color:{argb:'FFD9D9D9'}},right:{style:'thin',color:{argb:'FFD9D9D9'}}};
             if(zebra) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F7FA'}};
           });
@@ -4034,8 +4034,15 @@ function srchExpRun(type){
         // Column widths
         ws.getColumn(1).width=6; // Sr.
         keys.forEach(function(k,idx){
-          var wide=(urduKeys.indexOf(k)>-1)?34:(k==='caseNo'?15:16);
-          ws.getColumn(idx+2).width=wide;
+          var w;
+          if(urduKeys.indexOf(k)>-1) w=34;
+          else if(k==='caseNo') w=18;
+          else if(k==='dept'||k==='department') w=24;
+          else if(k==='status') w=20;
+          else if(k==='location'||k==='region'||k==='division'||k==='district'||k==='state') w=18;
+          else if(k==='name'||k==='person') w=20;
+          else w=15;
+          ws.getColumn(idx+2).width=w;
         });
         // File naam: region + dept (agar single ho) warna Search_Export
         var regs=Array.from(new Set(res.map(function(c){return c.region;}).filter(Boolean)));
@@ -4053,6 +4060,12 @@ function srchExpRun(type){
     // PDF: jsPDF Urdu ko shape nahi kar pata (letters tut jaate hain).
     // Isliye browser ke print se banate hain — Urdu bilkul sahi (app jaisा) aayega.
     try{
+      // File naam region+dept wise (Excel jaisa) — print dialog isi naam se save dega
+      var _regs=Array.from(new Set(res.map(function(c){return c.region;}).filter(Boolean)));
+      var _depts=Array.from(new Set(res.map(function(c){return c.dept;}).filter(Boolean)));
+      var pdfTitle='Search_Export_'+stamp;
+      if(_regs.length===1){ pdfTitle=_regs[0]+(_depts.length===1?'_'+_depts[0]:''); }
+      pdfTitle=pdfTitle.replace(/[^\w\u0600-\u06FF -]/g,'').replace(/\s+/g,'_');
       var thead = '<tr>'+headers.map(function(h){ return '<th>'+_e(h)+'</th>'; }).join('')+'</tr>';
       var tbody = rows.map(function(r){
         return '<tr>'+r.map(function(cell){ return '<td dir="auto">'+_e(cell)+'</td>'; }).join('')+'</tr>';
@@ -4060,7 +4073,7 @@ function srchExpRun(type){
       var w = window.open('', '_blank');
       if(!w){ toast('❌ Popup block hai — allow karo'); return; }
       w.document.write(
-        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Search Export</title>'+
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_e(pdfTitle)+'</title>'+
         '<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">'+
         '<style>'+
         '*{box-sizing:border-box}'+
@@ -4074,7 +4087,7 @@ function srchExpRun(type){
         'td{font-family:"Jameel Noori Nastaleeq","Noto Nastaliq Urdu",Arial,sans-serif;line-height:1.9}'+
         '@media print{@page{size:A4 landscape;margin:8mm} body{margin:0}}'+
         '</style></head><body>'+
-        '<h2>Search Export — '+res.length+' cases ('+stamp+')</h2>'+
+        '<h2>'+_e(pdfTitle.replace(/_/g,' '))+' — '+res.length+' cases ('+stamp+')</h2>'+
         '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>'+
         '<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>'+
         '</body></html>'
