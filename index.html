@@ -338,6 +338,15 @@ function initFirebase(){
       });
     }
     db=firebase.firestore();
+    // SPEED: Firestore offline persistence ON — data IndexedDB mein local rehta hai,
+    // agli baar TURANT local se aata (mili-second), phir background mein sync.
+    // localStorage ke 5MB limit ka jhanjhat nahi (IndexedDB 50MB+).
+    try{
+      firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(err){
+        // failed-precondition = ek se zyada tab khule; unimplemented = browser support nahi. Dono mein app normal chalega.
+        console.warn('Persistence:', err && err.code);
+      });
+    }catch(_pp){}
     // AUTH: persistence LOCAL — refresh pe auth signed-in bana rahe
     try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(_p){}
     // Test connection
@@ -2235,33 +2244,40 @@ function startListener(){
   if(_casesUnsub){ try{_casesUnsub();}catch(e){} _casesUnsub=null; }
   setFS(true);
 
-  // CACHE CHECK: Agar fresh cache hai to Firebase se mat poocho
+  // localStorage cache (agar fit hua to) — turant
   var _cached = cacheLoad();
   if(_cached && _cached.length > 0){
     _processCasesRaw(_cached);
-    // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
     var _cacheAge = Date.now() - parseInt(localStorage.getItem(_ckTs())||'0');
     if(_cacheAge > 6 * 60 * 60 * 1000){
-      setTimeout(function(){
-        casesQuery().get({source:'server'}).then(function(s){
-          if(s.docs.length > 0){
-            var fresh = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-            cacheSave(fresh);
-            _processCasesRaw(fresh);
-          }
-        }).catch(function(){});
-      }, 2000);
+      setTimeout(function(){ _serverRefreshCases(); }, 2000);
     }
     return;
   }
 
-  // PHASE 1: Dashboard ke liye sirf last 10 turant dikhao
-  // Region-restricted user pe orderBy+where ko composite index chahiye, isliye unke
-  // liye orderBy skip karke seedha get karte hain (app khud sort kar leta hai).
+  // SPEED: Pehle IndexedDB cache se TURANT load (mili-second), phir server se update.
+  // Firestore offline persistence ON hai, to {source:'cache'} local IndexedDB se instant deta.
+  casesQuery().get({source:'cache'})
+    .then(function(cs){
+      if(cs && !cs.empty && cs.docs.length>0){
+        // Local cache se turant dikhao
+        var arr = cs.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+        try{ cacheSave(arr); }catch(_c){}
+        _processCases(cs.docs);
+        // Background mein server se taaza data
+        setTimeout(function(){ _serverRefreshCases(); }, 300);
+      } else {
+        // Cache khaali (pehli baar) — server se lo
+        _loadFromServerFirstTime();
+      }
+    })
+    .catch(function(){ _loadFromServerFirstTime(); });
+}
+// Server se poora data (pehli baar ya jab cache khaali)
+function _loadFromServerFirstTime(){
   var _isRestricted = !!(cu && cu.dataRestrict && Array.isArray(cu.dataRestrict.regions) && cu.dataRestrict.regions.length > 0);
   var _phase1 = _isRestricted ? casesQuery().limit(50) : casesQuery().orderBy('openDate','desc').limit(10);
-  _phase1
-    .get()
+  _phase1.get()
     .then(function(snap10){
       var quick = snap10.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
       quick = _applyRestriction(quick);
@@ -2269,21 +2285,17 @@ function startListener(){
       document.getElementById('dTB').innerHTML = quick.length
         ? quick.map(function(c,i){ return mRow(c,i+1,true); }).join('')
         : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases.</td></tr>';
-
-      // PHASE 2: Poora data load karo aur cache mein save karo
-      casesQuery().get().then(function(s){
-        var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-        cacheSave(allCases);
-        _processCases(s.docs);
-      }).catch(function(e){ setFS(false); _handleLoadErr(e); });
+      _serverRefreshCases();
     })
-    .catch(function(e1){
-      casesQuery().get().then(function(s){
-        var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
-        cacheSave(allCases);
-        _processCases(s.docs);
-      }).catch(function(e){ setFS(false); _handleLoadErr(e); });
-    });
+    .catch(function(){ _serverRefreshCases(); });
+}
+// Server se taaza data lao + cache update (background)
+function _serverRefreshCases(){
+  casesQuery().get({source:'server'}).then(function(s){
+    var allCases = s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+    try{ cacheSave(allCases); }catch(_c){}
+    _processCases(s.docs);
+  }).catch(function(e){ setFS(false); _handleLoadErr(e); });
 }
 
 // permission-denied aksar auth-drop ki wajah se hota hai — saaf handle karo
