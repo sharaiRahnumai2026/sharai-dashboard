@@ -4995,6 +4995,7 @@ async function saveCase(){
       tHRMonthly:document.getElementById('tHRMonthly')?document.getElementById('tHRMonthly').value:'',
       tHRJV:document.getElementById('tHRJV')?document.getElementById('tHRJV').value.trim():'',
       tDirectAmt:document.getElementById('tDirectAmt')?document.getElementById('tDirectAmt').value:'',
+      tDirectMode:document.getElementById('tDirectMode')?document.getElementById('tDirectMode').value:'',
       tDirectDate:document.getElementById('tDirectDate')?document.getElementById('tDirectDate').value:'',
       tDirectRef:document.getElementById('tDirectRef')?document.getElementById('tDirectRef').value.trim():'',
       tDirectNotes:document.getElementById('tDirectNotes')?document.getElementById('tDirectNotes').value.trim():'',
@@ -5175,6 +5176,7 @@ function editC(id){
     if(_da && (!_da.value||_da.value==='') && (c.tCollMethod||'').indexOf('direct')>-1 && c.tPd){ _da.value=c.tPd; }
     var _dd=document.getElementById('tDirectDate'); if(_dd) _dd.value=c.tDirectDate||'';
     var _dr=document.getElementById('tDirectRef'); if(_dr) _dr.value=c.tDirectRef||'';
+    var _dm=document.getElementById('tDirectMode'); if(_dm) _dm.value=c.tDirectMode||'';
     var _dn=document.getElementById('tDirectNotes'); if(_dn) _dn.value=c.tDirectNotes||'';
     if(typeof calcDirectTotal==='function') calcDirectTotal();
   })();
