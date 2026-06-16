@@ -3987,15 +3987,68 @@ function srchExpRun(type){
   var rows = res.map(function(c){ return keys.map(function(k){ return _srchCell(c,k); }); });
   var stamp = new Date().toISOString().slice(0,10);
   if(type==='excel'){
-    try{
-      var aoa = [headers].concat(rows);
-      var ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = keys.map(function(k){ return {wch: (k==='subject'||k==='detail'||k==='remarks'||k==='rahnumai')?30:16}; });
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Cases');
-      XLSX.writeFile(wb, 'Search_Export_'+stamp+'.xlsx');
-      toast('✅ Excel ready');
-    }catch(e){ toast('❌ Excel: '+e.message); }
+    (async function(){
+      try{
+        if(typeof ExcelJS==='undefined'){ toast('❌ ExcelJS load nahi hui'); return; }
+        toast('⏳ Excel ban raha hai...');
+        // Status value -> saaf label (emoji ke bina)
+        var stMap={}; (typeof STATUSES!=='undefined'?STATUSES:[]).forEach(function(s){ stMap[s.v]=(s.l||'').replace(/[^\x00-\x7F\u0600-\u06FF ]/g,'').trim(); });
+        var wb=new ExcelJS.Workbook();
+        var ws=wb.addWorksheet('Cases',{views:[{state:'frozen',ySplit:1}]});
+        // Header row: Sr. + selected columns
+        var hdr=['Sr.'].concat(headers);
+        ws.addRow(hdr);
+        // Data rows
+        res.forEach(function(c,i){
+          var rowVals=[i+1].concat(keys.map(function(k){
+            var v=_srchCell(c,k);
+            if(k==='status' && stMap[v]) return stMap[v];
+            return v;
+          }));
+          ws.addRow(rowVals);
+        });
+        // Subject/Urdu column indexes (right align + bigger font)
+        var urduKeys=['subject','detail','remarks','rahnumai'];
+        // Header styling: bold, size 13, yellow bg, center, border
+        ws.getRow(1).eachCell(function(cell){
+          cell.font={bold:true,size:13,name:'Arial',color:{argb:'FF1A1A1A'}};
+          cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF200'}};
+          cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+          cell.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+        });
+        ws.getRow(1).height=26;
+        // Data styling: borders, center, zebra, Urdu right+bigger
+        var totalRows=res.length+1;
+        for(var r=2;r<=totalRows;r++){
+          var zebra=(r%2===0);
+          ws.getRow(r).eachCell(function(cell,colNo){
+            var key=(colNo===1)?'_sr':keys[colNo-2];
+            var isUrdu=urduKeys.indexOf(key)>-1;
+            cell.font={size:isUrdu?13:11,name:isUrdu?'Jameel Noori Nastaleeq':'Arial'};
+            cell.alignment={horizontal:isUrdu?'right':'center',vertical:'middle',wrapText:true,readingOrder:isUrdu?2:1};
+            cell.border={top:{style:'thin',color:{argb:'FFD9D9D9'}},bottom:{style:'thin',color:{argb:'FFD9D9D9'}},left:{style:'thin',color:{argb:'FFD9D9D9'}},right:{style:'thin',color:{argb:'FFD9D9D9'}}};
+            if(zebra) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F7FA'}};
+          });
+          ws.getRow(r).height=20;
+        }
+        // Column widths
+        ws.getColumn(1).width=6; // Sr.
+        keys.forEach(function(k,idx){
+          var wide=(urduKeys.indexOf(k)>-1)?34:(k==='caseNo'?15:16);
+          ws.getColumn(idx+2).width=wide;
+        });
+        // File naam: region + dept (agar single ho) warna Search_Export
+        var regs=Array.from(new Set(res.map(function(c){return c.region;}).filter(Boolean)));
+        var depts=Array.from(new Set(res.map(function(c){return c.dept;}).filter(Boolean)));
+        var fname='Search_Export_'+stamp;
+        if(regs.length===1){ fname=regs[0]+(depts.length===1?'_'+depts[0]:''); }
+        fname=fname.replace(/[^\w\u0600-\u06FF -]/g,'').replace(/\s+/g,'_')+'.xlsx';
+        var buf=await wb.xlsx.writeBuffer();
+        var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=fname; a.click(); URL.revokeObjectURL(url);
+        toast('✅ Excel ready');
+      }catch(e){ toast('❌ Excel: '+e.message); }
+    })();
   } else {
     // PDF: jsPDF Urdu ko shape nahi kar pata (letters tut jaate hain).
     // Isliye browser ke print se banate hain — Urdu bilkul sahi (app jaisा) aayega.
