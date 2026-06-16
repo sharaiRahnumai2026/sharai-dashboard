@@ -5156,6 +5156,18 @@ function editC(id){
     if(el) el.checked = methods.includes(val);
   });
   onCollMethod();
+  // FIX: agar tawan mein money data hai par Raqam (Money) checkbox off save tha,
+  // to checkbox ON karke section dikhao — warna saved amount chhupa reh jaata hai
+  (function(){
+    var hasMoney = (c.tDirectAmt&&c.tDirectAmt!=='0'&&c.tDirectAmt!=='') ||
+                   (c.tPd&&c.tPd!=='0'&&c.tPd!=='') ||
+                   (c.tTot&&c.tTot!=='0'&&c.tTot!=='') ||
+                   (c.tNaf&&c.tNaf!=='') || (c.tWaj&&c.tWaj!=='') ||
+                   (c.tCollMethod&&c.tCollMethod!=='') ||
+                   (c.tInsts&&c.tInsts.length) || (c.tHRMonthly&&c.tHRMonthly!=='');
+    var _tr=document.getElementById('tTypeRaqam');
+    if(_tr && hasMoney && !_tr.checked){ _tr.checked=true; onTawnType(); onCollMethod(); }
+  })();
   // Full & Final received amount/date/ref wapas bharo (edit pe blank na ho)
   (function(){
     var _da=document.getElementById('tDirectAmt'); if(_da) _da.value=(c.tDirectAmt!=null?c.tDirectAmt:'');
