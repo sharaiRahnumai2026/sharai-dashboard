@@ -172,10 +172,10 @@ tbody td{padding:7px 7px;color:var(--tx);vertical-align:middle;}
 .fgr label{font-size:.69rem;color:var(--mt);font-weight:600;text-transform:uppercase;}
 .fgr input,.fgr select,.fgr textarea{padding:8px 10px;border:1.5px solid var(--bor);border-radius:var(--rsm);font-size:.8rem;outline:none;}
 .fgr input:focus,.fgr select:focus,.fgr textarea:focus{border-color:var(--blue);}
-input[type="date"]{cursor:pointer;position:relative;}
-input[type="date"]::-webkit-calendar-picker-indicator{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;}
+input[type="date"],input[type="month"]{cursor:pointer;position:relative;}
+input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webkit-calendar-picker-indicator{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;}
 /* Firefox/Edge fallback — full width clickable */
-input[type="date"]::-moz-calendar-picker-indicator{width:100%;height:100%;opacity:0;cursor:pointer;}
+input[type="date"]::-moz-calendar-picker-indicator,input[type="month"]::-moz-calendar-picker-indicator{width:100%;height:100%;opacity:0;cursor:pointer;}
 .fgr textarea{resize:vertical;min-height:68px;}
 .sbox{background:#f7f9ff;border:1px solid #c5d5f0;border-radius:10px;padding:13px;margin:10px 0;}
 .sbox-title{font-size:.76rem;font-weight:700;color:var(--bd);margin-bottom:9px;display:flex;align-items:center;gap:5px;direction:ltr!important;text-align:left!important;}
@@ -944,9 +944,9 @@ function _cleanC(o){
                 <div id="tCollHRBox" style="display:none;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:8px;padding:12px">
                   <div style="font-size:.73rem;font-weight:700;color:var(--green);margin-bottom:8px">🏢 H.R. Entry Details</div>
                   <div class="fg">
-                    <div class="fgr"><label>Approval Date</label><input type="date" id="tHRDate"></div>
-                    <div class="fgr"><label>Start Month</label><input type="month" id="tHRStart" placeholder="YYYY-MM"></div>
-                    <div class="fgr"><label>End Month</label><input type="month" id="tHREnd" placeholder="YYYY-MM"></div>
+                    <div class="fgr"><label>Approval Date</label><input type="date" id="tHRDate" onclick="this.showPicker&&this.showPicker()"></div>
+                    <div class="fgr"><label>Start Month</label><input type="month" id="tHRStart" placeholder="YYYY-MM" onclick="this.showPicker&&this.showPicker()"></div>
+                    <div class="fgr"><label>End Month</label><input type="month" id="tHREnd" placeholder="YYYY-MM" onclick="this.showPicker&&this.showPicker()"></div>
                     <div class="fgr"><label>Monthly Amount (₹)</label><input type="number" id="tHRMonthly" placeholder="0"></div>
                     <div class="fgr"><label>JV / Reference No</label><input id="tHRJV" placeholder="JV No..."></div>
                   </div>
@@ -2778,6 +2778,17 @@ function tog(id,show){document.getElementById(id).style.display=show?'block':'no
 function togGuideMulti(){
   var vals = getGuideValues();
   document.getElementById('gTawan').style.display  = vals.indexOf('tawan')  >-1 ? 'block':'none';
+  // Tawan khula + 2+ persons + naya case → per-person par default (lock nahi, pooled bhi choose kar sakte)
+  if(vals.indexOf('tawan')>-1 && !eId && !togGuideMulti._ppAutoDone){
+    try{
+      var _pc=(typeof getPersons==='function')?getPersons().filter(function(p){return p&&p.name&&p.name.trim();}).length:0;
+      if(_pc>=2 && _tawnMode!=='perperson'){
+        var _ppR=document.querySelector('input[name="tawnMode"][value="perperson"]');
+        if(_ppR){ _ppR.checked=true; if(typeof tawnModeSet==='function') tawnModeSet('perperson'); }
+        togGuideMulti._ppAutoDone=true; // ek baar auto-set, phir user ki marzi
+      }
+    }catch(e){}
+  }
   document.getElementById('gHalfia').style.display = vals.indexOf('halfia') >-1 ? 'block':'none';
   document.getElementById('gTafhim').style.display = vals.indexOf('tafhim') >-1 ? 'block':'none';
   document.getElementById('gTabadla').style.display= vals.indexOf('tabadla')>-1 ? 'block':'none';
@@ -4967,6 +4978,7 @@ function resetF(){
   setPersons([{name:'',mobile:'',empCode:''}]);
   // Tawan mode reset to pooled
   _tawnMode='pooled';
+  togGuideMulti._ppAutoDone=false;
   var _pr=document.querySelector('input[name="tawnMode"][value="pooled"]'); if(_pr) _pr.checked=true;
   var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
   var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='none';
@@ -5043,6 +5055,14 @@ async function saveCase(){
   const nm=(persons[0]||{}).name||'';
   const mb=(persons[0]||{}).mobile||'';
   if(!cn){toast('❌ Case No required');return;}
+  // Status Closed → Closing Date aur Sharai Rahnumai zaroori
+  var _st=document.getElementById('fStat').value;
+  if(_st==='closed'){
+    var _cd=document.getElementById('fCD').value;
+    if(!_cd){ toast('❌ Closed karne ke liye Closing Date zaroori hai'); document.getElementById('fCD').focus(); return; }
+    var _rah=(document.getElementById('fRah').value||'').replace(/<[^>]*>/g,'').trim();
+    if(!_rah){ toast('❌ Closed karne ke liye Sharai Rahnumai bharna zaroori hai'); var _rb=document.getElementById('rte-fRah'); if(_rb) _rb.focus(); return; }
+  }
   // Duplicate check — sirf new case mein
   if(!eId){
     var dupCase = cc.find(function(x){ return x.caseNo && x.caseNo.trim().toLowerCase() === cn.toLowerCase(); });
