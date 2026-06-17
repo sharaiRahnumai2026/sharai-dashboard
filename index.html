@@ -4455,6 +4455,7 @@ function _repRestoreState(){
     [yEl,mEl,fEl].forEach(function(el){ if(el){ try{ repMarkActive(el); }catch(e){} } });
   }catch(e){}
 }
+function _isClosedG(c){ return (c.status||'').toLowerCase()==='closed'; }
 function renderYearCompare(){
   var box=document.getElementById('rpYearCompare');
   if(!box) return;
@@ -4465,7 +4466,7 @@ function renderYearCompare(){
     if(!y) return;
     if(!byYear[y]) byYear[y]={total:0,closed:0,open:0,days:0,daysN:0};
     byYear[y].total++;
-    if(isClosed(c)){
+    if(_isClosedG(c)){
       byYear[y].closed++;
       if(c.openDate&&c.closeDate){ var d=Math.floor((new Date(c.closeDate)-new Date(c.openDate))/86400000); if(d>=0){ byYear[y].days+=d; byYear[y].daysN++; } }
     } else byYear[y].open++;
@@ -4530,7 +4531,7 @@ function _repExtraAnalytics(){
   }
   // ---- 3. LATKE CASES (region-wise pending) ----
   var regPend={};
-  cc.forEach(function(c){if(isClosed(c))return;var r=(c.region||'').trim()||'(no region)';regPend[r]=(regPend[r]||0)+1;});
+  cc.forEach(function(c){if(_isClosedG(c))return;var r=(c.region||'').trim()||'(no region)';regPend[r]=(regPend[r]||0)+1;});
   var pendArr=Object.keys(regPend).map(function(r){return{r:r,n:regPend[r]};}).sort(function(a,b){return b.n-a.n;});
   if(pendArr.length){
     var pmx=pendArr[0].n;
@@ -4546,7 +4547,7 @@ function _repExtraAnalytics(){
   }
   // ---- 5. MUFATTISH performance (band/pending) ----
   var mufC={};
-  cc.forEach(function(c){var m=(c.mufattish||'').trim();if(!m)return;if(!mufC[m])mufC[m]={t:0,cl:0};mufC[m].t++;if(isClosed(c))mufC[m].cl++;});
+  cc.forEach(function(c){var m=(c.mufattish||'').trim();if(!m)return;if(!mufC[m])mufC[m]={t:0,cl:0};mufC[m].t++;if(_isClosedG(c))mufC[m].cl++;});
   var mufArr=Object.keys(mufC).map(function(m){return{m:m,t:mufC[m].t,cl:mufC[m].cl};}).sort(function(a,b){return b.t-a.t;});
   if(mufArr.length){
     var mrows=mufArr.slice(0,15).map(function(x){var pct=x.t?Math.round(x.cl/x.t*100):0;return '<tr><td style="padding:6px;font-weight:600">'+x.m+'</td><td style="padding:6px;text-align:center">'+x.t+'</td><td style="padding:6px;text-align:center;color:var(--green)">'+x.cl+'</td><td style="padding:6px;text-align:center;color:var(--red)">'+(x.t-x.cl)+'</td><td style="padding:6px;text-align:center">'+pct+'%</td></tr>';}).join('');
@@ -4554,7 +4555,7 @@ function _repExtraAnalytics(){
   }
   // ---- 6. DEPT comparison ----
   var depC={};
-  cc.forEach(function(c){var d=(c.dept||'').trim();if(!d)return;if(!depC[d])depC[d]={t:0,cl:0};depC[d].t++;if(isClosed(c))depC[d].cl++;});
+  cc.forEach(function(c){var d=(c.dept||'').trim();if(!d)return;if(!depC[d])depC[d]={t:0,cl:0};depC[d].t++;if(_isClosedG(c))depC[d].cl++;});
   var depArr=Object.keys(depC).map(function(d){return{d:d,t:depC[d].t,cl:depC[d].cl};}).sort(function(a,b){return b.t-a.t;});
   if(depArr.length){
     var drows=depArr.slice(0,15).map(function(x){return '<tr><td style="padding:6px;font-weight:600">'+x.d+'</td><td style="padding:6px;text-align:center">'+x.t+'</td><td style="padding:6px;text-align:center;color:var(--green)">'+x.cl+'</td><td style="padding:6px;text-align:center;color:var(--red)">'+(x.t-x.cl)+'</td></tr>';}).join('');
