@@ -1305,6 +1305,7 @@ function _cleanC(o){
         <div style="display:flex;gap:5px;margin-left:4px">
           <button onclick="repShowRegionSelect()" style="padding:6px 12px;background:#1d6f42;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>
           <button onclick="repDownloadPDF()" style="padding:6px 12px;background:#c0392b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>
+          <button onclick="repPrintAnalytics()" style="padding:6px 12px;background:#6a1b9a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">🖨️ Analytics</button>
         </div>
       </div>
     </div>
@@ -8008,6 +8009,30 @@ async function repDownloadExcel(selectedRegions){
 }
 
 // ===== PDF EXPORT =====
+function repPrintAnalytics(){
+  var box=document.getElementById('rpYearCompare');
+  if(!box||!box.innerHTML.trim()){ toast('❌ Analytics data nahi — pehle Reports kholo'); return; }
+  var w=window.open('','_blank');
+  if(!w){ toast('❌ Popup block — allow karo'); return; }
+  var when=new Date().toLocaleDateString('en-IN');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reports_Analytics_'+when.replace(/\//g,'-')+'</title>'+
+    '<style>'+
+    'body{font-family:Arial,sans-serif;padding:18px;color:#222}'+
+    'h1{text-align:center;color:#0d47a1;font-size:20px;margin:0 0 4px}'+
+    '.sub{text-align:center;color:#666;font-size:12px;margin-bottom:18px}'+
+    'table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}'+
+    'th,td{border:1px solid #ccc;padding:6px 8px}'+
+    'th{background:#f0f4f8}'+
+    'div[style*="background:#fff"]{border:1px solid #ddd!important;border-radius:8px;padding:12px!important;margin-bottom:14px;page-break-inside:avoid}'+
+    '@media print{@page{size:A4 portrait;margin:10mm}}'+
+    '</style></head><body>'+
+    '<h1>📊 Shari\'ah Advisory Board — Analytics Report</h1>'+
+    '<div class="sub">Generated: '+when+'  |  Total Cases: '+cc.length+'</div>'+
+    box.innerHTML+
+    '<script>setTimeout(function(){window.print();},400);<\/script>'+
+    '</body></html>');
+  w.document.close();
+}
 function repDownloadPDF(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
   var fcc = repGetFilteredCases();
