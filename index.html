@@ -3152,7 +3152,7 @@ function calcT(){
   // Zyada wasool warning (per-person jaisa)
   var ovr=document.getElementById('tPooledOver');
   if(ovr){
-    if(tot>0 && pd>tot){ ovr.style.display='block'; ovr.textContent='⚠️ ₹'+(pd-tot).toLocaleString('en-IN')+' ZYADA wasool — Note mein likhein'; }
+    if(tot>0 && pd>=tot){ ovr.style.display='block'; ovr.style.background='var(--green)'; ovr.textContent='✅ Mukammal — poora Tawan amount wasool ho gaya'; }
     else { ovr.style.display='none'; ovr.textContent=''; }
   }
   // update installment count badge
@@ -9337,11 +9337,14 @@ function deptClose(){
     // Find first non-space character
     var first = txt.replace(/\s/g,'')[0];
     if(!first) return;
-    var code = first.charCodeAt(0);
-    var isUrdu = (code >= 0x0600 && code <= 0x06FF) ||
-                 (code >= 0x0750 && code <= 0x077F) ||
-                 (code >= 0xFB50 && code <= 0xFDFF) ||
-                 (code >= 0xFE70 && code <= 0xFEFF);
+    // Pehle char nahi — pure text mein Urdu zyada hai ya English, usse decide
+    var urduCount=0, latinCount=0;
+    for(var _i=0;_i<txt.length;_i++){
+      var _c=txt.charCodeAt(_i);
+      if((_c>=0x0600&&_c<=0x06FF)||(_c>=0x0750&&_c<=0x077F)||(_c>=0xFB50&&_c<=0xFDFF)||(_c>=0xFE70&&_c<=0xFEFF)) urduCount++;
+      else if((_c>=0x41&&_c<=0x5A)||(_c>=0x61&&_c<=0x7A)) latinCount++;
+    }
+    var isUrdu = urduCount >= latinCount;
     if(isUrdu){
       ed.style.direction = 'rtl';
       ed.style.textAlign = 'right';
