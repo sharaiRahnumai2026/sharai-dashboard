@@ -1312,11 +1312,11 @@ function _cleanC(o){
     <div id="repFutureWarn" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:#e65100;font-size:.85rem;font-weight:600">
       ⚠️ Yeh mahina abhi aaya nahi hai — is liye koi data nahi hoga. Pichla mahina ya saal select karein.
     </div>
-    <div id="rpYearCompare" style="margin-bottom:14px"></div>
     <div id="rpRC" style="margin-bottom:14px"></div>
     <div id="rpC" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:start;direction:ltr"></div>
     <!-- Trend Chart & Mufattish Breakdown -->
     <div id="rpExtra" style="margin-top:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px"></div>
+    <div id="rpYearCompare" style="margin-top:14px"></div>
   </div>
 
   <!-- CLIENTS -->
@@ -2992,7 +2992,8 @@ function resetTawnFields(){
   // Reset type checkboxes
   ['tTypeRaqam','tTypeAshiya','tKismWajiba','tKismNafila'].forEach(function(id){ var el=document.getElementById(id); if(el) el.checked=false; });
   // Reset ALL select fields
-  ['tDO','tDC','tDR','tMd','tMq','tJm','tPM','tawnSt','tAshiyaWasool','tAshiyaMili','tAshiyaProcess','tDirectMode'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['tDO','tDC','tDR','tMd','tMq','tJm','tPM','tAshiyaWasool','tAshiyaMili','tAshiyaProcess','tDirectMode'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var _tsEl=document.getElementById('tawnSt'); if(_tsEl) _tsEl.value='open'; // naya tawan default Open
   // Reset ALL text/number fields
   ['tNaf','tWaj','tTot','tPd','tRm','tDRCustom','tDonor','tCategory','tPurpose','tNt',
    'tDirectAmt','tDirectDate','tDirectRef','tDirectNotes',
@@ -4456,6 +4457,21 @@ function _repRestoreState(){
   }catch(e){}
 }
 function _isClosedG(c){ return (c.status||'').toLowerCase()==='closed'; }
+function _caseReceived(c){
+  // tPd hai to wahi. Warna HR(monthly)+Installment(sum)+Direct ke amounts jodo (purane cases jinme tPd blank)
+  var pd=parseFloat(c.tPd)||0;
+  if(pd>0) return pd;
+  var m=(c.tCollMethod||'');
+  var paid=0;
+  if(m.indexOf('hr')>-1) paid+=parseFloat(c.tHRMonthly)||0;
+  if(m.indexOf('installment')>-1 && c.tInsts&&c.tInsts.length){ c.tInsts.forEach(function(it){ paid+=parseFloat(it.amt)||0; }); }
+  if(m.indexOf('direct')>-1) paid+=parseFloat(c.tDirectAmt)||0;
+  return paid;
+}
+function _caseRemaining(c){
+  var tot=parseFloat(c.tTot)||0;
+  return Math.max(0, tot-_caseReceived(c));
+}
 function renderYearCompare(){
   var box=document.getElementById('rpYearCompare');
   if(!box) return;
@@ -5255,20 +5271,29 @@ async function saveCase(){
   var isAshiya = document.getElementById('tTypeAshiya') && document.getElementById('tTypeAshiya').checked;
   var isRaqam  = document.getElementById('tTypeRaqam')  && document.getElementById('tTypeRaqam').checked;
   if(isAshiya && !isRaqam) return '';
-  // Full & Final: tDirectAmt se tPd lo
+  // Per-person mode: tawnPersons se total (alag se calc hota)
+  if(_tawnMode==='perperson'){ return document.getElementById('tPd').value; }
+  // Pooled: jo methods checked hain, sab ka received jodo
   var _cms=['tCollHR','tCollInst','tCollDirect'].filter(function(id){var el=document.getElementById(id);return el&&el.checked;}).map(function(id){return document.getElementById(id).value;});
-  var directAmt = parseFloat(document.getElementById('tDirectAmt').value)||0;
-  if(_cms.includes('direct') && directAmt>0) return String(directAmt);
+  var paid=0;
+  if(_cms.includes('hr')){ paid += parseFloat(document.getElementById('tHRMonthly').value)||0; }
+  if(_cms.includes('installment')){ (tInsts||[]).forEach(function(it){ paid += parseFloat(it.amt)||0; }); }
+  if(_cms.includes('direct')){ paid += parseFloat(document.getElementById('tDirectAmt').value)||0; }
+  if(paid>0) return String(paid);
   return document.getElementById('tPd').value;
 })(),tRm:(function(){
-  // Ashiya case mein tRm blank hona chahiye — koi amount nahi hota
+  // Ashiya case mein tRm blank
   var isAshiya = document.getElementById('tTypeAshiya') && document.getElementById('tTypeAshiya').checked;
   var isRaqam  = document.getElementById('tTypeRaqam')  && document.getElementById('tTypeRaqam').checked;
   if(isAshiya && !isRaqam) return '';
+  if(_tawnMode==='perperson'){ return document.getElementById('tRm').value; }
   var _cms2=['tCollHR','tCollInst','tCollDirect'].filter(function(id){var el=document.getElementById(id);return el&&el.checked;}).map(function(id){return document.getElementById(id).value;});
-  var directAmt = parseFloat(document.getElementById('tDirectAmt').value)||0;
   var tot = parseFloat(document.getElementById('tTot').value)||0;
-  if(_cms2.includes('direct') && directAmt>0) return String(Math.max(0, tot-directAmt));
+  var paid=0;
+  if(_cms2.includes('hr')){ paid += parseFloat(document.getElementById('tHRMonthly').value)||0; }
+  if(_cms2.includes('installment')){ (tInsts||[]).forEach(function(it){ paid += parseFloat(it.amt)||0; }); }
+  if(_cms2.includes('direct')){ paid += parseFloat(document.getElementById('tDirectAmt').value)||0; }
+  if(_cms2.length && paid>=0) return String(Math.max(0, tot-paid));
   return document.getElementById('tRm').value;
 })(),tInsts:JSON.parse(JSON.stringify(tInsts)),
       tHRDate:document.getElementById('tHRDate')?document.getElementById('tHRDate').value:'',
@@ -5478,7 +5503,7 @@ function viewC(id, readOnly){
     </div>
   </div>` : '';
   const directHtml=(c.tCollMethod&&c.tCollMethod.indexOf('direct')>-1&&((c.tDirectAmt&&c.tDirectAmt!=='')||(c.tDirectRef&&c.tDirectRef!=='')||(c.tDirectDate&&c.tDirectDate!=='')))?`<div style="margin-top:10px;background:#fff5f7;border:1.5px solid #f8bbd0;border-radius:8px;padding:10px"><div style="font-size:.72rem;font-weight:800;color:#c2185b;margin-bottom:7px;text-transform:uppercase">💯 Full & Final Payment</div><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem"><span>📅 ${c.tDirectDate||'—'}</span><span style="font-weight:700;color:var(--green)">₹${parseFloat(c.tDirectAmt||c.tPd||0).toLocaleString()}</span><span>💳 ${pmLbl[c.tDirectMode]||c.tDirectMode||'—'}</span>${c.tDirectRef?`<span style="color:var(--blue)">🔖 ${c.tDirectRef}</span>`:''}</div></div>`:'';
-  gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${c.tPd?'₹'+parseFloat(c.tPd).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${c.tRm?'₹'+parseFloat(c.tRm).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${hrHtml}${instHtml}${directHtml}</div></div>`;
+  gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${_caseReceived(c)>0?'₹'+_caseReceived(c).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${(parseFloat(c.tTot)||0)>0?'₹'+_caseRemaining(c).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${hrHtml}${instHtml}${directHtml}</div></div>`;
 }
   if(guides.indexOf('halfia')>-1){gh+=`<div class="sbox" style="border-color:#9c27b0;background:#fdf5ff;margin-top:11px"><div class="sbox-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center"><span>📜 Halfiya Bayan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.halfiaSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.halfiaSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.halfiaSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.halfiaSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.hSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.hDt||'—'}</div></div>${c.hNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.hNt}</div></div>`:''}</div></div>`;}
   if(guides.indexOf('tafhim')>-1){gh+=`<div class="sbox" style="border-color:#1976d2;background:#f5f9ff;margin-top:11px"><div class="sbox-title" style="color:var(--blue)">🗣️ Tafhim</div><div class="detgrid"><div class="di"><div class="dl">Type</div><div class="dv">${tfL[c.tfT]||c.tfT||'—'}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tfD)}</div></div>${c.tfNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tfNt}</div></div>`:''}</div></div>`;}
@@ -5634,13 +5659,20 @@ function drFillList(boxId, items, selectedArr, onChangeFn){
   list.innerHTML = '';
   items.forEach(function(item){
     var lbl = document.createElement('label');
-    lbl.style.cssText = 'display:flex;align-items:center;gap:5px;padding:2px 0;cursor:pointer;font-size:.74rem';
+    var _sel = selectedArr.indexOf(item) > -1;
+    lbl.style.cssText = 'display:flex;align-items:center;gap:7px;padding:5px 7px;cursor:pointer;font-size:.76rem;border-radius:5px;margin-bottom:2px;'+(_sel?'background:#e3f2fd;font-weight:700;color:#1565c0;':'');
     var cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.value = item;
     cb.style.accentColor = 'var(--blue)';
-    if(selectedArr.indexOf(item) > -1) cb.checked = true;
-    cb.addEventListener('change', function(){ drCheckChanged(boxId, onChangeFn); });
+    cb.style.width = '16px'; cb.style.height = '16px'; cb.style.flexShrink = '0';
+    if(_sel) cb.checked = true;
+    cb.addEventListener('change', function(){
+      lbl.style.background = cb.checked ? '#e3f2fd' : '';
+      lbl.style.fontWeight = cb.checked ? '700' : '';
+      lbl.style.color = cb.checked ? '#1565c0' : '';
+      drCheckChanged(boxId, onChangeFn);
+    });
     lbl.appendChild(cb);
     lbl.appendChild(document.createTextNode(item));
     list.appendChild(lbl);
@@ -5660,13 +5692,20 @@ function drFilterBox(boxId){
     return !q || item.toLowerCase().indexOf(q) > -1;
   }).forEach(function(item){
     var lbl = document.createElement('label');
-    lbl.style.cssText = 'display:flex;align-items:center;gap:5px;padding:2px 0;cursor:pointer;font-size:.74rem';
+    var _sel = checked.indexOf(item) > -1;
+    lbl.style.cssText = 'display:flex;align-items:center;gap:7px;padding:5px 7px;cursor:pointer;font-size:.76rem;border-radius:5px;margin-bottom:2px;'+(_sel?'background:#e3f2fd;font-weight:700;color:#1565c0;':'');
     var cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.value = item;
     cb.style.accentColor = 'var(--blue)';
-    if(checked.indexOf(item) > -1) cb.checked = true;
-    cb.addEventListener('change', function(){ drCheckChanged(boxId, onChangeFn); });
+    cb.style.width = '16px'; cb.style.height = '16px'; cb.style.flexShrink = '0';
+    if(_sel) cb.checked = true;
+    cb.addEventListener('change', function(){
+      lbl.style.background = cb.checked ? '#e3f2fd' : '';
+      lbl.style.fontWeight = cb.checked ? '700' : '';
+      lbl.style.color = cb.checked ? '#1565c0' : '';
+      drCheckChanged(boxId, onChangeFn);
+    });
     lbl.appendChild(cb);
     lbl.appendChild(document.createTextNode(item));
     listEl.appendChild(lbl);
