@@ -1043,11 +1043,10 @@ function _cleanC(o){
             <div id="tawnPersonRows" style="display:none"></div>
 
             <!-- ===== PER-PERSON TAWAN (naya) ===== -->
-            <div style="grid-column:1/-1;margin-top:14px;padding-top:12px;border-top:1px dashed #ffcc80;width:100%">
-              <label style="color:var(--orange);font-weight:700;font-size:.85rem;display:block;margin-bottom:10px">💸 Tawan kis tarah?</label>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-                <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;cursor:pointer;padding:9px 16px;border:1.5px solid #ffcc80;border-radius:8px;background:#fff;flex:1;min-width:160px;justify-content:center"><input type="radio" name="tawnMode" value="pooled" checked onchange="tawnModeSet('pooled')" style="width:16px;height:16px"> Pooled (ek total)</label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;cursor:pointer;padding:9px 16px;border:1.5px solid #ffcc80;border-radius:8px;background:#fff;flex:1;min-width:160px;justify-content:center"><input type="radio" name="tawnMode" value="perperson" onchange="tawnModeSet('perperson')" style="width:16px;height:16px"> Per-Person (har bande ka alag)</label>
+            <div id="tawnModeChooser" style="grid-column:1/-1;margin-top:14px;padding-top:12px;border-top:1px dashed #ffcc80;width:100%">
+              <div style="display:none">
+                <input type="radio" name="tawnMode" value="pooled" checked onchange="tawnModeSet('pooled')">
+                <input type="radio" name="tawnMode" value="perperson" onchange="tawnModeSet('perperson')">
               </div>
               <div id="tawnPPWrap" style="display:none;width:100%">
                 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;background:#fff;border:1px solid #ffe0b2;border-radius:8px;padding:10px">
@@ -2848,6 +2847,8 @@ function onPgmChange(){
   });
   if(typeof togGuideMulti==='function') togGuideMulti();
   if(typeof fillGuidePersons==='function') fillGuidePersons();
+  // Tawan per-person mode mein cards bhi matrix se refresh
+  if(typeof _tawnMode!=='undefined' && _tawnMode==='perperson' && typeof tawnPPLoad==='function') tawnPPLoad();
 }
 function pgmPersonsForGuide(guide){
   // Jis guide ke liye jo persons tick hain unke naam
@@ -2859,6 +2860,14 @@ function pgmPersonsForGuide(guide){
 function fillGuidePersons(){
   var ps=(typeof getPersons==='function')?getPersons().filter(function(p){return p&&p.name&&p.name.trim();}):[];
   var multi = ps.length >= 2;
+  // 2+ persons → per-person, 1 person → pooled (auto, radio chhupe hain)
+  if(typeof _tawnMode!=='undefined'){
+    var _want = multi ? 'perperson' : 'pooled';
+    if(_tawnMode!==_want){
+      var _r=document.querySelector('input[name="tawnMode"][value="'+_want+'"]');
+      if(_r){ _r.checked=true; if(typeof tawnModeSet==='function') tawnModeSet(_want); }
+    }
+  }
   // Matrix render (2+ persons + guide select pe)
   if(typeof renderPersonGuideMatrix==='function') renderPersonGuideMatrix();
   // Old single dropdowns hatao (matrix ne replace kiya)
@@ -8697,6 +8706,13 @@ function tawnPPLoad(){
   var prev = {};
   getTawnSplitRaw().forEach(function(p){ prev[(p.name||'').trim().toLowerCase()] = p; });
   var persons = (typeof getPersons==='function') ? getPersons() : [];
+  // Matrix mein jinpe Tawan tick hai sirf wahi
+  if(typeof pgmPersonsForGuide==='function'){
+    var _tNames = pgmPersonsForGuide('tawan');
+    if(_tNames && _tNames.length){
+      persons = persons.filter(function(p){ return _tNames.indexOf((p.name||'').trim())>-1; });
+    }
+  }
   if(!persons.length){ rows.innerHTML = '<div style="font-size:.78rem;color:var(--red);padding:6px">⚠️ Pehle upar "Person" section mein log add karo, phir ye button dabao.</div>'; tawnPPCalc(); return; }
   rows.innerHTML = persons.map(function(p,i){
     var old = prev[(p.name||'').trim().toLowerCase()] || {};
