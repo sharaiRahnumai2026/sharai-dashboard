@@ -2805,9 +2805,10 @@ function renderPersonGuideMatrix(){
   var box=document.getElementById('personGuideMatrix'), body=document.getElementById('personGuideMatrixBody');
   if(!box||!body) return;
   var ps=(typeof getPersons==='function')?getPersons().filter(function(p){return p&&p.name&&p.name.trim();}):[];
-  var guides=(typeof getGuideValues==='function')?getGuideValues():[];
-  // Matrix sirf 2+ persons AUR 1+ guide select pe
-  if(ps.length<2 || guides.length===0){ box.style.display='none'; return; }
+  // Saare 5 guides hamesha (har person apna chuney)
+  var guides=['tawan','halfia','tafhim','tabadla','mazratnama'];
+  // Matrix sirf 2+ persons pe
+  if(ps.length<2){ box.style.display='none'; return; }
   box.style.display='block';
   // existing selections preserve
   var prev=window._pgmSel||{};
@@ -2837,6 +2838,15 @@ function getPgmSelection(){
 }
 function onPgmChange(){
   window._pgmSel=getPgmSelection();
+  // Jo guides kisi bhi person pe tick hue → unke section khol do (Rahnumai Type checkbox auto-on)
+  var allGuides=['tawan','halfia','tafhim','tabadla','mazratnama'];
+  var anyTicked={};
+  Object.keys(window._pgmSel).forEach(function(p){ Object.keys(window._pgmSel[p]).forEach(function(g){ anyTicked[g]=true; }); });
+  allGuides.forEach(function(g){
+    var chk=document.getElementById('fGd_'+g);
+    if(chk){ if(anyTicked[g] && !chk.checked){ chk.checked=true; } }
+  });
+  if(typeof togGuideMulti==='function') togGuideMulti();
   if(typeof fillGuidePersons==='function') fillGuidePersons();
 }
 function pgmPersonsForGuide(guide){
