@@ -2336,6 +2336,7 @@ function _rerenderCurrent(){
 function _ccResort(){ _sortByCaseNoDesc(cc); }
 // 1 doc server se laao aur cc + cache mein patch karo (full reload nahi)
 function refreshOneCase(id){
+  if(!id){ return Promise.resolve(); } // empty id → skip (error na aaye)
   return db.collection('cases').doc(id).get().then(function(d){
     if(!d.exists){ removeOneCase(id); return; }
     var obj = Object.assign({id:d.id}, d.data());
@@ -5535,7 +5536,7 @@ async function saveCase(){
     // Jis page se aaye the wahan wapas jao — All Cases, Search, ya current page
     var _prevPg = _currentPg === 'newcase' ? (_lastPgBeforeNewCase || 'cases') : _currentPg;
     goPage(_prevPg);
-  }catch(e){toast('❌ '+e.message);}
+  }catch(e){console.error('SAVE ERROR:',e&&e.stack?e.stack:e);toast('❌ '+e.message);}
 }
 async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();cacheInvalidate();removeOneCase(id);toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
 function editC(id){
