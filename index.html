@@ -8438,8 +8438,8 @@ function onTawnKism(){
   var ashWajRow = document.getElementById('tAshiyaWajibaRow');
   if(ashWajRow) ashWajRow.style.display = hasWajiba ? '' : 'none';
 
-  // Agar Nafila sirf selected hai to Raqam type auto-select karo (Nafila sirf money hoti hai)
-  if(hasNafila && !hasWajiba){
+  // Wajiba YA Nafila koi bhi selected → Raqam section auto-dikhao (amount fields wahin hain)
+  if(hasNafila || hasWajiba){
     var tTypeRaqam = document.getElementById('tTypeRaqam');
     if(tTypeRaqam && !tTypeRaqam.checked){
       tTypeRaqam.checked = true;
