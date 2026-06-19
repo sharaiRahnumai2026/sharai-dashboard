@@ -1095,6 +1095,10 @@ function _cleanC(o){
           <div class="fgr"><label>Date</label><input type="date" id="hDt"></div>
           <div class="fgr fw"><label>Notes</label><input id="hNt"></div>
         </div>
+        <div id="hPPArea" style="display:none;margin-top:8px">
+          <div style="font-size:.74rem;font-weight:700;color:var(--purple);margin-bottom:6px">👤 Har Person ka Halfiya (alag-alag)</div>
+          <div id="hPPRows"></div>
+        </div>
       </div>
       <!-- TAFHIM -->
       <div id="gTafhim" class="sbox" style="display:none;border-color:#1976d2;background:#f5f9ff">
@@ -1103,6 +1107,10 @@ function _cleanC(o){
           <div class="fgr"><label>Type</label><select id="tfT"><option value="">Select</option><option value="zubani">Zubani</option><option value="hr_nama">HR Tafhim Nama</option><option value="written">Written</option></select></div>
           <div class="fgr"><label>Done?</label><select id="tfD"><option value="">Select</option><option value="yes">✅ Yes</option><option value="no">❌ No</option></select></div>
           <div class="fgr fw"><label>Notes</label><input id="tfNt"></div>
+        </div>
+        <div id="tfPPArea" style="display:none;margin-top:8px">
+          <div style="font-size:.74rem;font-weight:700;color:var(--blue);margin-bottom:6px">👤 Har Person ka Tafhim (alag-alag)</div>
+          <div id="tfPPRows"></div>
         </div>
       </div>
       <!-- TABADLA -->
@@ -1113,6 +1121,10 @@ function _cleanC(o){
           <div class="fgr"><label>Transfer Done?</label><select id="tbD"><option value="">Select</option><option value="yes">✅ Yes</option><option value="no">❌ No</option><option value="refused">⛔ Refused</option></select></div>
           <div class="fgr"><label>New Location</label><input id="tbPl"></div>
           <div class="fgr fw"><label>Details</label><input id="tbNt"></div>
+        </div>
+        <div id="tbPPArea" style="display:none;margin-top:8px">
+          <div style="font-size:.74rem;font-weight:700;color:var(--green);margin-bottom:6px">👤 Har Person ka Transfer (alag-alag)</div>
+          <div id="tbPPRows"></div>
         </div>
       </div>
       <!-- MAZRATNAMA -->
@@ -1135,6 +1147,10 @@ function _cleanC(o){
           </div>
           <div class="fgr"><label>📅 Date</label><input type="date" id="mazDt"></div>
           <div class="fgr fw"><label>📝 Notes</label><input id="mazNt" placeholder="Koi zaroori baat..."></div>
+        </div>
+        <div id="mazPPArea" style="display:none;margin-top:8px">
+          <div style="font-size:.74rem;font-weight:700;color:#795548;margin-bottom:6px">👤 Har Person ka Mazratnama (alag-alag)</div>
+          <div id="mazPPRows"></div>
         </div>
       </div>
       <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:14px">
@@ -2778,8 +2794,132 @@ function fFDi(){
 
 // Form toggles
 function tog(id,show){document.getElementById(id).style.display=show?'block':'none';}
+function fillGuidePersons(){
+  var ps=(typeof getPersons==='function')?getPersons().filter(function(p){return p&&p.name&&p.name.trim();}):[];
+  var multi = ps.length >= 2;
+  // Baaki guides (Tafhim/Transfer/Mazrat) ka single "Kis Person?" dropdown
+  document.querySelectorAll('.guidePersonSel').forEach(function(sel){
+    var cur=sel.value;
+    var opts='<option value="">Sab / Select</option>';
+    ps.forEach(function(p){ var nm=p.name.trim(); opts+='<option value="'+nm.replace(/"/g,'&quot;')+'">'+nm+'</option>'; });
+    sel.innerHTML=opts;
+    if(cur) sel.value=cur;
+    var wrap = sel.closest('.fgr') || sel.parentNode;
+    if(wrap) wrap.style.display = multi ? '' : 'none';
+    if(!multi) sel.value='';
+  });
+  // Halfiya per-person cards (har person ka apna Aaya?/Date)
+  _renderHalfiaPP(ps, multi);
+  _renderTafhimPP(ps, multi);
+  _renderTransferPP(ps, multi);
+  _renderMazratPP(ps, multi);
+}
+function _renderMazratPP(ps, multi){
+  var area=document.getElementById('mazPPArea'), rows=document.getElementById('mazPPRows');
+  if(!area||!rows) return;
+  ['mazSt','mazDt'].forEach(function(id){ var el=document.getElementById(id); var w=el&&(el.closest('.fgr')); if(w) w.style.display = multi ? 'none' : ''; });
+  if(multi){
+    area.style.display='block';
+    var prev={};
+    rows.querySelectorAll('.mazPPRow').forEach(function(r){ prev[r.dataset.name]={st:(r.querySelector('.mazppSt')||{}).value,dt:(r.querySelector('.mazppDt')||{}).value}; });
+    rows.innerHTML = ps.map(function(p){
+      var nm=p.name.trim(); var pv=prev[nm]||{};
+      return '<div class="mazPPRow" data-name="'+nm.replace(/"/g,'&quot;')+'" style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;align-items:end;margin-bottom:7px;padding:7px;background:#fdf8f5;border:1px solid #d7ccc8;border-radius:7px">'+
+        '<div style="font-size:.78rem;font-weight:700;color:#795548;align-self:center">👤 '+nm+'</div>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Aaya?<select class="mazppSt" style="padding:5px;border:1.5px solid #d7ccc8;border-radius:5px;font-size:.76rem"><option value="">Select</option><option value="yes"'+(pv.st==='yes'?' selected':'')+'>✅ Han</option><option value="no"'+(pv.st==='no'?' selected':'')+'>❌ Nahi</option><option value="refused"'+(pv.st==='refused'?' selected':'')+'>⛔ Inkaar</option></select></label>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Date<input type="date" class="mazppDt" value="'+(pv.dt||'')+'" style="padding:5px;border:1.5px solid #d7ccc8;border-radius:5px;font-size:.76rem"></label>'+
+      '</div>';
+    }).join('');
+  } else { area.style.display='none'; rows.innerHTML=''; }
+}
+function getMazratPersons(){
+  var rows=document.querySelectorAll('#mazPPRows .mazPPRow');
+  var arr=[];
+  rows.forEach(function(r){ var st=(r.querySelector('.mazppSt')||{}).value; var dt=(r.querySelector('.mazppDt')||{}).value; if(st||dt) arr.push({name:r.dataset.name,st:st,dt:dt}); });
+  return arr;
+}
+function _renderTransferPP(ps, multi){
+  var area=document.getElementById('tbPPArea'), rows=document.getElementById('tbPPRows');
+  if(!area||!rows) return;
+  ['tbO','tbD','tbPl'].forEach(function(id){ var el=document.getElementById(id); var w=el&&(el.closest('.fgr')); if(w) w.style.display = multi ? 'none' : ''; });
+  if(multi){
+    area.style.display='block';
+    var prev={};
+    rows.querySelectorAll('.tbPPRow').forEach(function(r){ prev[r.dataset.name]={o:(r.querySelector('.tbppO')||{}).value,d:(r.querySelector('.tbppD')||{}).value,pl:(r.querySelector('.tbppPl')||{}).value}; });
+    rows.innerHTML = ps.map(function(p){
+      var nm=p.name.trim(); var pv=prev[nm]||{};
+      return '<div class="tbPPRow" data-name="'+nm.replace(/"/g,'&quot;')+'" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.3fr;gap:8px;align-items:end;margin-bottom:7px;padding:7px;background:#f0fff4;border:1px solid #a5d6a7;border-radius:7px">'+
+        '<div style="font-size:.78rem;font-weight:700;color:#2e7d32;align-self:center">👤 '+nm+'</div>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Suggested?<select class="tbppO" style="padding:5px;border:1.5px solid #a5d6a7;border-radius:5px;font-size:.76rem"><option value="">Select</option><option value="yes"'+(pv.o==='yes'?' selected':'')+'>✅ Yes</option><option value="no"'+(pv.o==='no'?' selected':'')+'>❌ No</option></select></label>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Done?<select class="tbppD" style="padding:5px;border:1.5px solid #a5d6a7;border-radius:5px;font-size:.76rem"><option value="">Select</option><option value="yes"'+(pv.d==='yes'?' selected':'')+'>✅ Yes</option><option value="no"'+(pv.d==='no'?' selected':'')+'>❌ No</option><option value="refused"'+(pv.d==='refused'?' selected':'')+'>⛔ Refused</option></select></label>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">New Location<input class="tbppPl" value="'+(pv.pl||'').replace(/"/g,'&quot;')+'" style="padding:5px;border:1.5px solid #a5d6a7;border-radius:5px;font-size:.76rem"></label>'+
+      '</div>';
+    }).join('');
+  } else { area.style.display='none'; rows.innerHTML=''; }
+}
+function getTransferPersons(){
+  var rows=document.querySelectorAll('#tbPPRows .tbPPRow');
+  var arr=[];
+  rows.forEach(function(r){ var o=(r.querySelector('.tbppO')||{}).value; var d=(r.querySelector('.tbppD')||{}).value; var pl=(r.querySelector('.tbppPl')||{}).value; if(o||d||pl) arr.push({name:r.dataset.name,o:o,d:d,pl:pl}); });
+  return arr;
+}
+function _renderTafhimPP(ps, multi){
+  var area=document.getElementById('tfPPArea'), rows=document.getElementById('tfPPRows');
+  if(!area||!rows) return;
+  ['tfT','tfD'].forEach(function(id){ var el=document.getElementById(id); var w=el&&(el.closest('.fgr')); if(w) w.style.display = multi ? 'none' : ''; });
+  if(multi){
+    area.style.display='block';
+    var prev={};
+    rows.querySelectorAll('.tfPPRow').forEach(function(r){ prev[r.dataset.name]={t:(r.querySelector('.tfppT')||{}).value,d:(r.querySelector('.tfppD')||{}).value}; });
+    rows.innerHTML = ps.map(function(p){
+      var nm=p.name.trim(); var pv=prev[nm]||{};
+      return '<div class="tfPPRow" data-name="'+nm.replace(/"/g,'&quot;')+'" style="display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:8px;align-items:end;margin-bottom:7px;padding:7px;background:#f0f6ff;border:1px solid #90caf9;border-radius:7px">'+
+        '<div style="font-size:.78rem;font-weight:700;color:#1565c0;align-self:center">👤 '+nm+'</div>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Type<select class="tfppT" style="padding:5px;border:1.5px solid #90caf9;border-radius:5px;font-size:.76rem"><option value="">Select</option><option value="zubani"'+(pv.t==='zubani'?' selected':'')+'>Zubani</option><option value="hr_nama"'+(pv.t==='hr_nama'?' selected':'')+'>HR Tafhim Nama</option><option value="written"'+(pv.t==='written'?' selected':'')+'>Written</option></select></label>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Done?<select class="tfppD" style="padding:5px;border:1.5px solid #90caf9;border-radius:5px;font-size:.76rem"><option value="">Select</option><option value="yes"'+(pv.d==='yes'?' selected':'')+'>✅ Yes</option><option value="no"'+(pv.d==='no'?' selected':'')+'>❌ No</option></select></label>'+
+      '</div>';
+    }).join('');
+  } else { area.style.display='none'; rows.innerHTML=''; }
+}
+function getTafhimPersons(){
+  var rows=document.querySelectorAll('#tfPPRows .tfPPRow');
+  var arr=[];
+  rows.forEach(function(r){ var t=(r.querySelector('.tfppT')||{}).value; var d=(r.querySelector('.tfppD')||{}).value; if(t||d) arr.push({name:r.dataset.name,t:t,d:d}); });
+  return arr;
+}
+function _renderHalfiaPP(ps, multi){
+  var area=document.getElementById('hPPArea'), rows=document.getElementById('hPPRows');
+  if(!area||!rows) return;
+  // Single Halfiya fields (hSt/hDt/halfiaStBox) — multi mode mein chhupao
+  ['hSt','hDt'].forEach(function(id){ var el=document.getElementById(id); var w=el&&(el.closest('.fgr')); if(w) w.style.display = multi ? 'none' : ''; });
+  var stBox=document.getElementById('halfiaStBox'); 
+  if(multi){
+    area.style.display='block';
+    // existing values preserve (re-render pe)
+    var prev={};
+    rows.querySelectorAll('.hPPRow').forEach(function(r){ prev[r.dataset.name]={st:(r.querySelector('.hppSt')||{}).value,dt:(r.querySelector('.hppDt')||{}).value}; });
+    rows.innerHTML = ps.map(function(p){
+      var nm=p.name.trim(); var pv=prev[nm]||{};
+      return '<div class="hPPRow" data-name="'+nm.replace(/"/g,'&quot;')+'" style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;align-items:end;margin-bottom:7px;padding:7px;background:#faf5ff;border:1px solid #e1bee7;border-radius:7px">'+
+        '<div style="font-size:.78rem;font-weight:700;color:#6a1b9a;align-self:center">👤 '+nm+'</div>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Aaya?<select class="hppSt" style="padding:5px;border:1.5px solid #ce93d8;border-radius:5px;font-size:.76rem"><option value="">Select</option><option value="yes"'+(pv.st==='yes'?' selected':'')+'>✅ Yes</option><option value="no"'+(pv.st==='no'?' selected':'')+'>❌ No</option><option value="refused"'+(pv.st==='refused'?' selected':'')+'>⛔ Refused</option></select></label>'+
+        '<label style="font-size:.68rem;color:var(--mt);display:flex;flex-direction:column;gap:3px">Date<input type="date" class="hppDt" value="'+(pv.dt||'')+'" style="padding:5px;border:1.5px solid #ce93d8;border-radius:5px;font-size:.76rem"></label>'+
+      '</div>';
+    }).join('');
+  } else {
+    area.style.display='none';
+    rows.innerHTML='';
+  }
+}
+function getHalfiaPersons(){
+  var rows=document.querySelectorAll('#hPPRows .hPPRow');
+  var arr=[];
+  rows.forEach(function(r){ var st=(r.querySelector('.hppSt')||{}).value; var dt=(r.querySelector('.hppDt')||{}).value; if(st||dt) arr.push({name:r.dataset.name,st:st,dt:dt}); });
+  return arr;
+}
 function togGuideMulti(){
   var vals = getGuideValues();
+  fillGuidePersons();
   document.getElementById('gTawan').style.display  = vals.indexOf('tawan')  >-1 ? 'block':'none';
   // Tawan khula + 2+ persons + naya case → per-person par default (lock nahi, pooled bhi choose kar sakte)
   if(vals.indexOf('tawan')>-1 && !eId && !togGuideMulti._ppAutoDone){
@@ -5308,7 +5448,7 @@ async function saveCase(){
       tWapasAshiyaDesc:document.getElementById('tWapasAshiyaDesc')?document.getElementById('tWapasAshiyaDesc').value.trim():'',
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
-      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open',mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}return document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
@@ -5343,6 +5483,29 @@ function editC(id){
     // Restore persons
     if(c.persons&&c.persons.length) setPersons(c.persons);
     else setPersons([{name:c.name||'',mobile:c.mobile||'',empCode:c.empCode||''}]);
+    // Guide person dropdowns ko bharo (persons load hone ke baad), phir saved value set
+    if(typeof fillGuidePersons==='function') fillGuidePersons();
+    ['hPerson','tfPerson','tbPerson','mazPerson'].forEach(function(id){ var el=document.getElementById(id); if(el&&c[id]) el.value=c[id]; });
+    // Mazratnama per-person cards restore
+    if(c.mazratPersons&&c.mazratPersons.length){
+      var _mr=document.getElementById('mazPPRows');
+      if(_mr){ c.mazratPersons.forEach(function(mp){ var row=_mr.querySelector('.mazPPRow[data-name="'+(mp.name||'').replace(/"/g,'&quot;')+'"]'); if(row){ var s=row.querySelector('.mazppSt'); if(s)s.value=mp.st||''; var d=row.querySelector('.mazppDt'); if(d)d.value=mp.dt||''; } }); }
+    }
+    // Transfer per-person cards restore
+    if(c.transferPersons&&c.transferPersons.length){
+      var _br=document.getElementById('tbPPRows');
+      if(_br){ c.transferPersons.forEach(function(bp){ var row=_br.querySelector('.tbPPRow[data-name="'+(bp.name||'').replace(/"/g,'&quot;')+'"]'); if(row){ var o=row.querySelector('.tbppO'); if(o)o.value=bp.o||''; var d=row.querySelector('.tbppD'); if(d)d.value=bp.d||''; var pl=row.querySelector('.tbppPl'); if(pl)pl.value=bp.pl||''; } }); }
+    }
+    // Tafhim per-person cards restore
+    if(c.tafhimPersons&&c.tafhimPersons.length){
+      var _tr=document.getElementById('tfPPRows');
+      if(_tr){ c.tafhimPersons.forEach(function(tp){ var row=_tr.querySelector('.tfPPRow[data-name="'+(tp.name||'').replace(/"/g,'&quot;')+'"]'); if(row){ var t=row.querySelector('.tfppT'); if(t)t.value=tp.t||''; var d=row.querySelector('.tfppD'); if(d)d.value=tp.d||''; } }); }
+    }
+    // Halfiya per-person cards restore
+    if(c.halfiaPersons&&c.halfiaPersons.length){
+      var _hr=document.getElementById('hPPRows');
+      if(_hr){ c.halfiaPersons.forEach(function(hp){ var row=_hr.querySelector('.hPPRow[data-name="'+(hp.name||'').replace(/"/g,'&quot;')+'"]'); if(row){ var s=row.querySelector('.hppSt'); if(s)s.value=hp.st||''; var d=row.querySelector('.hppDt'); if(d)d.value=hp.dt||''; } }); }
+    }
     const sv={fIdr:'idarati',fSael:'sael',fStat:'status',tDO:'tDO',tDC:'tDC',tMd:'tMd',tMq:'tMq',tJm:'tJm',tPM:'tPM',hSt:'hSt',halfiaSt:'halfiaSt',tawnSt:'tawnSt',tfT:'tfT',tfD:'tfD',tbO:'tbO',tbD:'tbD',mazSt:'mazSt',mazratSt:'mazratSt'};
     // Restore guide checkboxes
     setGuideValues(c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []));
@@ -5503,12 +5666,12 @@ function viewC(id, readOnly){
     </div>
   </div>` : '';
   const directHtml=(c.tCollMethod&&c.tCollMethod.indexOf('direct')>-1&&((c.tDirectAmt&&c.tDirectAmt!=='')||(c.tDirectRef&&c.tDirectRef!=='')||(c.tDirectDate&&c.tDirectDate!=='')))?`<div style="margin-top:10px;background:#fff5f7;border:1.5px solid #f8bbd0;border-radius:8px;padding:10px"><div style="font-size:.72rem;font-weight:800;color:#c2185b;margin-bottom:7px;text-transform:uppercase">💯 Full & Final Payment</div><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem"><span>📅 ${c.tDirectDate||'—'}</span><span style="font-weight:700;color:var(--green)">₹${parseFloat(c.tDirectAmt||c.tPd||0).toLocaleString()}</span><span>💳 ${pmLbl[c.tDirectMode]||c.tDirectMode||'—'}</span>${c.tDirectRef?`<span style="color:var(--blue)">🔖 ${c.tDirectRef}</span>`:''}</div></div>`:'';
-  gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${_caseReceived(c)>0?'₹'+_caseReceived(c).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${(parseFloat(c.tTot)||0)>0?'₹'+_caseRemaining(c).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${hrHtml}${instHtml}${directHtml}</div></div>`;
+  gh=`<div class="sbox det-tawan" style="border-color:#ff8a65;background:#fff8f5;margin-top:11px"><div class="sbox-title" style="color:var(--orange);display:flex;justify-content:space-between;align-items:center"><span>💰 Tawan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.tawnSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.tawnSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.tawnSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.tawnSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Donor Contacted?</div><div class="dv">${yn(c.tDO)}</div></div><div class="di"><div class="dl">Donor Responded?</div><div class="dv">${yn(c.tDC)}</div></div><div class="di"><div class="dl">Donor Response</div><div class="dv">${c.tDR||'—'}</div></div><div class="di"><div class="dl">Tawan Deposited?</div><div class="dv">${yn(c.tJm)}</div></div><div class="di" style="background:#fff3e0;border-color:#ffcc80"><div class="dl">Nafila Amount</div><div class="dv" style="color:#6a1b9a;font-weight:700">${c.tNaf?'₹'+parseFloat(c.tNaf).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9;border-color:#a5d6a7"><div class="dl">Wajiba Amount</div><div class="dv" style="color:var(--green);font-weight:700">${c.tWaj?'₹'+parseFloat(c.tWaj).toLocaleString():'—'}</div></div><div class="di"><div class="dl">Total Amount</div><div class="dv" style="color:var(--orange);font-weight:700">${c.tTot?'₹'+parseFloat(c.tTot).toLocaleString():'—'}</div></div><div class="di" style="background:#e8f5e9"><div class="dl">Total Received</div><div class="dv" style="color:var(--green);font-weight:700">${_caseReceived(c)>0?'₹'+_caseReceived(c).toLocaleString():'—'}</div></div><div class="di" style="background:#fff0f0"><div class="dl">Remaining</div><div class="dv" style="color:var(--red);font-weight:700">${(parseFloat(c.tTot)||0)>0?'₹'+_caseRemaining(c).toLocaleString():'—'}</div></div>${c.tCategory?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tCategory}</div></div>`:''} ${c.tPurpose?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tPurpose}</div></div>`:''} ${c.tDonor?`<div class="di fw"><div class="dl">Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''} ${c.tMd?`<div class="di"><div class="dl">Tawan Category</div><div class="dv">${c.tMd}</div></div>`:''}${c.tMq?`<div class="di"><div class="dl">Tawan Purpose</div><div class="dv">${c.tMq}</div></div>`:''}${c.tHkm?`<div class="di"><div class="dl">Order Date</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tHkm}</div></div>`:''}${c.tNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tNt}</div></div>`:''}${c.tDonor?`<div class="di fw" style="grid-column:1/-1;background:#f3f9ff;border-color:#90caf9"><div class="dl">🏛️ Donor / Center</div><div class="dv">${c.tDonor}</div></div>`:''}</div>${hrHtml}${instHtml}${directHtml}${(c.tTypeAshiya||c.tAshiyaNaam)?`<div style="margin-top:10px;background:#faf5ff;border:1.5px solid #ce93d8;border-radius:8px;padding:10px"><div style="font-size:.72rem;font-weight:800;color:#7b1fa2;margin-bottom:7px;text-transform:uppercase">📦 Ashiya / Ajnas (Items)</div><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:.8rem">${c.tAshiyaNaam?`<span style="font-weight:700;color:#6a1b9a">${c.tAshiyaNaam}</span>`:''}${c.tAshiyaWasool?`<span>Wasool: ${c.tAshiyaWasool}</span>`:''}${c.tAshiyaMili?`<span>Mili: ${c.tAshiyaMili}</span>`:''}${c.tAshiyaProcess?`<span>Process: ${c.tAshiyaProcess}</span>`:''}${c.tAshiyaMaddat?`<span>Maddat: ${c.tAshiyaMaddat}</span>`:''}</div></div>`:''}</div></div>`;
 }
-  if(guides.indexOf('halfia')>-1){gh+=`<div class="sbox" style="border-color:#9c27b0;background:#fdf5ff;margin-top:11px"><div class="sbox-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center"><span>📜 Halfiya Bayan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.halfiaSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.halfiaSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.halfiaSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.halfiaSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.hSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.hDt||'—'}</div></div>${c.hNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.hNt}</div></div>`:''}</div></div>`;}
-  if(guides.indexOf('tafhim')>-1){gh+=`<div class="sbox" style="border-color:#1976d2;background:#f5f9ff;margin-top:11px"><div class="sbox-title" style="color:var(--blue)">🗣️ Tafhim</div><div class="detgrid"><div class="di"><div class="dl">Type</div><div class="dv">${tfL[c.tfT]||c.tfT||'—'}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tfD)}</div></div>${c.tfNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tfNt}</div></div>`:''}</div></div>`;}
-  if(guides.indexOf('tabadla')>-1){gh+=`<div class="sbox" style="border-color:#2e7d32;background:#f5fff7;margin-top:11px"><div class="sbox-title" style="color:var(--green)">🔄 Transfer</div><div class="detgrid"><div class="di"><div class="dl">Suggested?</div><div class="dv">${yn(c.tbO)}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tbD)}</div></div>${c.tbPl?`<div class="di"><div class="dl">New Location</div><div class="dv">${c.tbPl}</div></div>`:''}</div></div>`;}
-  if(guides.indexOf('mazratnama')>-1){var _mzCl=(c.mazratSt==='closed')||(c.mazSt==='yes');gh+=`<div class="sbox" style="border-color:#795548;background:#faf6f4;margin-top:11px"><div class="sbox-title" style="color:#795548;display:flex;justify-content:space-between;align-items:center"><span>📝 Mazratnama</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${_mzCl?'#e8f5e9':'#ffebee'};color:${_mzCl?'#2e7d32':'#c62828'};border:1px solid ${_mzCl?'#a5d6a7':'#ffcdd2'}">${_mzCl?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.mazSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.mazDt||'—'}</div></div>${c.mazNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.mazNt}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('halfia')>-1){gh+=`<div class="sbox" style="border-color:#9c27b0;background:#fdf5ff;margin-top:11px"><div class="sbox-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center"><span>📜 Halfiya Bayan</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${c.halfiaSt==='closed'?'#e8f5e9':'#ffebee'};color:${c.halfiaSt==='closed'?'#2e7d32':'#c62828'};border:1px solid ${c.halfiaSt==='closed'?'#a5d6a7':'#ffcdd2'}">${c.halfiaSt==='closed'?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.hSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.hDt||'—'}</div></div>${(c.halfiaPersons&&c.halfiaPersons.length)?`<div class="di" style="grid-column:1/-1"><div class="dl">👤 Per-Person</div><div class="dv">${c.halfiaPersons.map(p=>`<div style="margin:2px 0"><b>${p.name}</b>: ${yn(p.st)}${p.dt?' ('+p.dt+')':''}</div>`).join('')}</div></div>`:''}${c.hNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.hNt}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('tafhim')>-1){gh+=`<div class="sbox" style="border-color:#1976d2;background:#f5f9ff;margin-top:11px"><div class="sbox-title" style="color:var(--blue)">🗣️ Tafhim</div><div class="detgrid"><div class="di"><div class="dl">Type</div><div class="dv">${tfL[c.tfT]||c.tfT||'—'}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tfD)}</div></div>${(c.tafhimPersons&&c.tafhimPersons.length)?`<div class="di" style="grid-column:1/-1"><div class="dl">👤 Per-Person</div><div class="dv">${c.tafhimPersons.map(p=>`<div style="margin:2px 0"><b>${p.name}</b>: ${tfL[p.t]||p.t||'—'} — ${yn(p.d)}</div>`).join('')}</div></div>`:''}${c.tfPerson?`<div class="di"><div class="dl">👤 Person</div><div class="dv" style="font-weight:700;color:var(--blue)">${c.tfPerson}</div></div>`:''}${c.tfNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.tfNt}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('tabadla')>-1){gh+=`<div class="sbox" style="border-color:#2e7d32;background:#f5fff7;margin-top:11px"><div class="sbox-title" style="color:var(--green)">🔄 Transfer</div><div class="detgrid"><div class="di"><div class="dl">Suggested?</div><div class="dv">${yn(c.tbO)}</div></div><div class="di"><div class="dl">Done?</div><div class="dv">${yn(c.tbD)}</div></div>${c.tbPl?`<div class="di"><div class="dl">New Location</div><div class="dv">${c.tbPl}</div></div>`:''}${(c.transferPersons&&c.transferPersons.length)?`<div class="di" style="grid-column:1/-1"><div class="dl">👤 Per-Person</div><div class="dv">${c.transferPersons.map(p=>`<div style="margin:2px 0"><b>${p.name}</b>: Suggested ${yn(p.o)} / Done ${yn(p.d)}${p.pl?' → '+p.pl:''}</div>`).join('')}</div></div>`:''}${c.tbPerson?`<div class="di"><div class="dl">👤 Person</div><div class="dv" style="font-weight:700;color:var(--green)">${c.tbPerson}</div></div>`:''}</div></div>`;}
+  if(guides.indexOf('mazratnama')>-1){var _mzCl=(c.mazratSt==='closed')||(c.mazSt==='yes');gh+=`<div class="sbox" style="border-color:#795548;background:#faf6f4;margin-top:11px"><div class="sbox-title" style="color:#795548;display:flex;justify-content:space-between;align-items:center"><span>📝 Mazratnama</span><span style="font-size:.72rem;padding:2px 10px;border-radius:12px;background:${_mzCl?'#e8f5e9':'#ffebee'};color:${_mzCl?'#2e7d32':'#c62828'};border:1px solid ${_mzCl?'#a5d6a7':'#ffcdd2'}">${_mzCl?'✅ Complete':'🔴 Pending'}</span></div><div class="detgrid"><div class="di"><div class="dl">Aaya?</div><div class="dv">${yn(c.mazSt)}</div></div><div class="di"><div class="dl">Date</div><div class="dv">${c.mazDt||'—'}</div></div>${(c.mazratPersons&&c.mazratPersons.length)?`<div class="di" style="grid-column:1/-1"><div class="dl">👤 Per-Person</div><div class="dv">${c.mazratPersons.map(p=>`<div style="margin:2px 0"><b>${p.name}</b>: ${yn(p.st)}${p.dt?' ('+p.dt+')':''}</div>`).join('')}</div></div>`:''}${c.mazPerson?`<div class="di"><div class="dl">👤 Person</div><div class="dv" style="font-weight:700;color:#795548">${c.mazPerson}</div></div>`:''}${c.mazNt?`<div class="di"><div class="dl">Notes</div><div class="dv">${c.mazNt}</div></div>`:''}</div></div>`;}
   document.getElementById('detB').innerHTML=`<div class="sbox"><div class="sbox-title">📋 Case Info</div><div class="detgrid"><div class="di"><div class="dl">Case No</div><div class="dv">${c.caseNo||'—'}</div></div><div class="di"><div class="dl">Open Date</div><div class="dv">${c.openDate||'—'}</div></div><div class="di"><div class="dl">Year</div><div class="dv">${c.year||'—'}</div></div><div class="di"><div class="dl">Mufattish</div><div class="dv">${c.mufattish||'—'}</div></div><div class="di"><div class="dl">Sael</div><div class="dv">${c.sael||'—'}</div></div><div class="di"><div class="dl">Status</div><div class="dv">${sBdg(c.status)}</div></div><div class="di"><div class="dl">Closing Date</div><div class="dv">${c.closeDate||'—'}</div></div><div class="di"><div class="dl">کلوزنگ ٹائم</div><div class="dv" style="font-weight:700;color:var(--mt)">${c.closingTime||'—'}</div></div><div class="di"><div class="dl">Region</div><div class="dv">${c.region||'—'}</div></div><div class="di"><div class="dl">State</div><div class="dv">${c.state||'—'}</div></div><div class="di"><div class="dl">Division</div><div class="dv">${c.division||'—'}</div></div><div class="di"><div class="dl">District</div><div class="dv">${c.district||'—'}</div></div><div class="di"><div class="dl">City</div><div class="dv">${c.city||'—'}</div></div><div class="di"><div class="dl">Dept</div><div class="dv">${c.dept||'—'}</div></div><div class="di"><div class="dl">Person(s)</div><div class="dv">${(c.persons&&c.persons.length?c.persons:[{name:c.name,mobile:c.mobile,empCode:c.empCode}]).map(function(p,i){return(i>0?'<hr style="border:none;border-top:1px solid #eee;margin:3px 0">':'')+p.name+(p.mansab?' — '+p.mansab:'')+(p.mobile?' | '+p.mobile:'')+(p.empCode?' | '+p.empCode:'');}).join('')||'—'}</div></div><div class="di" style="display:none"><div class="dl">Mobile</div><div class="dv" dir="ltr">${c.mobile||'—'}</div></div><div class="di" style="display:none"><div class="dl">Emp Code</div><div class="dv">${c.empCode||'—'}</div></div><div class="di"><div class="dl">Rahnumai</div><div class="dv">${gBdg(c.guide)||'—'}</div></div></div></div>${(c.callCount||c.mailCount||c.waCount)?`<div class="sbox det-contact" style="border-color:var(--cyan);background:#f0fafe"><div class="sbox-title" style="color:var(--cyan)">📞 Contact Tracking</div><div class="detgrid"><div class="di"><div class="dl">📞 Call</div><div class="dv">${c.callCount||0}</div></div><div class="di"><div class="dl">📧 Mail</div><div class="dv">${c.mailCount||0}</div></div><div class="di"><div class="dl">💬 WhatsApp</div><div class="dv">${c.waCount||0}</div></div><div class="di"><div class="dl">Total</div><div class="dv" style="font-weight:700;color:var(--cyan)">${c.contactTotal||0}</div></div></div></div>`:''}${c.subject?`<div class="det-subject-wrap"><div class="sbox det-subject"><div class="sbox-title">📝 Subject</div><p style="font-size:.95rem;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:2.2" dir="auto">${c.subject}</p></div></div>`:''}${c.detail?`<div class="det-details-wrap"><div class="sbox det-details"><div class="sbox-title">📋 Details</div><p style="font-size:.95rem;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:2.2" dir="auto">${c.detail}</p></div></div>`:''}${c.rahnumai?`<div class="det-rahnumai-wrap"><div class="sbox det-rahnumai" style="border-color:var(--blue);background:#f5f9ff"><div class="sbox-title" style="color:var(--blue)">📖 Sharai Rahnumai</div><p style="font-size:.95rem;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:2.2" dir="auto">${c.rahnumai}</p></div></div>`:''}${gh}`;
   document.getElementById('detF').innerHTML=`
     <button class="btn bsm" style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7" onclick="detPDF()">🖨️ PDF</button>
@@ -6651,6 +6814,10 @@ function wusBadgeTW(v, tPd, tTot, tawnSt, tDR){
   if(v==='yes' && paid === 0) return '<span class="badge br">❌ Not Received</span>';
   if(v==='partial') return '<span class="badge bo">🔸 Partial</span>';
   if(v==='no') return '<span class="badge br">❌ Not Received</span>';
+  // Tawan amount hai par received 0 → Pending (Not Received), "—" nahi
+  if(tot>0 && paid===0) return '<span class="badge br">❌ Not Received</span>';
+  if(tot>0 && paid>0 && paid<tot) return '<span class="badge bo">🔸 Partial</span>';
+  if(tot>0 && paid>=tot) return '<span class="badge bg">✅ Received</span>';
   return '<span class="badge bgr">—</span>';
 }
 
@@ -8723,13 +8890,14 @@ function addPersonRow(){
   div.dataset.row = idx;
   div.style.cssText = 'position:relative;margin-bottom:6px;padding:6px 8px;background:#f8f9ff;border:1px dashed var(--bor);border-radius:7px';
   var sugBox = '<div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div>';
-  div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
+  div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" oninput="nmAutoComplete(this)" onchange="if(typeof fillGuidePersons===\'function\')fillGuidePersons()" autocomplete="off">'+sugBox+'</div>'
     +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
     +'<div class="fgr" style="position:relative"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..." oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
     +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox
     +'<button type="button" onclick="removePersonRow(this)" style="position:absolute;top:0;right:0;background:#ffebee;color:#c62828;border:none;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;line-height:1">×</button>'
     +'</div>';
   rows.appendChild(div);
+  if(typeof fillGuidePersons==='function') fillGuidePersons();
 }
 function removePersonRow(btn){
   var row = btn.closest('.person-row');
@@ -8738,6 +8906,7 @@ function removePersonRow(btn){
   row.querySelectorAll('input').forEach(function(inp){ inp.value=''; });
   row.querySelectorAll('.nm-sug').forEach(function(s){ s.style.display='none'; s.innerHTML=''; });
   row.remove();
+  if(typeof fillGuidePersons==='function') fillGuidePersons();
 }
 function getPersons(){
   var rows = document.querySelectorAll('#fPersonRows .person-row');
