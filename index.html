@@ -722,6 +722,10 @@ function _cleanC(o){
           <button type="button" onclick="addPersonRow()" style="padding:3px 10px;background:#e3f2fd;color:var(--blue);border:1px solid #90caf9;border-radius:6px;font-size:.72rem;cursor:pointer">+ Add Person</button>
         </div>
         <div id="fPersonRows"></div>
+        <div id="personGuideMatrix" style="display:none;margin-top:10px;padding:10px;background:#f3f8ff;border:1.5px solid #bbdefb;border-radius:8px">
+          <div style="font-size:.74rem;font-weight:700;color:var(--blue);margin-bottom:8px">🔀 Kis Person pe konsa Rehnumai? (tick karo)</div>
+          <div id="personGuideMatrixBody"></div>
+        </div>
         <!-- Hidden fields for backward compat -->
         <input id="fNm" style="display:none">
         <input id="fMob" style="display:none">
@@ -2794,10 +2798,77 @@ function fFDi(){
 
 // Form toggles
 function tog(id,show){document.getElementById(id).style.display=show?'block':'none';}
+var GUIDE_LABELS={tawan:'💰 Tawan',halfia:'📜 Halfiya',tafhim:'🔵 Tafhim',tabadla:'🔄 Transfer',mazratnama:'📝 Mazratnama'};
+function _pgmKey(name){ return (name||'').trim(); }
+function renderPersonGuideMatrix(){
+  var box=document.getElementById('personGuideMatrix'), body=document.getElementById('personGuideMatrixBody');
+  if(!box||!body) return;
+  var ps=(typeof getPersons==='function')?getPersons().filter(function(p){return p&&p.name&&p.name.trim();}):[];
+  var guides=(typeof getGuideValues==='function')?getGuideValues():[];
+  // Matrix sirf 2+ persons AUR 1+ guide select pe
+  if(ps.length<2 || guides.length===0){ box.style.display='none'; return; }
+  box.style.display='block';
+  // existing selections preserve
+  var prev=window._pgmSel||{};
+  var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.76rem"><thead><tr style="border-bottom:1.5px solid #bbdefb"><th style="text-align:left;padding:5px 8px">Person</th>';
+  guides.forEach(function(g){ html+='<th style="padding:5px 8px;white-space:nowrap">'+(GUIDE_LABELS[g]||g)+'</th>'; });
+  html+='</tr></thead><tbody>';
+  ps.forEach(function(p){
+    var nm=_pgmKey(p.name);
+    html+='<tr style="border-bottom:0.5px solid #e3f2fd"><td style="padding:5px 8px;font-weight:700;color:#1565c0">👤 '+nm+'</td>';
+    guides.forEach(function(g){
+      var checked=(prev[nm]&&prev[nm][g])?'checked':'';
+      html+='<td style="text-align:center;padding:5px 8px"><input type="checkbox" class="pgmChk" data-person="'+nm.replace(/"/g,'&quot;')+'" data-guide="'+g+'" '+checked+' onchange="onPgmChange()" style="width:16px;height:16px"></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+function getPgmSelection(){
+  // {personName: {guide:true}}
+  var sel={};
+  document.querySelectorAll('.pgmChk').forEach(function(cb){
+    var p=cb.dataset.person, g=cb.dataset.guide;
+    if(cb.checked){ if(!sel[p])sel[p]={}; sel[p][g]=true; }
+  });
+  return sel;
+}
+function onPgmChange(){
+  window._pgmSel=getPgmSelection();
+  if(typeof fillGuidePersons==='function') fillGuidePersons();
+}
+function pgmPersonsForGuide(guide){
+  // Jis guide ke liye jo persons tick hain unke naam
+  var sel=window._pgmSel||getPgmSelection();
+  var out=[];
+  Object.keys(sel).forEach(function(p){ if(sel[p][guide]) out.push(p); });
+  return out;
+}
 function fillGuidePersons(){
   var ps=(typeof getPersons==='function')?getPersons().filter(function(p){return p&&p.name&&p.name.trim();}):[];
   var multi = ps.length >= 2;
-  // Baaki guides (Tafhim/Transfer/Mazrat) ka single "Kis Person?" dropdown
+  // Matrix render (2+ persons + guide select pe)
+  if(typeof renderPersonGuideMatrix==='function') renderPersonGuideMatrix();
+  // Old single dropdowns hatao (matrix ne replace kiya)
+  document.querySelectorAll('.guidePersonSel').forEach(function(sel){
+    var wrap = sel.closest('.fgr') || sel.parentNode;
+    if(wrap) wrap.style.display = 'none';
+    sel.value='';
+  });
+  // Har guide ko uske tick wale persons (matrix). Matrix khaali/1-person → sab persons.
+  function pForGuide(g){
+    if(!multi) return ps;
+    var names=(typeof pgmPersonsForGuide==='function')?pgmPersonsForGuide(g):[];
+    if(!names.length) return []; // multi mode mein tick nahi to koi card nahi
+    return ps.filter(function(p){ return names.indexOf(p.name.trim())>-1; });
+  }
+  _renderHalfiaPP(pForGuide('halfia'), multi);
+  _renderTafhimPP(pForGuide('tafhim'), multi);
+  _renderTransferPP(pForGuide('tabadla'), multi);
+  _renderMazratPP(pForGuide('mazratnama'), multi);
+  return;
+  // ---- purana code niche (skip) ----
   document.querySelectorAll('.guidePersonSel').forEach(function(sel){
     var cur=sel.value;
     var opts='<option value="">Sab / Select</option>';
@@ -2808,7 +2879,6 @@ function fillGuidePersons(){
     if(wrap) wrap.style.display = multi ? '' : 'none';
     if(!multi) sel.value='';
   });
-  // Halfiya per-person cards (har person ka apna Aaya?/Date)
   _renderHalfiaPP(ps, multi);
   _renderTafhimPP(ps, multi);
   _renderTransferPP(ps, multi);
@@ -5291,6 +5361,8 @@ function resetF(){
   // Tawan mode reset to pooled
   _tawnMode='pooled';
   togGuideMulti._ppAutoDone=false;
+  window._pgmSel={};
+  var _pgmB=document.getElementById('personGuideMatrix'); if(_pgmB) _pgmB.style.display='none';
   var _pr=document.querySelector('input[name="tawnMode"][value="pooled"]'); if(_pr) _pr.checked=true;
   var _ppr=document.getElementById('tawnPPRows'); if(_ppr) _ppr.innerHTML='';
   var _ppw=document.getElementById('tawnPPWrap'); if(_ppw) _ppw.style.display='none';
@@ -5383,7 +5455,7 @@ async function saveCase(){
       if(!confirm('Case No "'+cn+'" already exists. Phir bhi save karein?')) return;
     }
   }
-  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:document.getElementById('fSub').value.trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:document.getElementById('fRem').value.trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:document.getElementById('fRah').value.trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
+  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:document.getElementById('fSub').value.trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:document.getElementById('fRem').value.trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:document.getElementById('fRah').value.trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
       tTypeAshiya:document.getElementById('tTypeAshiya')?document.getElementById('tTypeAshiya').checked:false,
       tCollMethod:(function(){var methods=[];['tCollHR','tCollInst','tCollDirect'].forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)methods.push(el.value);});return methods.join(',');}()),
@@ -5484,6 +5556,8 @@ function editC(id){
     if(c.persons&&c.persons.length) setPersons(c.persons);
     else setPersons([{name:c.name||'',mobile:c.mobile||'',empCode:c.empCode||''}]);
     // Guide person dropdowns ko bharo (persons load hone ke baad), phir saved value set
+    // Matrix selection restore (per-person guide)
+    window._pgmSel = c.personGuides || {};
     if(typeof fillGuidePersons==='function') fillGuidePersons();
     ['hPerson','tfPerson','tbPerson','mazPerson'].forEach(function(id){ var el=document.getElementById(id); if(el&&c[id]) el.value=c[id]; });
     // Mazratnama per-person cards restore
