@@ -9579,10 +9579,13 @@ function deptClose(){
     var custIn = document.createElement('input');
     custIn.type = 'color'; custIn.value = defaultColor;
     custIn.style.cssText = 'width:44px;height:30px;border:1.5px solid #ccc;border-radius:5px;cursor:pointer;padding:1px;';
-    custIn.oninput = function(){
+    custIn.onclick = function(e){ e.stopPropagation(); };
+    custIn.oninput = function(e){
+      e.stopPropagation();
       barSpan.style.background = custIn.value;
       applyFn(custIn.value);
     };
+    custIn.onchange = function(e){ e.stopPropagation(); barSpan.style.background = custIn.value; applyFn(custIn.value); pal.style.display='none'; };
     var custHint = document.createElement('span');
     custHint.style.cssText = 'font-size:.65rem;color:#999;';
     custHint.textContent = 'koi bhi color';
