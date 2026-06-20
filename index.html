@@ -3279,7 +3279,7 @@ function onDonorResponse(val){
   // Wapas wrap hamesha hide karo pehle
   if(wapasWrap) wapasWrap.style.display = 'none';
 
-  // Wajiba row: Donor ne MAAF kiya → Wajiba ₹ hide (maaf ho gaya). Warna Wajiba tick ho to dikhe.
+  // Wajiba row: sirf jab donor ne DENA kaha (ajeer_ko_do/wapas_karo/direct/other) → dikhe. Maaf/rabita/nahi/select → hide. Nafila kabhi hide nahi.
   var _wajRow=document.getElementById('tWajRow');
   var _wajChk=document.getElementById('tKismWajiba');
   function _setWajRow(show){ if(_wajRow) _wajRow.style.display = (show && _wajChk && _wajChk.checked) ? '' : 'none'; }
@@ -3289,34 +3289,34 @@ function onDonorResponse(val){
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
-    _setWajRow(false); // maaf → Wajiba entry hide
+    _setWajRow(false); // maaf → Wajiba hide
   } else if(val === 'ajeer_ko_do'){
     if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
-    _setWajRow(true);
+    _setWajRow(true); // dena → Wajiba dikhe
   } else if(val === 'wapas_karo'){
     if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
     if(wapasWrap) wapasWrap.style.display = 'block';
-    _setWajRow(true);
+    _setWajRow(true); // wapas → Wajiba dikhe
   } else if(val === 'other'){
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
     if(modal){ modal.style.display = 'flex'; setTimeout(function(){ document.getElementById('tDROtherText').focus(); }, 100); }
     if(wrap) wrap.style.display = ''; autoFillTawnDate();
-    _setWajRow(true);
+    _setWajRow(true); // other → Wajiba dikhe
   } else {
     var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
     var _anyKism=(_kw&&_kw.checked)||(_kn&&_kn.checked);
     if(wrap) wrap.style.display = _anyKism ? '' : 'none';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
-    _setWajRow(true);
+    _setWajRow(false); // select/rabita/nahi → Wajiba hide
     if(preview){ preview.style.display='none'; preview.textContent=''; }
   }
 }
@@ -8464,30 +8464,36 @@ function togTDC(){
   var wrapDC = document.getElementById('tDCWrap');
   var wrapDR = document.getElementById('tDRWrap');
   var tawnFW = document.getElementById('tawnFieldsWrap');
-  // Wajiba/Nafila tick ho to Raqam (tawnFW) hamesha dikhe — hide na karo
+  // Wajiba/Nafila tick ho to Raqam (tawnFW) hamesha dikhe
   var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
   var _keepFW=(_kw&&_kw.checked)||(_kn&&_kn.checked);
+  var _wajRow=document.getElementById('tWajRow');
+  function _setWaj(show){ if(_wajRow) _wajRow.style.display=(show&&_kw&&_kw.checked)?'':'none'; }
   if(v === 'yes'){
-    // Rabita Karo → Donor se rabita hua?
+    // Rabita Karo → Donor se rabita hua? (abhi response nahi → Wajiba hide)
     if(wrapDC) wrapDC.style.display = '';
     if(wrapDR) wrapDR.style.display = 'none';
     if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
     document.getElementById('tDC').value = '';
     document.getElementById('tDR').value = '';
+    _setWaj(false);
   } else if(v === 'no'){
-    // Rabita Nahi Kiya → hide all
+    // Rabita Nahi Kiya → Wajiba hide
     if(wrapDC){ wrapDC.style.display = 'none'; document.getElementById('tDC').value = ''; }
     if(wrapDR){ wrapDR.style.display = 'none'; document.getElementById('tDR').value = ''; }
     if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
+    _setWaj(false);
   } else if(v === 'direct'){
-    // Direct Jama → seedha Tawan fields
+    // Direct Jama Karo → donor ne dena confirm kiya → Wajiba dikhe
     if(wrapDC){ wrapDC.style.display = 'none'; document.getElementById('tDC').value = ''; }
     if(wrapDR){ wrapDR.style.display = 'none'; document.getElementById('tDR').value = ''; }
     if(tawnFW) tawnFW.style.display = '';
+    _setWaj(true);
   } else {
     if(wrapDC) wrapDC.style.display = 'none';
     if(wrapDR) wrapDR.style.display = 'none';
     if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
+    _setWaj(false);
   }
 }
 
