@@ -9542,7 +9542,7 @@ function deptClose(){
 
     // Palette dropdown
     var pal = document.createElement('div');
-    pal.style.cssText = 'display:none;position:absolute;top:100%;left:auto;right:0;background:#fff;border:1.5px solid #ccd6e8;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);padding:8px;z-index:99999;width:240px;height:auto;max-height:none;overflow:visible;box-sizing:border-box;';
+    pal.style.cssText = 'display:none;position:absolute;top:100%;left:auto;right:0;background:#fff;border:1.5px solid #ccd6e8;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);padding:8px;z-index:99999;width:280px;height:auto;max-height:none;overflow:visible;box-sizing:border-box;';
 
     var palTitle = document.createElement('div');
     palTitle.style.cssText = 'font-size:.65rem;color:#888;margin-bottom:5px;font-weight:600;text-transform:uppercase;';
@@ -9570,26 +9570,37 @@ function deptClose(){
       pal.appendChild(rowDiv);
     });
 
-    // Custom color row — koi bhi color (Word "More Colors" jaisा)
+    // More Colors — bahut saare shades (mobile pe tap se chale, input type=color nahi)
     var custRow = document.createElement('div');
-    custRow.style.cssText = 'margin-top:8px;border-top:1.5px solid #e0e6f0;padding-top:8px;display:flex;align-items:center;gap:8px;';
-    var custLbl = document.createElement('span');
-    custLbl.style.cssText = 'font-size:.72rem;color:#444;font-weight:600;';
-    custLbl.textContent = '🎨 More Colors:';
-    var custIn = document.createElement('input');
-    custIn.type = 'color'; custIn.value = defaultColor;
-    custIn.style.cssText = 'width:44px;height:30px;border:1.5px solid #ccc;border-radius:5px;cursor:pointer;padding:1px;';
-    custIn.onclick = function(e){ e.stopPropagation(); };
-    custIn.oninput = function(e){
-      e.stopPropagation();
-      barSpan.style.background = custIn.value;
-      applyFn(custIn.value);
-    };
-    custIn.onchange = function(e){ e.stopPropagation(); barSpan.style.background = custIn.value; applyFn(custIn.value); pal.style.display='none'; };
-    var custHint = document.createElement('span');
-    custHint.style.cssText = 'font-size:.65rem;color:#999;';
-    custHint.textContent = 'koi bhi color';
-    custRow.appendChild(custLbl); custRow.appendChild(custIn); custRow.appendChild(custHint);
+    custRow.style.cssText = 'margin-top:8px;border-top:1.5px solid #e0e6f0;padding-top:8px;';
+    var custLbl = document.createElement('div');
+    custLbl.style.cssText = 'font-size:.7rem;color:#444;font-weight:600;margin-bottom:5px;';
+    custLbl.textContent = '🎨 More Colors';
+    custRow.appendChild(custLbl);
+    // Hue × shade grid generate (har hue ke 5 shade)
+    var hues=[0,15,30,45,60,90,120,150,180,200,220,240,270,300,330];
+    var lights=[85,68,50,38,25];
+    var grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(15,1fr);gap:2px;';
+    lights.forEach(function(L){
+      hues.forEach(function(H){
+        var sw=document.createElement('button');
+        sw.type='button';
+        var col='hsl('+H+',75%,'+L+'%)';
+        sw.style.cssText='width:100%;aspect-ratio:1;background:'+col+';border:1px solid rgba(0,0,0,.12);border-radius:2px;cursor:pointer;padding:0;';
+        sw.onclick=function(e){ e.stopPropagation(); barSpan.style.background=col; applyFn(col); pal.style.display='none'; };
+        grid.appendChild(sw);
+      });
+    });
+    // greyscale row
+    var greys=['#000000','#333333','#555555','#777777','#999999','#bbbbbb','#dddddd','#ffffff'];
+    greys.forEach(function(g){
+      var sw=document.createElement('button'); sw.type='button';
+      sw.style.cssText='width:100%;aspect-ratio:1;background:'+g+';border:1px solid rgba(0,0,0,.12);border-radius:2px;cursor:pointer;padding:0;';
+      sw.onclick=function(e){ e.stopPropagation(); barSpan.style.background=g; applyFn(g); pal.style.display='none'; };
+      grid.appendChild(sw);
+    });
+    custRow.appendChild(grid);
     pal.appendChild(custRow);
 
     // Toggle palette
