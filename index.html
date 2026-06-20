@@ -2652,8 +2652,8 @@ function goPage(pg,el,skipHistory){
   Object.keys(_pgEls).forEach(function(k){ if(_pgEls[k] && k!==pg) _pgEls[k].classList.remove('on'); });
   if(_pgEls[pg])     _pgEls[pg].classList.add('on');
 
-  // Nav highlight
-  if(_navEls[prevPg]) _navEls[prevPg].classList.remove('on');
+  // Nav highlight — saare sidebar items ka 'on' hatao, phir current ka lagao
+  document.querySelectorAll('.sbi.on').forEach(function(n){ n.classList.remove('on'); });
   if(_navEls[pg])     _navEls[pg].classList.add('on');
   if(el) el.classList.add('on');
 
