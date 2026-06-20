@@ -9570,20 +9570,23 @@ function deptClose(){
       pal.appendChild(rowDiv);
     });
 
-    // Custom color row
+    // Custom color row — koi bhi color (Word "More Colors" jaisा)
     var custRow = document.createElement('div');
-    custRow.style.cssText = 'margin-top:6px;border-top:1px solid #eee;padding-top:6px;display:flex;align-items:center;gap:6px;';
+    custRow.style.cssText = 'margin-top:8px;border-top:1.5px solid #e0e6f0;padding-top:8px;display:flex;align-items:center;gap:8px;';
     var custLbl = document.createElement('span');
-    custLbl.style.cssText = 'font-size:.68rem;color:#666;';
-    custLbl.textContent = 'Custom:';
+    custLbl.style.cssText = 'font-size:.72rem;color:#444;font-weight:600;';
+    custLbl.textContent = '🎨 More Colors:';
     var custIn = document.createElement('input');
     custIn.type = 'color'; custIn.value = defaultColor;
-    custIn.style.cssText = 'width:28px;height:22px;border:1px solid #ccc;border-radius:3px;cursor:pointer;padding:1px;';
+    custIn.style.cssText = 'width:44px;height:30px;border:1.5px solid #ccc;border-radius:5px;cursor:pointer;padding:1px;';
     custIn.oninput = function(){
       barSpan.style.background = custIn.value;
       applyFn(custIn.value);
     };
-    custRow.appendChild(custLbl); custRow.appendChild(custIn);
+    var custHint = document.createElement('span');
+    custHint.style.cssText = 'font-size:.65rem;color:#999;';
+    custHint.textContent = 'koi bhi color';
+    custRow.appendChild(custLbl); custRow.appendChild(custIn); custRow.appendChild(custHint);
     pal.appendChild(custRow);
 
     // Toggle palette
