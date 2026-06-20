@@ -8427,10 +8427,11 @@ function onTawnKism(){
     if(tDRWrap)  tDRWrap.style.display  = 'none';
     if(tDCWrap)  tDCWrap.style.display  = 'none';
   } else {
-    // Sirf Nafila → Donor section hide, seedha Tawn Fields dikhao
+    // Sirf Nafila → Donor section hide
     if(donorSec) donorSec.style.display = 'none';
-    if(tawnFW)   tawnFW.style.display   = '';
   }
+  // Wajiba ho ya Nafila — Tawn Fields (Raqam/amount) HAMESHA dikhao
+  if(tawnFW) tawnFW.style.display = '';
 
   // Amount fields: sirf wahi dikhao jo select hua
   if(wajFld) wajFld.style.display = hasWajiba ? '' : 'none';
