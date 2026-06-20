@@ -848,12 +848,12 @@ function _cleanC(o){
           <div id="tDRCustomPreview" style="display:none;grid-column:1/-1;margin-top:4px;padding:8px 12px;background:#f3f9ff;border:1px solid #90caf9;border-radius:7px;font-size:.78rem;color:var(--bd);white-space:pre-wrap"></div>
 
           <!-- Wapas Karo Fields -->
-          <div id="tWapasWrap" style="display:none;grid-column:1/-1;background:#fff8f0;border:1.5px solid #ffcc80;border-radius:10px;padding:14px;margin-top:6px">
+          <div id="tWapasWrap" style="display:none;grid-column:1/-1;width:100%;box-sizing:border-box;background:#fff8f0;border:1.5px solid #ffcc80;border-radius:10px;padding:14px;margin-top:6px">
             <div style="font-size:.78rem;font-weight:700;color:#e65100;margin-bottom:12px">🔄 Wapas Karne Ki Details</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-              <div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;width:100%">
+              <div style="min-width:0">
                 <div style="font-size:.72rem;font-weight:700;color:var(--mt);margin-bottom:6px">TYPE (EK YA DONO)</div>
-                <div style="display:flex;gap:10px">
+                <div style="display:flex;gap:14px">
                   <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
                     <input type="checkbox" id="tWapasRaqam" onchange="onWapasTypeChange()"> 💰 Raqam
                   </label>
@@ -862,22 +862,22 @@ function _cleanC(o){
                   </label>
                 </div>
               </div>
-              <div>
+              <div style="min-width:0">
                 <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI TARIKH</label>
-                <input type="date" id="tWapasDate" style="width:100%;margin-top:4px">
+                <input type="date" id="tWapasDate" style="width:100%;box-sizing:border-box;margin-top:4px">
               </div>
             </div>
-            <div id="tWapasRaqamBox" style="display:none;margin-bottom:10px">
+            <div id="tWapasRaqamBox" style="display:none;margin-bottom:12px;width:100%">
               <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI RAQAM (₹)</label>
-              <input type="number" id="tWapasAmt" placeholder="0" style="width:100%;margin-top:4px" oninput="calcWapas()">
+              <input type="number" id="tWapasAmt" placeholder="0" style="width:100%;box-sizing:border-box;margin-top:4px" oninput="calcWapas()">
             </div>
-            <div id="tWapasAshiyaBox" style="display:none;margin-bottom:10px">
+            <div id="tWapasAshiyaBox" style="display:none;margin-bottom:12px;width:100%">
               <label style="font-size:.72rem;font-weight:700;color:var(--mt)">ASHIYA KI DETAILS</label>
-              <input type="text" id="tWapasAshiyaDesc" placeholder="Ashiya ka naam / description..." style="width:100%;margin-top:4px">
+              <input type="text" id="tWapasAshiyaDesc" placeholder="Ashiya ka naam / description..." style="width:100%;box-sizing:border-box;margin-top:4px">
             </div>
-            <div style="margin-bottom:10px">
+            <div style="margin-bottom:10px;width:100%">
               <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS HUA?</label>
-              <select id="tWapasDone" onchange="calcWapas()" style="width:100%;margin-top:4px">
+              <select id="tWapasDone" onchange="calcWapas()" style="width:100%;box-sizing:border-box;margin-top:4px">
                 <option value="">Select...</option>
                 <option value="no">🔴 Nahi — Pending</option>
                 <option value="yes">✅ Haan — Ho Gaya</option>
@@ -2559,8 +2559,15 @@ function launch(){
   loadAllSettings();initDD();loadLogo();
   // Clients background mein load karo — autocomplete ke liye
   loadClients();
-  // URL mein jo page ho seedha wahan jao — koi delay nahi
-  var _urlPg = new URLSearchParams(window.location.search).get('p') || 'dash';
+  // Page: naya session (app pehli baar khula) → Dashboard. Session ke andar refresh → wahi page (URL se).
+  var _urlPg;
+  if(!sessionStorage.getItem('sr_session')){
+    sessionStorage.setItem('sr_session','1');
+    _urlPg = 'dash'; // fresh open → Dashboard
+    try{ history.replaceState({pg:'dash'},'',window.location.pathname+'?p=dash'); }catch(e){}
+  } else {
+    _urlPg = new URLSearchParams(window.location.search).get('p') || 'dash';
+  }
   goPage(_urlPg, null, true);
   startListener();
   // Background mein fresh user data + users list
