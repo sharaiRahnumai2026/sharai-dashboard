@@ -8455,18 +8455,21 @@ function togTDC(){
   var wrapDC = document.getElementById('tDCWrap');
   var wrapDR = document.getElementById('tDRWrap');
   var tawnFW = document.getElementById('tawnFieldsWrap');
+  // Wajiba/Nafila tick ho to Raqam (tawnFW) hamesha dikhe — hide na karo
+  var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
+  var _keepFW=(_kw&&_kw.checked)||(_kn&&_kn.checked);
   if(v === 'yes'){
     // Rabita Karo → Donor se rabita hua?
     if(wrapDC) wrapDC.style.display = '';
     if(wrapDR) wrapDR.style.display = 'none';
-    if(tawnFW) tawnFW.style.display = 'none';
+    if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
     document.getElementById('tDC').value = '';
     document.getElementById('tDR').value = '';
   } else if(v === 'no'){
     // Rabita Nahi Kiya → hide all
     if(wrapDC){ wrapDC.style.display = 'none'; document.getElementById('tDC').value = ''; }
     if(wrapDR){ wrapDR.style.display = 'none'; document.getElementById('tDR').value = ''; }
-    if(tawnFW) tawnFW.style.display = 'none';
+    if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
   } else if(v === 'direct'){
     // Direct Jama → seedha Tawan fields
     if(wrapDC){ wrapDC.style.display = 'none'; document.getElementById('tDC').value = ''; }
@@ -8475,7 +8478,7 @@ function togTDC(){
   } else {
     if(wrapDC) wrapDC.style.display = 'none';
     if(wrapDR) wrapDR.style.display = 'none';
-    if(tawnFW) tawnFW.style.display = 'none';
+    if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
   }
 }
 
