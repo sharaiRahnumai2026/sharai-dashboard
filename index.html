@@ -216,7 +216,7 @@ input[type="date"]::-moz-calendar-picker-indicator,input[type="month"]::-moz-cal
 .ss-opt:hover{background:#f0f6ff;}
 .ss-opt.selected{background:#e8f0fe;color:var(--blue);font-weight:600;}
 /* ===== MS WORD STYLE RICH EDITOR ===== */
-.rte-wrap{border:1.5px solid var(--bor);border-radius:var(--rsm);overflow:hidden;background:#fff;}
+.rte-wrap{border:1.5px solid var(--bor);border-radius:var(--rsm);overflow:visible;background:#fff;}
 .rte-wrap:focus-within{border-color:var(--blue);}
 .rte-toolbar{background:#f3f6fb;border-bottom:1.5px solid var(--bor);padding:4px 6px;display:flex;flex-wrap:wrap;align-items:center;gap:4px;overflow:visible;}
 .rte-toolbar select{padding:2px 4px;border:1px solid #ccd6e8;border-radius:4px;font-size:.73rem;height:26px;background:#fff;cursor:pointer;color:var(--tx);}
@@ -9542,7 +9542,7 @@ function deptClose(){
 
     // Palette dropdown
     var pal = document.createElement('div');
-    pal.style.cssText = 'display:none;position:absolute;top:100%;left:auto;right:0;background:#fff;border:1.5px solid #ccd6e8;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);padding:8px;z-index:9999;width:240px;';
+    pal.style.cssText = 'display:none;position:absolute;top:100%;left:auto;right:0;background:#fff;border:1.5px solid #ccd6e8;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);padding:8px;z-index:99999;width:240px;height:auto;max-height:none;overflow:visible;box-sizing:border-box;';
 
     var palTitle = document.createElement('div');
     palTitle.style.cssText = 'font-size:.65rem;color:#888;margin-bottom:5px;font-weight:600;text-transform:uppercase;';
