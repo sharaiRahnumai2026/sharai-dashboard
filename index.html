@@ -3280,34 +3280,44 @@ function onDonorResponse(val){
   // Wapas wrap hamesha hide karo pehle
   if(wapasWrap) wapasWrap.style.display = 'none';
 
+  // Wajiba row: Donor ne MAAF kiya → Wajiba ₹ hide (maaf ho gaya). Warna Wajiba tick ho to dikhe.
+  var _wajRow=document.getElementById('tWajRow');
+  var _wajChk=document.getElementById('tKismWajiba');
+  function _setWajRow(show){ if(_wajRow) _wajRow.style.display = (show && _wajChk && _wajChk.checked) ? '' : 'none'; }
+
   if(val === 'maaf'){
     if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
+    _setWajRow(false); // maaf → Wajiba entry hide
   } else if(val === 'ajeer_ko_do'){
     if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
+    _setWajRow(true);
   } else if(val === 'wapas_karo'){
     if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
     if(wapasWrap) wapasWrap.style.display = 'block';
+    _setWajRow(true);
   } else if(val === 'other'){
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
     if(modal){ modal.style.display = 'flex'; setTimeout(function(){ document.getElementById('tDROtherText').focus(); }, 100); }
     if(wrap) wrap.style.display = ''; autoFillTawnDate();
+    _setWajRow(true);
   } else {
     var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
     var _anyKism=(_kw&&_kw.checked)||(_kn&&_kn.checked);
     if(wrap) wrap.style.display = _anyKism ? '' : 'none';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
+    _setWajRow(true);
     if(preview){ preview.style.display='none'; preview.textContent=''; }
   }
 }
