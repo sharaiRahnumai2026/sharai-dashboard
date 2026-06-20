@@ -3258,16 +3258,16 @@ function onDonorRabita(val){
   // Show/hide donor response dropdown
   var tDRWrap = document.getElementById('tDRWrap');
   var tawnFW = document.getElementById('tawnFieldsWrap');
+  // Wajiba/Nafila tick ho to Raqam (tawnFW) hamesha dikhe
+  var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
+  var _keepFW=(_kw&&_kw.checked)||(_kn&&_kn.checked);
   if(val === 'yes'){
-    // Rabita hua — show response dropdown
     if(tDRWrap) tDRWrap.style.display = 'block';
-    // tawnFieldsWrap visibility depends on tDR value
-    var tDRval = document.getElementById('tDR').value;
-    if(tawnFW) tawnFW.style.display = tDRval === 'maaf' ? 'none' : '';
+    if(tawnFW) tawnFW.style.display = '';
   } else {
-    // Rabita nahi hua — hide response AND tawan fields
+    // Rabita nahi hua — response dropdown hide, par Raqam (Nafila/Wajiba) tick ho to dikhe
     if(tDRWrap) tDRWrap.style.display = 'none';
-    if(tawnFW) tawnFW.style.display = 'none';
+    if(tawnFW) tawnFW.style.display = _keepFW ? '' : 'none';
   }
 }
 function autoFillTawnDate(){
