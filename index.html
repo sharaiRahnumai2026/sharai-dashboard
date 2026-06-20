@@ -3281,7 +3281,7 @@ function onDonorResponse(val){
   if(wapasWrap) wapasWrap.style.display = 'none';
 
   if(val === 'maaf'){
-    if(wrap) wrap.style.display = 'none';
+    if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
@@ -3291,7 +3291,7 @@ function onDonorResponse(val){
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
   } else if(val === 'wapas_karo'){
-    if(wrap) wrap.style.display = 'none';
+    if(wrap) wrap.style.display = '';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
@@ -3303,7 +3303,9 @@ function onDonorResponse(val){
     if(modal){ modal.style.display = 'flex'; setTimeout(function(){ document.getElementById('tDROtherText').focus(); }, 100); }
     if(wrap) wrap.style.display = ''; autoFillTawnDate();
   } else {
-    if(wrap) wrap.style.display = 'none';
+    var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
+    var _anyKism=(_kw&&_kw.checked)||(_kn&&_kn.checked);
+    if(wrap) wrap.style.display = _anyKism ? '' : 'none';
     if(customInp) customInp.value = '';
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
@@ -9423,9 +9425,12 @@ function deptClose(){
     szSel.onchange = function(){
       if(savedRangeSz){ var s=window.getSelection(); s.removeAllRanges(); s.addRange(savedRangeSz); }
       else ed.focus();
+      try{ document.execCommand('styleWithCSS', false, true); }catch(e){}
       document.execCommand('fontSize', false, '7');
-      var fonts = ed.querySelectorAll('font[size="7"]');
-      fonts.forEach(function(f){ f.removeAttribute('size'); f.style.fontSize = szSel.value+'px'; });
+      // saare size=7 wale tags ko chuni gayi px size do (paste ke baad bhi reliable)
+      ed.querySelectorAll('font[size="7"]').forEach(function(f){ f.removeAttribute('size'); f.style.fontSize = szSel.value+'px'; });
+      ed.querySelectorAll('span').forEach(function(sp){ if(sp.style && sp.style.fontSize && /xx-large|x-large/.test(sp.style.fontSize)) sp.style.fontSize = szSel.value+'px'; });
+      syncRTE(edId);
     };
     tb.appendChild(szSel);
 
@@ -9457,6 +9462,23 @@ function deptClose(){
         updateActiveStates();
     });
 
+
+    tb.appendChild(mkSep());
+
+    // Alignment buttons (Left / Center / Right)
+    var btnAL = mkBtn('⬅', 'Left',   function(){ ed.focus(); document.execCommand('justifyLeft'); updateAlignStates(); });
+    var btnAC = mkBtn('⬌', 'Center', function(){ ed.focus(); document.execCommand('justifyCenter'); updateAlignStates(); });
+    var btnAR = mkBtn('➡', 'Right',  function(){ ed.focus(); document.execCommand('justifyRight'); updateAlignStates(); });
+    tb.appendChild(btnAL); tb.appendChild(btnAC); tb.appendChild(btnAR);
+    function updateAlignStates(){
+      try{
+        btnAL.style.background = document.queryCommandState('justifyLeft')?'#ccdcf7':''; btnAL.style.borderColor=document.queryCommandState('justifyLeft')?'var(--blue)':'transparent';
+        btnAC.style.background = document.queryCommandState('justifyCenter')?'#ccdcf7':''; btnAC.style.borderColor=document.queryCommandState('justifyCenter')?'var(--blue)':'transparent';
+        btnAR.style.background = document.queryCommandState('justifyRight')?'#ccdcf7':''; btnAR.style.borderColor=document.queryCommandState('justifyRight')?'var(--blue)':'transparent';
+      }catch(e){}
+    }
+    ed.addEventListener('keyup', updateAlignStates);
+    ed.addEventListener('mouseup', updateAlignStates);
 
     tb.appendChild(mkSep());
 
