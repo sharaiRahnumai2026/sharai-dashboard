@@ -2648,10 +2648,9 @@ function goPage(pg,el,skipHistory){
   _currentPg = pg;
 
   // STEP 1: INSTANT UI — sirf class toggle, zero data work
-  // Naya page pehle show karo
+  // Pehle SAARE pages ka 'on' hatao (refresh/init pe dono-on bug fix), phir naya show
+  Object.keys(_pgEls).forEach(function(k){ if(_pgEls[k] && k!==pg) _pgEls[k].classList.remove('on'); });
   if(_pgEls[pg])     _pgEls[pg].classList.add('on');
-  // Purana baad mein hide karo
-  if(prevPg && prevPg !== pg && _pgEls[prevPg]) _pgEls[prevPg].classList.remove('on');
 
   // Nav highlight
   if(_navEls[prevPg]) _navEls[prevPg].classList.remove('on');
