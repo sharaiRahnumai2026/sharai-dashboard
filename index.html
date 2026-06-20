@@ -850,22 +850,20 @@ function _cleanC(o){
           <!-- Wapas Karo Fields -->
           <div id="tWapasWrap" style="display:none;grid-column:1/-1;width:100%;box-sizing:border-box;background:#fff8f0;border:1.5px solid #ffcc80;border-radius:10px;padding:14px;margin-top:6px">
             <div style="font-size:.78rem;font-weight:700;color:#e65100;margin-bottom:12px">🔄 Wapas Karne Ki Details</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;width:100%">
-              <div style="min-width:0">
-                <div style="font-size:.72rem;font-weight:700;color:var(--mt);margin-bottom:6px">TYPE (EK YA DONO)</div>
-                <div style="display:flex;gap:14px">
-                  <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
-                    <input type="checkbox" id="tWapasRaqam" onchange="onWapasTypeChange()"> 💰 Raqam
-                  </label>
-                  <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
-                    <input type="checkbox" id="tWapasAshiya" onchange="onWapasTypeChange()"> 📦 Ashiya
-                  </label>
-                </div>
+            <div style="margin-bottom:12px;width:100%">
+              <div style="font-size:.72rem;font-weight:700;color:var(--mt);margin-bottom:6px">TYPE (EK YA DONO)</div>
+              <div style="display:flex;gap:14px">
+                <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
+                  <input type="checkbox" id="tWapasRaqam" onchange="onWapasTypeChange()"> 💰 Raqam
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer">
+                  <input type="checkbox" id="tWapasAshiya" onchange="onWapasTypeChange()"> 📦 Ashiya
+                </label>
               </div>
-              <div style="min-width:0">
-                <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI TARIKH</label>
-                <input type="date" id="tWapasDate" style="width:100%;box-sizing:border-box;margin-top:4px">
-              </div>
+            </div>
+            <div style="margin-bottom:12px;width:100%">
+              <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI TARIKH</label>
+              <input type="date" id="tWapasDate" style="width:100%;box-sizing:border-box;margin-top:4px">
             </div>
             <div id="tWapasRaqamBox" style="display:none;margin-bottom:12px;width:100%">
               <label style="font-size:.72rem;font-weight:700;color:var(--mt)">WAPAS KI RAQAM (₹)</label>
