@@ -8487,8 +8487,7 @@ function onTawnKism(){
   var tAshiyaSec = document.getElementById('tAshiyaSection');
   var _ttWrap=document.getElementById('tTawnTypeWrap');
   if(_showType){
-    // Nafila ho to Raqam auto-tick (Nafila hamesha money). Wajiba-dena pe user khud chune.
-    if(hasNafila && tTypeRaqam && !tTypeRaqam.checked){ tTypeRaqam.checked=true; }
+    // Default koi auto-tick nahi — user khud Raqam/Ashiya chune
     if(_ttWrap) _ttWrap.style.display='';
     if(tRaqamSec) tRaqamSec.style.display = (tTypeRaqam && tTypeRaqam.checked) ? '' : 'none';
     if(tAshiyaSec) tAshiyaSec.style.display = (tTypeAshiya && tTypeAshiya.checked) ? 'block' : 'none';
