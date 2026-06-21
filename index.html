@@ -3289,7 +3289,7 @@ function onDonorResponse(val){
   // Wajiba row: sirf jab donor ne DENA kaha (ajeer_ko_do/wapas_karo/direct/other) → dikhe. Maaf/rabita/nahi/select → hide. Nafila kabhi hide nahi.
   var _wajRow=document.getElementById('tWajRow');
   var _wajChk=document.getElementById('tKismWajiba');
-  function _setWajRow(show){ var s=(show && _wajChk && _wajChk.checked) ? '' : 'none'; if(_wajRow) _wajRow.style.display = s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display = s; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
+  function _setWajRow(show){ var s=(show && _wajChk && _wajChk.checked) ? '' : 'none'; if(_wajRow) _wajRow.style.display = s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display = s; var _nc=document.getElementById('tKismNafila'); var _rs=document.getElementById('tRaqamSection'); if(_rs){ var _anyShow=(_nc&&_nc.checked)||(s===''); _rs.style.display=_anyShow?'':'none'; } if(typeof calcTawnTotal==='function') calcTawnTotal(); }
 
   if(val === 'maaf'){
     if(wrap) wrap.style.display = '';
@@ -8461,13 +8461,16 @@ function onTawnKism(){
   var ashWajRow = document.getElementById('tAshiyaWajibaRow');
   if(ashWajRow) ashWajRow.style.display = hasWajiba ? '' : 'none';
 
-  // Wajiba YA Nafila koi bhi selected → Raqam section auto-dikhao (amount fields wahin hain)
-  if(hasNafila || hasWajiba){
-    var tTypeRaqam = document.getElementById('tTypeRaqam');
-    if(tTypeRaqam && !tTypeRaqam.checked){
-      tTypeRaqam.checked = true;
-      onTawnType();
-    }
+  // Raqam section: tabhi khule jab koi amount field actually dikhega
+  // (Nafila tick, YA Wajiba tick + donor-dena-confirm). Warna hide.
+  var _showRaqam = hasNafila || (hasWajiba && _wajibaDena);
+  var tTypeRaqam = document.getElementById('tTypeRaqam');
+  var tRaqamSec = document.getElementById('tRaqamSection');
+  if(_showRaqam){
+    if(tTypeRaqam && !tTypeRaqam.checked){ tTypeRaqam.checked = true; onTawnType(); }
+    if(tRaqamSec) tRaqamSec.style.display = '';
+  } else {
+    if(tRaqamSec) tRaqamSec.style.display = 'none';
   }
 }
 function togTDC(){
@@ -8479,7 +8482,7 @@ function togTDC(){
   var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
   var _keepFW=(_kw&&_kw.checked)||(_kn&&_kn.checked);
   var _wajRow=document.getElementById('tWajRow');
-  function _setWaj(show){ var s=(show&&_kw&&_kw.checked)?'':'none'; if(_wajRow) _wajRow.style.display=s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display=s; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
+  function _setWaj(show){ var s=(show&&_kw&&_kw.checked)?'':'none'; if(_wajRow) _wajRow.style.display=s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display=s; var _nc=document.getElementById('tKismNafila'); var _rs=document.getElementById('tRaqamSection'); if(_rs){ var _anyShow=(_nc&&_nc.checked)||(s===''); _rs.style.display=_anyShow?'':'none'; } if(typeof calcTawnTotal==='function') calcTawnTotal(); }
   if(v === 'yes'){
     // Rabita Karo → Donor se rabita hua? (abhi response nahi → Wajiba hide)
     if(wrapDC) wrapDC.style.display = '';
