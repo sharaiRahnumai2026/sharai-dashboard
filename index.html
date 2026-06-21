@@ -861,9 +861,19 @@ function _cleanC(o){
                 </label>
               </div>
             </div>
-            <div style="margin-bottom:16px;width:100%">
-              <label style="font-size:.82rem;font-weight:700;color:var(--mt)">WAPAS KI TARIKH</label>
-              <input type="date" id="tWapasDate" style="width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;font-size:.9rem;border:1.5px solid var(--bor);border-radius:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;width:100%">
+              <div style="min-width:0">
+                <label style="font-size:.82rem;font-weight:700;color:var(--mt)">WAPAS KI TARIKH</label>
+                <input type="date" id="tWapasDate" style="width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;font-size:.9rem;border:1.5px solid var(--bor);border-radius:8px">
+              </div>
+              <div style="min-width:0">
+                <label style="font-size:.82rem;font-weight:700;color:var(--mt)">WAPAS HUA?</label>
+                <select id="tWapasDone" onchange="calcWapas()" style="width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;font-size:.9rem;border:1.5px solid var(--bor);border-radius:8px">
+                  <option value="">Select...</option>
+                  <option value="no">🔴 Nahi — Pending</option>
+                  <option value="yes">✅ Haan — Ho Gaya</option>
+                </select>
+              </div>
             </div>
             <div id="tWapasRaqamBox" style="display:none;margin-bottom:16px;width:100%">
               <label style="font-size:.82rem;font-weight:700;color:var(--mt)">WAPAS KI RAQAM (₹)</label>
@@ -872,14 +882,6 @@ function _cleanC(o){
             <div id="tWapasAshiyaBox" style="display:none;margin-bottom:16px;width:100%">
               <label style="font-size:.82rem;font-weight:700;color:var(--mt)">ASHIYA KI DETAILS</label>
               <input type="text" id="tWapasAshiyaDesc" placeholder="Ashiya ka naam / description..." style="width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;font-size:.9rem;border:1.5px solid var(--bor);border-radius:8px">
-            </div>
-            <div style="margin-bottom:12px;width:100%">
-              <label style="font-size:.82rem;font-weight:700;color:var(--mt)">WAPAS HUA?</label>
-              <select id="tWapasDone" onchange="calcWapas()" style="width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;font-size:.9rem;border:1.5px solid var(--bor);border-radius:8px">
-                <option value="">Select...</option>
-                <option value="no">🔴 Nahi — Pending</option>
-                <option value="yes">✅ Haan — Ho Gaya</option>
-              </select>
             </div>
             <div id="tWapasInfo" style="display:none;background:#fff3e0;border:1px solid #ffcc80;border-radius:7px;padding:10px 14px;font-size:.85rem;color:#e65100"></div>
           </div>
@@ -3287,7 +3289,7 @@ function onDonorResponse(val){
   // Wajiba row: sirf jab donor ne DENA kaha (ajeer_ko_do/wapas_karo/direct/other) → dikhe. Maaf/rabita/nahi/select → hide. Nafila kabhi hide nahi.
   var _wajRow=document.getElementById('tWajRow');
   var _wajChk=document.getElementById('tKismWajiba');
-  function _setWajRow(show){ if(_wajRow) _wajRow.style.display = (show && _wajChk && _wajChk.checked) ? '' : 'none'; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
+  function _setWajRow(show){ var s=(show && _wajChk && _wajChk.checked) ? '' : 'none'; if(_wajRow) _wajRow.style.display = s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display = s; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
 
   if(val === 'maaf'){
     if(wrap) wrap.style.display = '';
@@ -8454,7 +8456,7 @@ function onTawnKism(){
   var _wajibaDena = (_tDOval==='direct') || (_tDRval==='ajeer_ko_do'||_tDRval==='wapas_karo'||_tDRval==='other');
   if(wajFld) wajFld.style.display = (hasWajiba && _wajibaDena) ? '' : 'none';
   if(nafFld) nafFld.style.display = hasNafila ? '' : 'none';
-  if(madFld) madFld.style.display = (hasWajiba || hasNafila) ? '' : 'none';
+  if(madFld) madFld.style.display = (hasWajiba && _wajibaDena) ? '' : 'none';
   // Ashiya section mein bhi Wajiba row hide karo agar sirf Nafila
   var ashWajRow = document.getElementById('tAshiyaWajibaRow');
   if(ashWajRow) ashWajRow.style.display = hasWajiba ? '' : 'none';
@@ -8477,7 +8479,7 @@ function togTDC(){
   var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
   var _keepFW=(_kw&&_kw.checked)||(_kn&&_kn.checked);
   var _wajRow=document.getElementById('tWajRow');
-  function _setWaj(show){ if(_wajRow) _wajRow.style.display=(show&&_kw&&_kw.checked)?'':'none'; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
+  function _setWaj(show){ var s=(show&&_kw&&_kw.checked)?'':'none'; if(_wajRow) _wajRow.style.display=s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display=s; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
   if(v === 'yes'){
     // Rabita Karo → Donor se rabita hua? (abhi response nahi → Wajiba hide)
     if(wrapDC) wrapDC.style.display = '';
