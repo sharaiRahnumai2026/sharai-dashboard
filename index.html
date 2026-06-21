@@ -852,12 +852,12 @@ function _cleanC(o){
             <div style="font-size:.95rem;font-weight:700;color:#e65100;margin-bottom:16px">🔄 Wapas Karne Ki Details</div>
             <div style="margin-bottom:16px;width:100%">
               <div style="font-size:.82rem;font-weight:700;color:var(--mt);margin-bottom:8px">TYPE (EK YA DONO)</div>
-              <div style="display:flex;gap:20px">
-                <label style="display:flex;align-items:center;gap:7px;font-size:.9rem;cursor:pointer">
-                  <input type="checkbox" id="tWapasRaqam" onchange="onWapasTypeChange()" style="width:18px;height:18px"> 💰 Raqam
+              <div style="display:flex;gap:14px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:9px;font-size:.95rem;cursor:pointer;padding:12px 18px;border:1.5px solid #ffcc80;border-radius:9px;background:#fff;flex:1;min-width:140px">
+                  <input type="checkbox" id="tWapasRaqam" onchange="onWapasTypeChange()" style="width:20px;height:20px;accent-color:#e65100"> 💰 Raqam
                 </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:.9rem;cursor:pointer">
-                  <input type="checkbox" id="tWapasAshiya" onchange="onWapasTypeChange()" style="width:18px;height:18px"> 📦 Ashiya
+                <label style="display:flex;align-items:center;gap:9px;font-size:.95rem;cursor:pointer;padding:12px 18px;border:1.5px solid #ffcc80;border-radius:9px;background:#fff;flex:1;min-width:140px">
+                  <input type="checkbox" id="tWapasAshiya" onchange="onWapasTypeChange()" style="width:20px;height:20px;accent-color:#e65100"> 📦 Ashiya
                 </label>
               </div>
             </div>
@@ -8448,8 +8448,11 @@ function onTawnKism(){
   // Wajiba ho ya Nafila — Tawn Fields (Raqam/amount) HAMESHA dikhao
   if(tawnFW) tawnFW.style.display = '';
 
-  // Amount fields: sirf wahi dikhao jo select hua
-  if(wajFld) wajFld.style.display = hasWajiba ? '' : 'none';
+  // Amount fields: Nafila/Maddat hamesha (tick pe). Wajiba sirf jab donor ne DENA kaha.
+  var _tDOval=(document.getElementById('tDO')||{}).value;
+  var _tDRval=(document.getElementById('tDR')||{}).value;
+  var _wajibaDena = (_tDOval==='direct') || (_tDRval==='ajeer_ko_do'||_tDRval==='wapas_karo'||_tDRval==='other');
+  if(wajFld) wajFld.style.display = (hasWajiba && _wajibaDena) ? '' : 'none';
   if(nafFld) nafFld.style.display = hasNafila ? '' : 'none';
   if(madFld) madFld.style.display = (hasWajiba || hasNafila) ? '' : 'none';
   // Ashiya section mein bhi Wajiba row hide karo agar sirf Nafila
