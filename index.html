@@ -3291,7 +3291,7 @@ function onDonorResponse(val){
   // Wajiba row: sirf jab donor ne DENA kaha (ajeer_ko_do/wapas_karo/direct/other) → dikhe. Maaf/rabita/nahi/select → hide. Nafila kabhi hide nahi.
   var _wajRow=document.getElementById('tWajRow');
   var _wajChk=document.getElementById('tKismWajiba');
-  function _setWajRow(show){ var s=(show && _wajChk && _wajChk.checked) ? '' : 'none'; if(_wajRow) _wajRow.style.display = s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display = s; var _awr=document.getElementById('tAshiyaWajibaRow'); if(_awr) _awr.style.display=s; var _amd=document.getElementById('tAshiyaMaddat'); if(_amd){var _x=_amd.closest('.fgr')||_amd.parentElement; if(_x)_x.style.display=s;} var _nc=document.getElementById('tKismNafila'); var _rs=document.getElementById('tRaqamSection'); if(_rs){ var _anyShow=(_nc&&_nc.checked)||(s===''); _rs.style.display=_anyShow?'':'none'; } if(typeof calcTawnTotal==='function') calcTawnTotal(); }
+  function _setWajRow(show){ var s=(show && _wajChk && _wajChk.checked) ? '' : 'none'; if(_wajRow) _wajRow.style.display = s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display = s; var _awr=document.getElementById('tAshiyaWajibaRow'); if(_awr) _awr.style.display=s; var _amd=document.getElementById('tAshiyaMaddat'); if(_amd){var _x=_amd.closest('.fgr')||_amd.parentElement; if(_x)_x.style.display=s;} var _nc=document.getElementById('tKismNafila'); var _anyShow=(_nc&&_nc.checked)||(s===''); var _rs=document.getElementById('tRaqamSection'); if(_rs) _rs.style.display=_anyShow?'':'none'; var _tt=document.getElementById('tTawnTypeWrap'); if(_tt) _tt.style.display=_anyShow?'':'none'; var _ta=document.getElementById('tTypeAshiya'); var _as=document.getElementById('tAshiyaSection'); if(_as) _as.style.display=(_anyShow && _ta && _ta.checked)?'block':'none'; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
 
   if(val === 'maaf'){
     if(wrap) wrap.style.display = '';
@@ -3311,9 +3311,10 @@ function onDonorResponse(val){
     if(otherText) otherText.value = '';
     if(preview){ preview.style.display='none'; preview.textContent=''; }
     if(wapasWrap) wapasWrap.style.display = 'block';
-    // Wapas section khud raqam le raha — niche ka Tawan Type + Raqam section hide
+    // Wapas section khud raqam+ashiya le raha — niche ka Tawan Type + Raqam + Ashiya section hide
     var _tt=document.getElementById('tTawnTypeWrap'); if(_tt) _tt.style.display='none';
     var _rs=document.getElementById('tRaqamSection'); if(_rs) _rs.style.display='none';
+    var _as=document.getElementById('tAshiyaSection'); if(_as) _as.style.display='none';
     _setWajRow(false); // wapas → Wajiba dikhe
   } else if(val === 'other'){
     if(customInp) customInp.value = '';
@@ -8479,6 +8480,20 @@ function onTawnKism(){
   } else {
     if(tRaqamSec) tRaqamSec.style.display = 'none';
   }
+  // Ashiya section: bhi tabhi khule jab donor-dena-confirm (ya Nafila). Warna hide.
+  var tAshiyaSec = document.getElementById('tAshiyaSection');
+  if(tAshiyaSec){
+    var _showAsh = hasNafila || (hasWajiba && _wajibaDena);
+    var tTypeAshiya = document.getElementById('tTypeAshiya');
+    if(_showAsh){
+      if(tTypeAshiya && tTypeAshiya.checked) tAshiyaSec.style.display = 'block';
+    } else {
+      tAshiyaSec.style.display = 'none';
+    }
+  }
+  // Tawan ka Type section (Raqam/Ashiya checkbox): Select/Maaf pe hide, donor-dena ya Nafila pe dikhe
+  var _ttWrap=document.getElementById('tTawnTypeWrap');
+  if(_ttWrap) _ttWrap.style.display = (hasNafila || (hasWajiba && _wajibaDena)) ? '' : 'none';
 }
 function togTDC(){
   var v = document.getElementById('tDO').value;
@@ -8489,7 +8504,7 @@ function togTDC(){
   var _kw=document.getElementById('tKismWajiba'), _kn=document.getElementById('tKismNafila');
   var _keepFW=(_kw&&_kw.checked)||(_kn&&_kn.checked);
   var _wajRow=document.getElementById('tWajRow');
-  function _setWaj(show){ var s=(show&&_kw&&_kw.checked)?'':'none'; if(_wajRow) _wajRow.style.display=s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display=s; var _awr=document.getElementById('tAshiyaWajibaRow'); if(_awr) _awr.style.display=s; var _amd=document.getElementById('tAshiyaMaddat'); if(_amd){var _x=_amd.closest('.fgr')||_amd.parentElement; if(_x)_x.style.display=s;} var _nc=document.getElementById('tKismNafila'); var _rs=document.getElementById('tRaqamSection'); if(_rs){ var _anyShow=(_nc&&_nc.checked)||(s===''); _rs.style.display=_anyShow?'':'none'; } if(typeof calcTawnTotal==='function') calcTawnTotal(); }
+  function _setWaj(show){ var s=(show&&_kw&&_kw.checked)?'':'none'; if(_wajRow) _wajRow.style.display=s; var _md=document.getElementById('tMaddatRow'); if(_md) _md.style.display=s; var _awr=document.getElementById('tAshiyaWajibaRow'); if(_awr) _awr.style.display=s; var _amd=document.getElementById('tAshiyaMaddat'); if(_amd){var _x=_amd.closest('.fgr')||_amd.parentElement; if(_x)_x.style.display=s;} var _nc=document.getElementById('tKismNafila'); var _anyShow=(_nc&&_nc.checked)||(s===''); var _rs=document.getElementById('tRaqamSection'); if(_rs) _rs.style.display=_anyShow?'':'none'; var _tt=document.getElementById('tTawnTypeWrap'); if(_tt) _tt.style.display=_anyShow?'':'none'; var _ta=document.getElementById('tTypeAshiya'); var _as=document.getElementById('tAshiyaSection'); if(_as) _as.style.display=(_anyShow && _ta && _ta.checked)?'block':'none'; if(typeof calcTawnTotal==='function') calcTawnTotal(); }
   if(v === 'yes'){
     // Rabita Karo → Donor se rabita hua? (abhi response nahi → Wajiba hide)
     if(wrapDC) wrapDC.style.display = '';
