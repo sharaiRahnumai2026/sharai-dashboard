@@ -9552,8 +9552,13 @@ function deptClose(){
 
 
 
-    // Sync hidden input on every keystroke
-    ed.addEventListener('input', function(){ syncRTE(edId); });
+    // Sync hidden input — throttle (har keystroke pe heavy autoDir/crash se bacho)
+    var _syncT=null;
+    ed.addEventListener('input', function(){
+      var inp=document.getElementById(edId.replace('rte-','')); if(inp) inp.value=ed.innerHTML; // value turant
+      if(_syncT) clearTimeout(_syncT);
+      _syncT=setTimeout(function(){ syncRTE(edId); }, 250); // direction baad mein
+    });
     ed.addEventListener('paste', function(e){
       // Plain text paste option — let HTML paste through for formatting
       setTimeout(function(){ syncRTE(edId); }, 10);
@@ -9700,23 +9705,19 @@ function deptClose(){
   // Auto detect RTL/LTR based on first strong character
   function autoDir(ed){
     var txt = ed.innerText || ed.textContent || '';
-    // Find first non-space character
     var first = txt.replace(/\s/g,'')[0];
     if(!first) return;
-    // Pehle char nahi — pure text mein Urdu zyada hai ya English, usse decide
     var urduCount=0, latinCount=0;
     for(var _i=0;_i<txt.length;_i++){
       var _c=txt.charCodeAt(_i);
       if((_c>=0x0600&&_c<=0x06FF)||(_c>=0x0750&&_c<=0x077F)||(_c>=0xFB50&&_c<=0xFDFF)||(_c>=0xFE70&&_c<=0xFEFF)) urduCount++;
       else if((_c>=0x41&&_c<=0x5A)||(_c>=0x61&&_c<=0x7A)) latinCount++;
     }
-    var isUrdu = urduCount >= latinCount;
-    if(isUrdu){
-      ed.style.direction = 'rtl';
-      ed.style.textAlign = 'right';
-    } else {
-      ed.style.direction = 'ltr';
-      ed.style.textAlign = 'left';
+    var want = (urduCount >= latinCount) ? 'rtl' : 'ltr';
+    // Direction sirf TAB set karo jab actually badla ho (baar-baar set = RTL contenteditable crash)
+    if(ed.style.direction !== want){
+      ed.style.direction = want;
+      ed.style.textAlign = (want==='rtl') ? 'right' : 'left';
     }
   }
 
