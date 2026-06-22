@@ -228,7 +228,7 @@ input[type="date"]::-moz-calendar-picker-indicator,input[type="month"]::-moz-cal
 .rte-btn svg{width:13px;height:13px;fill:currentColor;}
 .rte-color-wrap{position:relative;display:inline-flex;align-items:center;}
 .rte-color-wrap input[type=color]{width:0;height:0;opacity:0;position:absolute;}
-.rte-body{min-height:42px;padding:8px 10px;outline:none;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:ltr;text-align:left;line-height:2.2;font-size:16px;color:var(--tx);}
+.rte-body{min-height:42px;padding:8px 10px;outline:none;font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:ltr;text-align:start;unicode-bidi:plaintext;line-height:2.2;font-size:16px;color:var(--tx);}
 .rte-body:empty:before{content:attr(data-placeholder);color:#aab;pointer-events:none;}
 /* ===== END RICH EDITOR ===== */
 </style>
@@ -9704,21 +9704,9 @@ function deptClose(){
 
   // Auto detect RTL/LTR based on first strong character
   function autoDir(ed){
-    var txt = ed.innerText || ed.textContent || '';
-    var first = txt.replace(/\s/g,'')[0];
-    if(!first) return;
-    var urduCount=0, latinCount=0;
-    for(var _i=0;_i<txt.length;_i++){
-      var _c=txt.charCodeAt(_i);
-      if((_c>=0x0600&&_c<=0x06FF)||(_c>=0x0750&&_c<=0x077F)||(_c>=0xFB50&&_c<=0xFDFF)||(_c>=0xFE70&&_c<=0xFEFF)) urduCount++;
-      else if((_c>=0x41&&_c<=0x5A)||(_c>=0x61&&_c<=0x7A)) latinCount++;
-    }
-    var want = (urduCount >= latinCount) ? 'rtl' : 'ltr';
-    // Direction sirf TAB set karo jab actually badla ho (baar-baar set = RTL contenteditable crash)
-    if(ed.style.direction !== want){
-      ed.style.direction = want;
-      ed.style.textAlign = (want==='rtl') ? 'right' : 'left';
-    }
+    // Direction CSS (unicode-bidi:plaintext) khud handle karta hai.
+    // JS se direction badalna RTL contenteditable mein Chrome crash karta tha — isliye band.
+    return;
   }
 
   // Sync contenteditable HTML → hidden input
