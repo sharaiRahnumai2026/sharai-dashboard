@@ -9513,7 +9513,6 @@ function deptClose(){
         btnUnder.style.borderColor= document.queryCommandState('underline') ? 'var(--blue)' : 'transparent';
       } catch(e){}
     }
-    ed.addEventListener('keyup',   updateActiveStates);
     ed.addEventListener('mouseup', updateActiveStates);
     document.addEventListener('selectionchange', function(){
       if(document.activeElement === ed || ed.contains(document.activeElement))
@@ -9535,7 +9534,7 @@ function deptClose(){
         btnAR.style.background = document.queryCommandState('justifyRight')?'#ccdcf7':''; btnAR.style.borderColor=document.queryCommandState('justifyRight')?'var(--blue)':'transparent';
       }catch(e){}
     }
-    ed.addEventListener('keyup', updateAlignStates);
+    // keyup pe queryCommandState na chalao — bade Urdu RTL text + backspace pe browser crash karta hai
     ed.addEventListener('mouseup', updateAlignStates);
 
     tb.appendChild(mkSep());
