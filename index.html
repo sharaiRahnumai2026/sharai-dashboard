@@ -6856,18 +6856,22 @@ function detPDF(){
   style.innerHTML = `
     @media print {
       body > *:not(#printArea) { display: none !important; }
-      @page { size: A4 portrait; margin: 10mm; }
+      @page { size: A4 portrait; margin: 8mm; }
       html, body { width:100% !important; margin:0 !important; padding:0 !important; }
-      #printArea { display: block !important; font-size:11px; padding:0; width:100% !important; max-width:100% !important; margin:0 auto !important; box-sizing:border-box; }
+      #printArea { display: block !important; font-size:10.5px; padding:0; width:100% !important; max-width:100% !important; margin:0 auto !important; box-sizing:border-box; }
       #printArea > * { width:100% !important; max-width:100% !important; margin-left:0 !important; margin-right:0 !important; box-sizing:border-box; }
-      #printArea .sbox-title { color:#0d47a1; font-weight:700; margin-bottom:7px; }
-      #printArea .detgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
-      #printArea .di .dl { font-size:9px; color:#607090; text-transform:uppercase; }
-      #printArea .di .dv { font-size:11px; font-weight:600; border-bottom:1px dashed #e0e6f0; }
-      #printArea p { font-family:var(--urdu-font); font-size:13px; line-height:2; }
-      #printArea .badge { padding:1px 7px; border-radius:10px; font-size:9px; font-weight:600; }
+      /* Sections beech se na tutein, par gap na chhodein */
+      #printArea .sbox { break-inside: avoid; page-break-inside: avoid; margin-bottom:8px !important; padding:8px !important; }
+      #printArea .sbox-title { color:#0d47a1; font-weight:700; margin-bottom:6px; break-after:avoid; page-break-after:avoid; }
+      #printArea .detgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+      #printArea .di .dl { font-size:8.5px; color:#607090; text-transform:uppercase; }
+      #printArea .di .dv { font-size:10.5px; font-weight:600; border-bottom:1px dashed #e0e6f0; }
+      #printArea p { font-family:var(--urdu-font); font-size:12px; line-height:1.85; orphans:3; widows:3; }
+      #printArea .badge { padding:1px 6px; border-radius:10px; font-size:8.5px; font-weight:600; }
       #printArea .br{background:#ffebee;color:#c62828;} #printArea .bg{background:#e8f5e9;color:#2e7d32;}
       #printArea .bb{background:#e3f2fd;color:#1565c0;} #printArea .bo{background:#fff3e0;color:#e65100;}
+      /* Installments compact, tutne pe gap na ho */
+      #printArea .inst-row, #printArea li { break-inside:avoid; page-break-inside:avoid; }
     }
     @media screen { #printArea { display: none; } }
   `;
