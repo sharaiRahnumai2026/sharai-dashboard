@@ -6873,6 +6873,12 @@ function detPDF(){
   `;
   document.head.appendChild(style);
 
+  // PDF filename case number se — print se pehle title set, baad mein wapas
+  var _origTitle = document.title;
+  var _caseNoEl = document.getElementById('detModalTitle');
+  var _caseNo = _caseNoEl ? _caseNoEl.textContent.replace(/[^A-Za-z0-9\/\-]/g,'').trim() : '';
+  if(_caseNo){ document.title = _caseNo.replace(/\//g,'_'); }
+
   window.print();
 
   // Cleanup after print
@@ -6881,6 +6887,7 @@ function detPDF(){
     var ps = document.getElementById('printStyle');
     if(pa) pa.remove();
     if(ps) ps.remove();
+    document.title = _origTitle; // title wapas
   }, 1000);
 }
 // ===== END DETAIL ENHANCEMENTS =====
