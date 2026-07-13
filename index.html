@@ -5488,6 +5488,19 @@ function autoMazSt(){
   else { st.value='open'; if(box) box.style.display='none'; }
 }
 async function saveCase(){
+  // Double-click guard — ek save chal raha to dobara na chale (duplicate rokega)
+  if(window._savingCase){ return; }
+  window._savingCase = true;
+  var _saveBtns = document.querySelectorAll('button[onclick*="saveCase"]');
+  _saveBtns.forEach(function(b){ b.disabled=true; b.dataset._txt=b.innerHTML; b.innerHTML='⏳ Saving...'; });
+  try{
+    await _saveCaseInner();
+  } finally {
+    window._savingCase = false;
+    _saveBtns.forEach(function(b){ b.disabled=false; if(b.dataset._txt){ b.innerHTML=b.dataset._txt; } });
+  }
+}
+async function _saveCaseInner(){
   const cn=document.getElementById('fCNo').value.trim();
   const persons=getPersons();
   const nm=(persons[0]||{}).name||'';
