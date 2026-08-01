@@ -264,6 +264,24 @@ function applyUrduFont(el){
   }
 }
 document.addEventListener('DOMContentLoaded', function(){
+  // Person naam type hote hi matrix/guide refresh — inline handler se alag, hamesha chale
+  var _pr=document.getElementById('fPersonRows');
+  if(_pr && !_pr._pgmBound){
+    _pr._pgmBound=true;
+    _pr.addEventListener('input', function(e){
+      if(e.target && e.target.classList && e.target.classList.contains('pNm')){
+        if(typeof fillGuidePersons==='function') fillGuidePersons();
+      }
+    });
+  }
+  // Auto-save draft — new case form ke kisi bhi field change pe (sirf naya case)
+  var _ncf=document.getElementById('pg-newcase');
+  if(_ncf && !_ncf._autoSaveBound){
+    _ncf._autoSaveBound=true;
+    _ncf.addEventListener('input', function(){
+      if(!eId && typeof triggerAutoSave==='function') triggerAutoSave();
+    });
+  }
   function bindOneField(el){
     if(el._urduBound) return; // Already bound — duplicate listener se bacho
     if(el.closest('#lw')||el.closest('.lwrap')) return; // Login fields skip
@@ -299,11 +317,10 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- ===== END URDU AUTO-DETECT ===== -->
 
 <!-- Export Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -518,7 +535,6 @@ function _cleanC(o){
     <div class="fbst"><span class="dot" id="fbDot"></span><span id="fbTxt">Connecting...</span></div>
     </div>
   </div>
-</div>
 
 <div id="app" style="display:none;width:100%;display:none">
 
@@ -549,7 +565,7 @@ function _cleanC(o){
   <div class="topbar">
     <div class="tbl"><button class="togbtn" onclick="toggleSB()">☰</button><span class="ptitle" id="ptitle">Dashboard</span></div>
     <div class="tbr">
-      <div class="livebdg"><span class="dot" id="ldot"></span>Live</div>
+      <div class="livebdg"><span class="dot" id="ldot"></span>Synced</div>
       <div id="dashYearTabs" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"></div>
     </div>
   </div>
@@ -637,9 +653,10 @@ function _cleanC(o){
       <div id="bulkBar" style="display:none;background:#e3f2fd;border:1.5px solid #90caf9;border-radius:8px;padding:8px 14px;margin-bottom:8px;align-items:center;gap:10px;flex-wrap:wrap">
         <span id="bulkCount" style="font-size:.78rem;font-weight:700;color:var(--blue)">0 cases selected</span>
         <span style="font-size:.72rem;color:var(--mt)">Status change:</span>
-        <button class="btn bsm" style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7" onclick="bulkChangeStatus('closed')">✅ Closed</button>
         <button class="btn bsm" style="background:#ffebee;color:var(--red);border:1px solid #ffcdd2" onclick="bulkChangeStatus('pending_z')">🔴 Pending Z</button>
         <button class="btn bsm" style="background:#e3f2fd;color:var(--blue);border:1px solid #90caf9" onclick="bulkChangeStatus('pending_o')">🔵 Pending O</button>
+        <button class="btn bsm" style="background:#e0f7fa;color:#00838f;border:1px solid #80deea" onclick="bulkChangeStatus('meeting')">🔵 Meeting</button>
+        <button class="btn bsm" style="background:#f3e5f5;color:#9c27b0;border:1px solid #ce93d8" onclick="bulkChangeStatus('ifta')">🟣 Sent to Ifta</button>
         <button class="btn bred bsm" onclick="bulkDelete()">🗑️ Delete</button>
         <button class="btn bout bsm" onclick="selectedCases.clear();updateBulkBar();rCases()">✕ Cancel</button>
       </div>
@@ -668,7 +685,7 @@ function _cleanC(o){
             <div id="cnoMsg" style="font-size:.7rem;margin-top:3px;display:none"></div>
           </div>
           <div class="fgr"><label>Opening Date</label><input type="date" id="fOD" onchange="calcKT()"></div>
-          <div class="fgr"><label>Year</label><input id="fYr" placeholder="2025" onchange="toggleOldLoc(this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var m=document.getElementById('fMuf');if(m)m.focus();}"></div>
+          <div class="fgr"><label>Year</label><input id="fYr" type="text" inputmode="numeric" maxlength="4" placeholder="2025" onchange="toggleOldLoc(this.value)" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4);" onkeydown="if(event.key==='Tab'){event.preventDefault();var m=document.getElementById('fMuf');if(m)m.focus();}"></div>
           <div class="fgr"><label>Investigator Name</label><select id="fMuf" tabindex="0" ><option value="">-- Select Investigator --</option></select></div>
           <div class="fgr"><label>Referred By</label><select id="fSael"><option value="">Select...</option></select></div>
           <div class="fgr" id="fDeptWrap"><label>Department <span style="font-size:.65rem;color:var(--mt)">(Multiple select)</span></label>
@@ -796,7 +813,7 @@ function _cleanC(o){
             <!-- Hidden field for backward compat -->
             <select id="fGd" style="display:none"><option value="">None</option><option value="tawan">Tawan</option><option value="halfia">Halfia</option><option value="tafhim">Tafhim</option><option value="tabadla">Tabadla</option><option value="mazratnama">Mazratnama</option></select>
           </div>
-          <div class="fgr"><label>PDF Upload <small style="color:var(--mt)">(Max 10MB)</small></label><input type="file" id="fPdf" accept=".pdf,application/pdf" onchange="validatePdfUpload(this)"></div>
+          <div class="fgr"><label>PDF Upload <small style="color:var(--mt)">(Max 10MB)</small></label><input type="file" id="fPdf" accept=".pdf,application/pdf" onchange="validatePdfUpload(this)"><div id="fPdfInfo" style="font-size:.72rem;margin-top:4px"></div></div>
         </div>
       </div>
       <!-- TAWAN -->
@@ -921,9 +938,9 @@ function _cleanC(o){
             <div id="tRaqamSection" style="display:none;background:#f3f9ff;border:1.5px solid #90caf9;border-radius:9px;padding:14px;margin-bottom:12px">
               <div style="font-size:.76rem;font-weight:800;color:var(--blue);margin-bottom:12px">💵 Raqam (Money) Details</div>
               <div class="fg">
-                <div class="fgr" id="tWajRow"><label>Wajiba (₹)</label><input type="number" id="tWaj" placeholder="0" oninput="calcTawnTotal()"></div>
-                <div class="fgr" id="tNafRow" style="display:none"><label>Nafila (₹)</label><input type="number" id="tNaf" placeholder="0" oninput="calcTawnTotal()"></div>
-                <div class="fgr" id="tMaddatRow"><label>Maddat-e-Makhsusa (₹)</label><input type="number" id="tMaddat" placeholder="0" oninput="calcTawnTotal()"></div>
+                <div class="fgr" id="tWajRow"><label>Wajiba (₹)</label><input type="text" inputmode="decimal" id="tWaj" placeholder="0" oninput="amtNum(this);calcTawnTotal()"></div>
+                <div class="fgr" id="tNafRow" style="display:none"><label>Nafila (₹)</label><input type="text" inputmode="decimal" id="tNaf" placeholder="0" oninput="amtNum(this);calcTawnTotal()"></div>
+                <div class="fgr" id="tMaddatRow"><label>Maddat-e-Makhsusa (₹)</label><input type="text" inputmode="decimal" id="tMaddat" placeholder="0" oninput="amtNum(this);calcTawnTotal()"></div>
                 <div class="fgr"><label style="color:var(--orange);font-weight:700">Total Tawan (₹) — Auto</label>
                   <input type="number" id="tTot" readonly style="background:#fff3e0;font-weight:700;color:var(--orange);font-size:1rem"></div>
               </div>
@@ -951,7 +968,7 @@ function _cleanC(o){
                     <div class="fgr"><label>Approval Date</label><input type="date" id="tHRDate" onclick="this.showPicker&&this.showPicker()"></div>
                     <div class="fgr"><label>Start Month</label><input type="month" id="tHRStart" placeholder="YYYY-MM" onclick="this.showPicker&&this.showPicker()"></div>
                     <div class="fgr"><label>End Month</label><input type="month" id="tHREnd" placeholder="YYYY-MM" onclick="this.showPicker&&this.showPicker()"></div>
-                    <div class="fgr"><label>Monthly Amount (₹)</label><input type="number" id="tHRMonthly" placeholder="0"></div>
+                    <div class="fgr"><label>Monthly Amount (₹)</label><input type="text" inputmode="decimal" id="tHRMonthly" placeholder="0" oninput="amtNum(this)"></div>
                     <div class="fgr"><label>JV / Reference No</label><input id="tHRJV" placeholder="JV No..."></div>
                   </div>
                 </div>
@@ -981,7 +998,7 @@ function _cleanC(o){
                   <div style="font-size:.73rem;font-weight:700;color:var(--green);margin-bottom:8px">💯 Full & Final Payment Details</div>
                   <div class="fg">
                     <div class="fgr"><label>Payment Date</label><input type="date" id="tDirectDate"></div>
-                    <div class="fgr"><label>Amount Received (₹)</label><input type="number" id="tDirectAmt" placeholder="0" oninput="calcDirectTotal()"></div>
+                    <div class="fgr"><label>Amount Received (₹)</label><input type="text" inputmode="decimal" id="tDirectAmt" placeholder="0" oninput="amtNum(this);calcDirectTotal()"></div>
                     <div class="fgr"><label>Account / Reference / UTR No</label><input id="tDirectRef" placeholder="e.g. T26052114..."></div>
                     <div class="fgr"><label>Payment Mode</label>
                       <select id="tDirectMode">
@@ -1007,6 +1024,7 @@ function _cleanC(o){
               <div class="fg">
                 <div class="fgr fw"><label>Ashiya/Ajnas ka Bayan</label><input id="tAshiyaNaam" placeholder="Kya cheez hai..."></div>
                 <div class="fgr" id="tAshiyaWajibaRow"><label>Wajiba</label><input id="tAshiyaWajiba" placeholder="Amount ya Item..."></div>
+                <div class="fgr" id="tAshiyaNafilaRow"><label>Nafila</label><input id="tAshiyaNafila" placeholder="Amount ya Item..."></div>
                 <div class="fgr"><label>Maddat-e-Makhsusa</label><input id="tAshiyaMaddat" placeholder="Amount ya Item..."></div>
                 <div class="fgr"><label>Wasool Tarika</label>
                   <select id="tAshiyaWasool" onchange="onAshiyaWasool()">
@@ -1018,7 +1036,7 @@ function _cleanC(o){
                 </div>
                 <input type="hidden" id="tAshiyaMili">
                 <div class="fgr" id="tAshiyaRaqamBox" style="display:none"><label>Kitni Raqam Mili? (₹)</label>
-                  <input type="number" id="tAshiyaRaqamAmt" placeholder="0" oninput="calcTawnTotal&&calcTawnTotal()"></div>
+                  <input type="text" inputmode="decimal" id="tAshiyaRaqamAmt" placeholder="0" oninput="amtNum(this);calcTawnTotal&&calcTawnTotal()"></div>
                 <div class="fgr" id="tAshiyaProcessWrap" style="display:none"><label>Sharai Process Hua?</label>
                   <select id="tAshiyaProcess" onchange="onAshiyaProcess()">
                     <option value="">Select...</option>
@@ -1835,7 +1853,7 @@ const DEF_TMADD=["Makaan","Zameen","Saman / Asbab","Nuqsaan e Maal","Tijarat","W
 const DEF_TMAQSAD=["Shar'i Tawan","Islahi Tawan","Raazi Naama","Court Order","Mufahimat","Other"];
 const DEF_SAEL=["Division Finance Zimmedar","Audit Majlis","MAB Majlis","GSB Majlis","Nazim MTM","Nazim e Jamia","Majlis Maktaba tul Madina","FGN Channel","Ruhani Ilaj Office","GNO Majlis","Majlis Muawinat","Majlis 12 Mah","Majlis HR","Waqf Muballig","Ushr Majlis","Tajiran Majlis","Course Majlis","Qafila","Ijtima Majlis","Other"];
 const DEF_MUFATTISH=["Imran Misbahi","Afroz Madani","Hafin Madani","Muhammad Bilal Raza","Saqlain Raza Madani"];
-const DEF_STATUS=[{v:"pending_z",l:"🔴 Pending Zimmedar"},{v:"pending_f",l:"🟡 Pending (Finance)"},{v:"pending_o",l:"🔵 Pending (Office)"},{v:"ifta",l:"🟣 Sent to Ifta"},{v:"meeting",l:"🔵 Meeting"},{v:"office",l:"🔵 Office"},{v:"closed",l:"🟢 Closed"}];
+const DEF_STATUS=[{v:"pending_z",l:"🔴 Pending Zimmedar"},{v:"pending_o",l:"🔵 Pending (Office)"},{v:"ifta",l:"🟣 Sent to Ifta"},{v:"meeting",l:"🔵 Meeting"},{v:"office",l:"🔵 Office"},{v:"closed",l:"🟢 Closed"}];
 const DEF_RTYPES=[{v:"tawan",l:"💰 Tawan"},{v:"halfia",l:"📜 Halfiya Bayan"},{v:"tafhim",l:"🗣️ Tafhim"},{v:"tabadla",l:"🔄 Transfer"},{v:"mazratnama",l:"📝 Mazratnama"}];
 
 let TMADD=[...DEF_TMADD];
@@ -2370,7 +2388,7 @@ async function downloadBackup(btn){
   if(btn){ btn.disabled=true; var _o=btn.textContent; btn.textContent='⏳ Backup ban raha...'; }
   if(st) st.textContent='Data laa raha hai...';
   try{
-    var out = { backupDate:new Date().toISOString(), app:'SAB Case Management' };
+    var out = { _CONFIDENTIAL:'⚠️ MEHFOOZ RAKHEIN — is file mein cases/clients ka sensitive data hai. Kisi ke saath share na karein. Passwords is file mein NAHI hain.', backupDate:new Date().toISOString(), app:'SAB Case Management' };
     // cases — cache se lo agar hai (reads bachao), warna server se
     if(cc && cc.length){
       out.cases = cc.slice();
@@ -2604,6 +2622,13 @@ function _watchAuth(){
 function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;
   try{ if(typeof firebase!=='undefined' && firebase.auth) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem('sr_s');cu=null;
+  // Logout par sensitive cache clear (shared PC / XSS safety)
+  try{
+    localStorage.removeItem(_ckData()); localStorage.removeItem(_ckTs());
+    localStorage.removeItem('caseAutoSave');
+    for(var _i=localStorage.length-1;_i>=0;_i--){ var _k=localStorage.key(_i); if(_k && _k.indexOf('sab_cases_')===0) localStorage.removeItem(_k); }
+    cc=[];
+  }catch(e){}
   document.getElementById('lw').classList.remove('hide');
   document.getElementById('app').style.display='none';
   document.getElementById('lu').value='';document.getElementById('lp').value='';
@@ -2685,10 +2710,12 @@ function goPage(pg,el,skipHistory){
     else if(pg==='users')   fbGetU().then(rUsers);
     else if(pg==='clients') { loadClients(); }
     else if(pg==='newcase'){
+      var _draft = (!eId) ? localStorage.getItem('caseAutoSave') : null;
       if(!eId){ resetF(); }
       setTimeout(function(){
         initSearchableSelects();
         if(!eId){ var s=document.getElementById('fStat'); if(s){ s.value='pending_z'; if(s._ssRefresh)s._ssRefresh(); }}
+        if(_draft){ try{ localStorage.setItem('caseAutoSave', _draft); }catch(e){} checkAutoSave(); }
       }, 100);
     }
     else if(pg==='tawan')   renderTawan();
@@ -3099,19 +3126,7 @@ function addDirectPayment(){
   var txnNote = [ref, notes].filter(Boolean).join(' — ');
   tInsts.push({id:id, date:date||'', amt:amt, mode:mode||'direct', txn:txnNote, modeLabel:modeLabel});
   // Update direct list display
-  var listEl = document.getElementById('tDirectList');
-  if(listEl){
-    var html = tInsts.map(function(inst){
-      return '<div style="display:flex;gap:8px;align-items:center;background:#fff;padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:.74rem;border:1px solid #c8e6c9">'
-        +'<span style="color:var(--mt)">'+(inst.date||'—')+'</span>'
-        +'<strong style="color:var(--green)">₹'+parseFloat(inst.amt).toLocaleString('en-IN')+'</strong>'
-        +'<span>'+(inst.modeLabel||inst.mode||'')+'</span>'
-        +(inst.txn?'<span style="color:var(--mt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+inst.txn+'</span>':'')
-        +'<span onclick="removeInst(\''+inst.id+'\')" style="color:var(--red);cursor:pointer;margin-left:auto">✕</span>'
-        +'</div>';
-    }).join('');
-    listEl.innerHTML = html || '';
-  }
+  renderDirectList();
   renderInstallments();
   calcT();
   // Clear form
@@ -3436,6 +3451,27 @@ function removeInstallment(id){
   renderInstallments();
   calcT();
 }
+// Direct payment list render (addDirectPayment se nikala) + sahi remove
+function renderDirectList(){
+  var listEl = document.getElementById('tDirectList');
+  if(!listEl) return;
+  var html = tInsts.map(function(inst){
+    return '<div style="display:flex;gap:8px;align-items:center;background:#fff;padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:.74rem;border:1px solid #c8e6c9">'
+      +'<span style="color:var(--mt)">'+(inst.date||'—')+'</span>'
+      +'<strong style="color:var(--green)">₹'+parseFloat(inst.amt).toLocaleString('en-IN')+'</strong>'
+      +'<span>'+(inst.modeLabel||inst.mode||'')+'</span>'
+      +(inst.txn?'<span style="color:var(--mt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+inst.txn+'</span>':'')
+      +'<span onclick="removeInst(\''+inst.id+'\')" style="color:var(--red);cursor:pointer;margin-left:auto">✕</span>'
+      +'</div>';
+  }).join('');
+  listEl.innerHTML = html || '';
+}
+function removeInst(id){
+  tInsts=tInsts.filter(function(x){return x.id!==id;});
+  renderDirectList();
+  renderInstallments();
+  calcT();
+}
 function updInst(id,field,val){
   const inst=tInsts.find(x=>x.id===id);
   if(inst){
@@ -3547,7 +3583,6 @@ function updStats(){
   fcc_dash.forEach(m=>{
     c[0]++;
     if(m.status==='pending_z')c[1]++;
-    else if(m.status==='pending_f')c[2]++;
     else if(m.status==='pending_o')c[3]++;
     else if(m.status==='ifta')c[4]++;
     else if((m.status||'').toLowerCase()==='closed')c[5]++;
@@ -3586,7 +3621,7 @@ function updStats(){
 
 // Badges
 function sBdg(s){
-  const colorMap={pending_z:'br',pending_f:'by',pending_o:'bc',ifta:'bp',closed:'bg',meeting:'bc',office:'bgr'};
+  const colorMap={pending_z:'br',pending_o:'bc',ifta:'bp',closed:'bg',meeting:'bc',office:'bgr'};
   const cls=colorMap[s]||'bgr';
   // STATUSES array se label lo
   const st=STATUSES.find(function(x){return x.v===s;});
@@ -3601,7 +3636,7 @@ const THS=['Sr.','Case No','Date / Days','Location','Person','Subject','Status']
 function calcDays(c){if(!c.openDate)return'-';const s=new Date(c.openDate),e=(c.closeDate&&(c.status||'').toLowerCase()==='closed')?new Date(c.closeDate):new Date();const d=Math.floor((e-s)/(86400000));if(d<0)return'0d';const col=d<=7?'var(--green)':d<=30?'var(--yellow)':d<=90?'var(--orange)':'var(--red)';return'<span style="font-weight:700;color:'+col+'">'+(d)+'d</span>'+((c.status||'').toLowerCase()==='closed'?'<br><span style="font-size:.6rem;color:var(--green)">✅closed</span>':'');}
 const THF=['Sr.','Case No','Date / Days','Location','Dept / Person','Subject','Rahnumai','Remarks','Status','Actions'];
 function setTH(el,hs){el.innerHTML=hs.map(h=>`<th>${h}</th>`).join('');}
-function mRow(c,i,sh){
+function mRow(c,i,sh,bulk){
   c=_cleanC(c); // XSS FIX: saari user-entered values escape (subject, remarks, names, region...)
   const ab=`${hp('edit')?'<button class="btn bsm" style="background:#e3f2fd;color:var(--blue);padding:3px 7px" onclick="editC(\''+c.id+'\')">✏️</button> ':''}${hp('del')?'<button class="btn bred bsm" style="padding:3px 7px" onclick="delC(\''+c.id+'\')">🗑️</button>':''}`;
   const UF="font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:rtl;text-align:right;line-height:2;font-size:.8rem;";
@@ -3614,7 +3649,7 @@ function mRow(c,i,sh){
   const dateInfo=`<div><small>${c.openDate||'-'}</small>${c.closeDate?'<br><small style="color:var(--mt)">→'+c.closeDate+'</small>':''}</div><div style="margin-top:2px">${calcDays(c)}</div>`;
   if(sh)return`<tr style="cursor:pointer" title="Click to view details" onclick="rowClick(event,'${c.id}',true)"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${sBdg(c.status)}</td></tr>`;
   const rah=c.rahnumai?`<div style="font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;direction:rtl;text-align:right;line-height:2;font-size:.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.rahnumai}">${c.rahnumai}</div>`:'<span style="color:var(--mt)">—</span>';
-  return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')"><td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${rah}</td><td>${rem}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
+  return`<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')">${bulk?'<td onclick="event.stopPropagation()"><input type="checkbox" data-id="'+c.id+'" onchange="toggleBulkSelect(\''+c.id+'\',this)"></td>':''}<td>${i}</td><td style="font-weight:600;color:var(--bd);font-size:.78rem">${c.caseNo||'-'}</td><td>${dateInfo}</td><td>${loc}</td><td>${dept}</td><td>${subj}</td><td>${rah}</td><td>${rem}</td><td>${sBdg(c.status)}</td><td>${ab}</td></tr>`;
 }
 function rDash(){
   setTH(document.getElementById('dTH'),THS);
@@ -3639,11 +3674,12 @@ function rCases(){
   var pageData = _casesFiltered.slice(start, start + PAGE_SIZE);
 
   setTH(document.getElementById('cTH'),THF);
+  document.getElementById('cTH').insertAdjacentHTML('afterbegin','<th style="width:28px;text-align:center"><input type="checkbox" onchange="selectAllCases(this)" title="Sab select"></th>');
 
   var tb = document.getElementById('cTB');
   tb.innerHTML = pageData.length
-    ? pageData.map(function(c,i){ return mRow(c, start+i+1, false); }).join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">No cases</td></tr>';
+    ? pageData.map(function(c,i){ return mRow(c, start+i+1, false, true); }).join('')
+    : '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--mt)">No cases</td></tr>';
 
   document.getElementById('cCnt').textContent =
     'Total: ' + _casesFiltered.length +
@@ -4999,8 +5035,8 @@ function rRep(){
   });
 
   var bar=function(v,col,mx){ return '<div style="flex:1;background:#f0f4f8;border-radius:4px;height:9px;overflow:hidden"><div style="width:'+Math.round(v/(mx||1)*100)+'%;height:100%;background:'+col+';border-radius:4px;min-width:3px"></div></div>'; };
-  var sL={pending_z:'Pending Zimmedar',pending_f:'Pending (Finance)',pending_o:'Pending (Office)',ifta:'Sent to Ifta',closed:'Closed',meeting:'Meeting'};
-  var sC={pending_z:'var(--red)',pending_f:'var(--yellow)',pending_o:'var(--cyan)',ifta:'var(--pink)',closed:'var(--green)',meeting:'var(--blue)'};
+  var sL={pending_z:'Pending Zimmedar',pending_o:'Pending (Office)',ifta:'Sent to Ifta',closed:'Closed',meeting:'Meeting'};
+  var sC={pending_z:'var(--red)',pending_o:'var(--cyan)',ifta:'var(--pink)',closed:'var(--green)',meeting:'var(--blue)'};
   var mxR=1; // bR sync ke baad set hoga (regionStats ke baad)
   var mxSt=Math.max.apply(null, Object.values(bSt).concat([1]));
   var mxD=Math.max.apply(null, Object.values(bD).concat([1]));
@@ -5371,11 +5407,15 @@ function calcKT(){
   const od=document.getElementById('fOD').value,cd=document.getElementById('fCD').value;
   const el=document.getElementById('fKT');if(!el)return;
   if(!od||!cd){el.value='';return;}
-  const d1=new Date(od),d2=new Date(cd);
+  var p1=od.split('-'),p2=cd.split('-');
+  var d1=new Date(+p1[0],+p1[1]-1,+p1[2]),d2=new Date(+p2[0],+p2[1]-1,+p2[2]);
   if(d2<d1){el.value='❌ Closing < Opening';return;}
-  let diff=Math.floor((d2-d1)/(1000*60*60*24));
-  const y=Math.floor(diff/365);diff%=365;
-  const m=Math.floor(diff/30);const day=diff%30;
+  function addMonths(dt,n){var yy=dt.getFullYear(),mm=dt.getMonth()+n,dd=dt.getDate();var mx=new Date(yy,mm+1,0).getDate();return new Date(yy,mm,Math.min(dd,mx));}
+  var months=(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());
+  if(addMonths(d1,months)>d2) months--;
+  var anchor=addMonths(d1,months);
+  var day=Math.round((d2-anchor)/86400000);
+  var y=Math.floor(months/12),m=months%12;
   el.value=`${y} YEARS ${m} MONTHS ${day} DAYS`;
 }
 function calcContactTotal(){
@@ -5487,6 +5527,66 @@ function autoMazSt(){
   if(v==='yes'){ st.value='closed'; if(box) box.style.display='block'; }
   else { st.value='open'; if(box) box.style.display='none'; }
 }
+// Save se pehle preview — detail-grid jaisa dikhe, Edit/Save button. Promise(true=save,false=edit)
+function confirmSavePreview(d){
+  return new Promise(function(resolve){
+    var old=document.getElementById('savePreviewOverlay'); if(old) old.remove();
+    function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function row(l,v){ if(!v||!String(v).trim())return ''; return '<div class="di"><div class="dl">'+l+'</div><div class="dv" dir="auto">'+esc(v)+'</div></div>'; }
+    var persons=(d.persons&&d.persons.length?d.persons:[{name:d.name,mobile:d.mobile}]);
+    var pTxt=persons.map(function(p){return esc(((p.name||'')+(p.mansab?' — '+p.mansab:'')+(p.mobile?' | '+p.mobile:'')).trim());}).filter(function(x){return x;}).join('<br>');
+    var guidesTxt=(d.guides&&d.guides.length?d.guides.join(', '):(d.guide||''));
+    var grid=row('Case No',d.caseNo)+row('Open Date',d.openDate)+row('Year',d.year)+row('Mufattish',d.mufattish)
+      +row('Sael',d.sael)+row('Status',d.status)+row('Closing Date',d.closeDate)+row('Closing Time',d.closingTime)
+      +row('Region',d.region)+row('State',d.state)+row('Division',d.division)+row('District',d.district)
+      +row('City',d.city)+row('Dept',(d.depts&&d.depts.length?d.depts.join(', '):d.dept))
+      +(pTxt?'<div class="di"><div class="dl">Person(s)</div><div class="dv" dir="auto">'+pTxt+'</div></div>':'')
+      +row('Rahnumai',guidesTxt);
+    var subHtml=(d.subject&&d.subject.trim())?'<div class="sbox"><div class="sbox-title">📝 Subject</div><p dir="auto" style="line-height:2;font-family:\'Jameel Noori Nastaleeq\',\'Noto Nastaliq Urdu\',serif">'+esc(d.subject)+'</p></div>':'';
+    var ov=document.createElement('div');
+    ov.id='savePreviewOverlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px;box-sizing:border-box';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;margin:auto;box-shadow:0 12px 48px rgba(0,0,0,.3);overflow:hidden">'
+      +'<div style="padding:14px 18px;background:#eef4ff;border-bottom:1px solid #cfe0ff;font-size:1rem;font-weight:700;color:var(--blue)">🔎 Save karne se pehle check karein</div>'
+      +'<div style="padding:14px 18px;max-height:60vh;overflow-y:auto">'
+      +'<div style="text-align:center;margin-bottom:14px"><h2 style="color:#0d47a1;font-size:17px;margin:0 0 3px">📄 Shari\'ah Advisory Board</h2><div style="color:#607090;font-size:11px">Case Detail Report</div></div>'
+      +'<div class="sbox"><div class="sbox-title">📋 Case Info</div><div class="detgrid">'+grid+'</div></div>'+subHtml
+      +'</div>'
+      +'<div style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid #eee">'
+      +'<button id="spEdit" style="flex:1;padding:12px;border:1.5px solid #f0a000;border-radius:10px;background:#fff8e6;color:#a06a00;font-size:.95rem;font-weight:600;cursor:pointer">✏️ Edit karun</button>'
+      +'<button id="spSave" style="flex:1.4;padding:12px;border:none;border-radius:10px;background:var(--green);color:#fff;font-size:.95rem;font-weight:700;cursor:pointer">✅ Save karo</button>'
+      +'</div></div>';
+    document.body.appendChild(ov);
+    document.getElementById('spEdit').onclick=function(){ ov.remove(); resolve(false); };
+    document.getElementById('spSave').onclick=function(){ ov.remove(); resolve(true); };
+  });
+}
+// Required field khaali → us tak scroll + red highlight + toast
+function _reqFail(elId, msg){
+  toast('❌ '+msg);
+  var el=document.getElementById(elId);
+  if(!el) return;
+  try{ el.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+  var _ob=el.style.border, _os=el.style.boxShadow;
+  el.style.border='2px solid #c0392b'; el.style.boxShadow='0 0 0 3px rgba(192,57,43,.25)';
+  try{ el.focus({preventScroll:true}); }catch(e){ try{ el.focus(); }catch(_){} }
+  setTimeout(function(){ el.style.border=_ob; el.style.boxShadow=_os; }, 2800);
+}
+// XSS guard — RTE HTML se script/onclick/javascript: hatao, formatting rakho (detached div = safe)
+function sanitizeHtml(html){
+  if(!html) return '';
+  var tmp=document.createElement('div');
+  tmp.innerHTML=String(html);
+  tmp.querySelectorAll('script,iframe,object,embed,link,meta,style,form,base').forEach(function(n){ n.remove(); });
+  tmp.querySelectorAll('*').forEach(function(n){
+    [].slice.call(n.attributes).forEach(function(a){
+      var name=(a.name||'').toLowerCase(), val=(a.value||'').replace(/\s/g,'').toLowerCase();
+      if(name.indexOf('on')===0) n.removeAttribute(a.name);
+      else if((name==='href'||name==='src'||name==='xlink:href') && (val.indexOf('javascript:')===0||val.indexOf('data:text/html')===0)) n.removeAttribute(a.name);
+    });
+  });
+  return tmp.innerHTML;
+}
 async function saveCase(){
   // Double-click guard — ek save chal raha to dobara na chale (duplicate rokega)
   if(window._savingCase){ return; }
@@ -5505,28 +5605,28 @@ async function _saveCaseInner(){
   const persons=getPersons();
   const nm=(persons[0]||{}).name||'';
   const mb=(persons[0]||{}).mobile||'';
-  if(!cn){toast('❌ Case No required');return;}
+  if(!cn){ _reqFail('fCNo','Case No zaroori hai'); return; }
+  if(!document.getElementById('fReg').value){ _reqFail('fReg','Region chuniye'); return; }
   // Status Closed → Closing Date aur Sharai Rahnumai zaroori
   var _st=document.getElementById('fStat').value;
   if(_st==='closed'){
     var _cd=document.getElementById('fCD').value;
-    if(!_cd){ toast('❌ Closed karne ke liye Closing Date zaroori hai'); document.getElementById('fCD').focus(); return; }
+    if(!_cd){ _reqFail('fCD','Closed karne ke liye Closing Date zaroori hai'); return; }
     var _rah=(document.getElementById('fRah').value||'').replace(/<[^>]*>/g,'').trim();
-    if(!_rah){ toast('❌ Closed karne ke liye Sharai Rahnumai bharna zaroori hai'); var _rb=document.getElementById('rte-fRah'); if(_rb) _rb.focus(); return; }
+    if(!_rah){ _reqFail(document.getElementById('rte-fRah')?'rte-fRah':'fRah','Closed karne ke liye Sharai Rahnumai bharna zaroori hai'); return; }
   }
-  // Duplicate check — sirf new case mein
+  // Duplicate check — sirf new case mein (HARD BLOCK — duplicate save nahi hoga)
   if(!eId){
     var dupCase = cc.find(function(x){ return x.caseNo && x.caseNo.trim().toLowerCase() === cn.toLowerCase(); });
     if(dupCase){
-      toast('⚠️ Case No "'+cn+'" already exists! ('+dupCase.openDate+')');
-      if(!confirm('Case No "'+cn+'" already exists. Phir bhi save karein?')) return;
+      _reqFail('fCNo','Case No "'+cn+'" already exists ('+(dupCase.openDate||'')+') — dusra number daalein');
+      return;
     }
   }
-  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:document.getElementById('fSub').value.trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:document.getElementById('fRem').value.trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:document.getElementById('fRah').value.trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
+  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:sanitizeHtml(document.getElementById('fSub').value).trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:sanitizeHtml(document.getElementById('fRem').value).trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:sanitizeHtml(document.getElementById('fRah').value).trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
       tTypeAshiya:document.getElementById('tTypeAshiya')?document.getElementById('tTypeAshiya').checked:false,
       tCollMethod:(function(){var methods=[];['tCollHR','tCollInst','tCollDirect'].forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)methods.push(el.value);});return methods.join(',');}()),
-      tWaj:document.getElementById('tWaj').value,tNaf:document.getElementById('tNaf').value,
       tMaddat:document.getElementById('tMaddat')?document.getElementById('tMaddat').value:'',
       tHRDate:document.getElementById('tHRDate')?document.getElementById('tHRDate').value:'',
       tHRStart:document.getElementById('tHRStart')?document.getElementById('tHRStart').value:'',
@@ -5575,12 +5675,7 @@ async function _saveCaseInner(){
   if(_cms2.length && paid>=0) return String(Math.max(0, tot-paid));
   return document.getElementById('tRm').value;
 })(),tInsts:JSON.parse(JSON.stringify(tInsts)),
-      tHRDate:document.getElementById('tHRDate')?document.getElementById('tHRDate').value:'',
-      tHRStart:document.getElementById('tHRStart')?document.getElementById('tHRStart').value:'',
-      tHREnd:document.getElementById('tHREnd')?document.getElementById('tHREnd').value:'',
-      tHRMonthly:document.getElementById('tHRMonthly')?document.getElementById('tHRMonthly').value:'',
-      tHRJV:document.getElementById('tHRJV')?document.getElementById('tHRJV').value.trim():'',
-      tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tDonor:document.getElementById('tDonor').value.trim(),tNt:document.getElementById('tNt').value.trim(),
+      tCategory:document.getElementById('tCategory').value.trim(),tPurpose:document.getElementById('tPurpose').value.trim(),tNt:document.getElementById('tNt').value.trim(),
       tWapasRaqam:document.getElementById('tWapasRaqam')?document.getElementById('tWapasRaqam').checked:false,
       tWapasAshiya:document.getElementById('tWapasAshiya')?document.getElementById('tWapasAshiya').checked:false,
       tWapasAmt:document.getElementById('tWapasAmt')?document.getElementById('tWapasAmt').value:'',
@@ -5588,12 +5683,15 @@ async function _saveCaseInner(){
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
       tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}var _ms=document.getElementById('mazSt')?document.getElementById('mazSt').value:'';if(_ms==='yes')return 'closed';if(_ms==='no'||_ms==='')return 'open';return document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+  // Save se pehle preview (sirf naya case) — Edit ya Save
+  if(!eId){ var _go=await confirmSavePreview(data); if(!_go) return; }
   try{
     if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
     else{
     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-      var _newRef=await db.collection('cases').add(data);cacheInvalidate();refreshOneCase(_newRef.id);
-      toast('✅ Case saved!');
+      var _newRef=await db.collection('cases').add(data);cacheInvalidate();await refreshOneCase(_newRef.id);
+      window._lastSavedId=_newRef.id;
+      try{ localStorage.removeItem('caseAutoSave'); }catch(e){}
     }
     eId=null;
     document.getElementById('formTit').textContent='➕ New Case';
@@ -5601,6 +5699,7 @@ async function _saveCaseInner(){
     setTimeout(function(){ if(typeof rDash==='function') rDash(); if(typeof rRep==='function' && _currentPg==='reports') rRep(); },800);
     // Jis page se aaye the wahan wapas jao — All Cases, Search, ya current page
     var _prevPg = _currentPg === 'newcase' ? (_lastPgBeforeNewCase || 'cases') : _currentPg;
+    if(window._lastSavedId){ window._lastSavedId=null; toast('✅ Case save ho gaya!'); }
     goPage(_prevPg);
   }catch(e){console.error('SAVE ERROR:',e&&e.stack?e.stack:e);toast('❌ '+e.message);}
 }
@@ -5612,7 +5711,7 @@ function editC(id){
   // Pehle sab tawan fields reset karo — purana data saaf ho jaye
   resetTawnFields();
   setTimeout(()=>{
-    const fv={fCNo:'caseNo',fOD:'openDate',fYr:'year',fMuf:'mufattish',fCity:'city',fOldRegion:'oldRegion',fOldDivision:'oldDivision',fOldKabina:'oldKabina',fOldSheher:'oldSheher',fIdN:'idaraName',fNm:'name',fMob:'mobile',fEC:'empCode',fSub:'subject',fDet:'detail',fCD:'closeDate',fRem:'remarks',fKT:'closingTime',fCall:'callCount',fMail:'mailCount',fWA:'waCount',fCTotal:'contactTotal',fRah:'rahnumai',tDR:'tDR',tDRCustom:'tDRCustom',tDonor:'tDonor',tHkm:'tHkm',tNaf:'tNaf',tWaj:'tWaj',tTot:'tTot',tPd:'tPd',tRm:'tRm',tCategory:'tCategory',tPurpose:'tPurpose',tDonor:'tDonor',tNt:'tNt',hDt:'hDt',hNt:'hNt',tfNt:'tfNt',tbPl:'tbPl',tbNt:'tbNt',mazDt:'mazDt',mazNt:'mazNt'};
+    const fv={fCNo:'caseNo',fOD:'openDate',fYr:'year',fMuf:'mufattish',fCity:'city',fOldRegion:'oldRegion',fOldDivision:'oldDivision',fOldKabina:'oldKabina',fOldSheher:'oldSheher',fIdN:'idaraName',fNm:'name',fMob:'mobile',fEC:'empCode',fSub:'subject',fDet:'detail',fCD:'closeDate',fRem:'remarks',fKT:'closingTime',fCall:'callCount',fMail:'mailCount',fWA:'waCount',fCTotal:'contactTotal',fRah:'rahnumai',tDR:'tDR',tDRCustom:'tDRCustom',tDonor:'tDonor',tHkm:'tHkm',tNaf:'tNaf',tWaj:'tWaj',tTot:'tTot',tPd:'tPd',tRm:'tRm',tCategory:'tCategory',tPurpose:'tPurpose',tNt:'tNt',hDt:'hDt',hNt:'hNt',tfNt:'tfNt',tbPl:'tbPl',tbNt:'tbNt',mazDt:'mazDt',mazNt:'mazNt'};
     Object.entries(fv).forEach(([fi,k])=>{const e=document.getElementById(fi);if(e&&c[k]!==undefined)e.value=c[k]||'';});
     // Load RTE editors with saved HTML
     setRTE("rte-fSub", c.subject||""); setRTE("rte-fRem", c.remarks||""); setRTE("rte-fRah", c.rahnumai||"");
@@ -5742,6 +5841,26 @@ function editC(id){
                    (c.tInsts&&c.tInsts.length) || (c.tHRMonthly&&c.tHRMonthly!=='');
     var _tr=document.getElementById('tTypeRaqam');
     if(_tr && hasMoney && !_tr.checked){ _tr.checked=true; onTawnType(); onCollMethod(); }
+  })();
+  // Ashiya restore — edit pe blank na ho (DATA WIPE FIX)
+  (function(){
+    var _ta=document.getElementById('tTypeAshiya');
+    var hasAshiya = (c.tTypeAshiya===true) || (c.tAshiyaNaam&&c.tAshiyaNaam!=='') ||
+                    (c.tAshiyaWajiba&&c.tAshiyaWajiba!=='') || (c.tAshiyaNafila&&c.tAshiyaNafila!=='') ||
+                    (c.tAshiyaMaddat&&c.tAshiyaMaddat!=='') || (c.tAshiyaWasool&&c.tAshiyaWasool!=='');
+    if(_ta && hasAshiya && !_ta.checked){ _ta.checked=true; if(typeof onTawnType==='function') onTawnType(); }
+    function _sv(id,v){ var el=document.getElementById(id); if(el) el.value=(v!=null?v:''); }
+    _sv('tAshiyaNaam', c.tAshiyaNaam);
+    _sv('tAshiyaWajiba', c.tAshiyaWajiba);
+    _sv('tAshiyaNafila', c.tAshiyaNafila);
+    _sv('tAshiyaMaddat', c.tAshiyaMaddat);
+    _sv('tMaddat', c.tMaddat);
+    _sv('tAshiyaMili', c.tAshiyaMili);
+    _sv('tAshiyaProcess', c.tAshiyaProcess);
+    _sv('tAshiyaProcessNo', c.tAshiyaProcessNo);
+    _sv('tAshiyaRaqamAmt', c.tAshiyaRaqamAmt);
+    var _aw=document.getElementById('tAshiyaWasool');
+    if(_aw){ _aw.value=c.tAshiyaWasool||''; if(typeof onAshiyaWasool==='function') onAshiyaWasool(); }
   })();
   // Full & Final received amount/date/ref wapas bharo (edit pe blank na ho)
   (function(){
@@ -5924,7 +6043,7 @@ function drRenderBox(boxId, items, selectedArr, onChangeFn){
     // Check all visible checkboxes directly
     var listEl = document.getElementById(boxId + '_list');
     if(listEl) listEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = true; });
-    if(box2._onChange) eval(box2._onChange);
+    if(box2._onChange) _runCb(box2._onChange);
   });
   // Clear All button
   var clrAll = document.createElement('button');
@@ -5938,7 +6057,7 @@ function drRenderBox(boxId, items, selectedArr, onChangeFn){
     // Uncheck all visible checkboxes directly
     var listEl = document.getElementById(boxId + '_list');
     if(listEl) listEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = false; });
-    if(box2._onChange) eval(box2._onChange);
+    if(box2._onChange) _runCb(box2._onChange);
   });
   topBar.appendChild(srch);
   topBar.appendChild(selAll);
@@ -5953,6 +6072,12 @@ function drRenderBox(boxId, items, selectedArr, onChangeFn){
   drFillList(boxId, items, selectedArr, onChangeFn);
 }
 
+// eval ki jagah — sirf simple function-naam call kare (CSP-safe, arbitrary code nahi)
+function _runCb(str){
+  if(!str) return;
+  var fn=String(str).trim().replace(/\(\s*\)\s*;?$/,'');
+  if(/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(fn) && typeof window[fn]==='function'){ window[fn](); }
+}
 function drFillList(boxId, items, selectedArr, onChangeFn){
   var listId = boxId + '_list';
   var list = document.getElementById(listId);
@@ -6032,7 +6157,7 @@ function drCheckChanged(boxId, onChangeFn){
       box._sel = checked.concat(hiddenSelected);
     }
   }
-  if(onChangeFn) eval(onChangeFn);
+  if(onChangeFn) _runCb(onChangeFn);
 }
 
 // Get checked values from a box
@@ -6203,6 +6328,7 @@ async function saveUser(){
   const un=document.getElementById('uUN').value.trim(),pw=document.getElementById('uPW').value;
   let fn=document.getElementById('uFN').value.trim();
   if(!un){toast('❌ Username required');return;}
+  if(/[\/.]/.test(un)){toast('❌ Username mein / ya . nahi ho sakta');return;}
   if(!fn) fn=un;
   if(!eUId&&!pw){toast('❌ Password required for new user');return;}
   if(uc.find(x=>x.username===un&&x.id!==eUId)){toast('❌ Username exists');return;}
@@ -6237,7 +6363,7 @@ async function saveUser(){
   // Use set without merge to completely overwrite (removes old fields like region/sael/division/state)
   try{
     if(eUId) await db.collection('users').doc(eUId).set(d);
-    else await db.collection('users').add(d);
+    else await db.collection('users').doc(un.toLowerCase()).set(d);
     toast('✅ User saved!');
     cmo('mUser');
     fbGetU().then(rUsers);
@@ -6391,6 +6517,10 @@ function triggerAutoSave(){
     if(eId) return; // Sirf new case mein auto-save
     var cn = (document.getElementById('fCNo')||{}).value||'';
     if(!cn) return; // Case No hona zaroori hai
+    var _s=(document.getElementById('fSub')||{}).value||'';
+    var _r=(document.getElementById('fReg')||{}).value||'';
+    var _p=[].slice.call(document.querySelectorAll('.pNm')).some(function(i){return (i.value||'').trim();});
+    if(!_s.trim() && !_r && !_p) return; // sirf auto Case No pe draft mat banao — asli kaam pe hi
     var snap = {
       caseNo: cn,
       openDate: (document.getElementById('fOD')||{}).value||'',
@@ -6423,6 +6553,7 @@ function checkAutoSave(){
     localStorage.removeItem('caseAutoSave');
     toast('✅ Draft restored!');
   } else {
+    clearTimeout(autoSaveTimer);
     localStorage.removeItem('caseAutoSave');
   }
 }
@@ -6766,6 +6897,7 @@ function updateBulkBar(){
   var cnt=document.getElementById('bulkCount');if(cnt)cnt.textContent=selectedCases.size+' cases selected';
 }
 async function bulkChangeStatus(status){
+  if(status==='closed'){ toast('❌ Bulk se Closed nahi — case kholke Closing Date + Rahnumai bharo'); return; }
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   if(!confirm(selectedCases.size+' cases ka status "'+status+'" karein?'))return;
   await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));
@@ -7368,16 +7500,18 @@ async function fixPendingF(){
   if(!confirm('office status ke cases ko pending_o mein merge karo?')) return;
   var snap = await casesQuery().get();
   var batch = db.batch();
-  var count = 0;
-  snap.docs.forEach(function(doc){
+  var count = 0, ops = 0;
+  for(var i=0;i<snap.docs.length;i++){
+    var doc = snap.docs[i];
     var d = doc.data();
     if(d.status === 'office'){
       batch.update(doc.ref, {status:'pending_o', updatedAt:new Date().toISOString()});
-      count++;
+      count++; ops++;
+      if(ops >= 400){ await batch.commit(); batch = db.batch(); ops = 0; }
     }
-  });
+  }
   if(count === 0){ toast('Koi office case nahi mila'); return; }
-  await batch.commit();
+  if(ops > 0) await batch.commit();
   toast('✅ '+count+' office cases pending_o mein merge ho gaye!');
   setTimeout(function(){ window.location.reload(); }, 1500);
 }
@@ -7436,19 +7570,21 @@ async function fixCaseDepts(){
   if(btn){ btn.disabled=true; btn.textContent='⏳ Updating...'; }
   try{
     const snap = await casesQuery().get();
-    const batch = db.batch();
-    let count = 0;
-    snap.docs.forEach(function(doc){
+    let batch = db.batch();
+    let count = 0, ops = 0;
+    for(let i=0;i<snap.docs.length;i++){
+      const doc = snap.docs[i];
       const d = doc.data();
       const oldDept = d.dept || '';
       const newDept = normalizeDept(oldDept);
       if(newDept && newDept !== oldDept){
         batch.update(doc.ref, {dept: newDept});
-        count++;
+        count++; ops++;
+        if(ops >= 400){ await batch.commit(); batch = db.batch(); ops = 0; }
       }
-    });
+    }
     if(count > 0){
-      await batch.commit();
+      if(ops > 0) await batch.commit();
       toast('✅ ' + count + ' cases ke dept names update ho gaye!');
     } else {
       toast('ℹ️ Sab cases pehle se correct hain!');
@@ -7703,11 +7839,15 @@ var _resetUId = null;
 
 // ===== FILE UPLOAD VALIDATION =====
 function validatePdfUpload(inp){
-  if(!inp.files||!inp.files[0]) return;
+  var info=document.getElementById('fPdfInfo');
+  function setInfo(txt,color){ if(info){ info.textContent=txt; info.style.color=color||'var(--mt)'; } }
+  if(!inp.files||!inp.files[0]){ setInfo(''); return; }
   var f = inp.files[0];
   var MAX = 10 * 1024 * 1024; // 10MB
+  var mb = (f.size/1048576).toFixed(2);
   if(f.size > MAX){
-    toast('❌ File too large. Max 10MB allowed.');
+    toast('❌ File 10MB se badi hai ('+mb+' MB)');
+    setInfo('❌ File badi hai: '+mb+' MB (max 10MB)', '#c0392b');
     inp.value = '';
     return;
   }
@@ -7718,8 +7858,12 @@ function validatePdfUpload(inp){
     var header = '';
     for(var i=0;i<arr.length;i++) header += arr[i].toString(16).padStart(2,'0');
     if(header !== '25504446'){ // %PDF magic bytes
-      toast('❌ Invalid file. Please upload a real PDF.');
+      toast('❌ Ye asli PDF nahi hai');
+      setInfo('❌ Invalid PDF', '#c0392b');
       inp.value = '';
+    } else {
+      toast('✅ PDF lag gayi');
+      setInfo('📎 '+f.name+' ('+mb+' MB) ✅', 'var(--green)');
     }
   };
   reader.readAsArrayBuffer(f.slice(0,4));
@@ -8962,6 +9106,15 @@ function setTawnPersons(arr){
   });
 }
 // ===== END TAWAN PERSON =====
+function mobDigits(inp){
+  inp.value = (inp.value||'').replace(/[^0-9]/g,'').slice(0,10);
+  var w=inp.parentNode.querySelector('.mobWarn');
+  if(!w){ w=document.createElement('div'); w.className='mobWarn'; w.style.cssText='font-size:.68rem;color:#c0392b;margin-top:3px'; inp.parentNode.appendChild(w); }
+  var n=inp.value.length;
+  if(n>0 && n<10){ w.textContent='⚠️ '+(10-n)+' aur digit — 10 pura karo'; }
+  else { w.textContent=''; }
+}
+function amtNum(inp){ var v=(inp.value||'').replace(/[^0-9.]/g,''); var i=v.indexOf('.'); if(i>=0){ v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,''); } inp.value=v; }
 function nmAutoComplete(inp){
   var q = (inp.value||'').trim().toLowerCase();
   var box = inp.parentNode.querySelector('.nm-sug');
@@ -9060,6 +9213,8 @@ function nmPick(inp, name, mobile, empCode, desig){
   // Sab suggestion boxes hide karo is row mein
   if(row) row.querySelectorAll('.nm-sug').forEach(function(s){ s.style.display='none'; });
   if(box) box.style.display = 'none';
+  // Matrix/guide refresh — suggestion se bhara to bhi (programmatic set input event nahi deta)
+  if(typeof fillGuidePersons==='function') fillGuidePersons();
 }
 // Hide suggestions when clicking outside
 document.addEventListener('click', function(e){
@@ -9076,8 +9231,8 @@ function addPersonRow(){
   div.dataset.row = idx;
   div.style.cssText = 'position:relative;margin-bottom:6px;padding:6px 8px;background:#f8f9ff;border:1px dashed var(--bor);border-radius:7px';
   var sugBox = '<div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div>';
-  div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" oninput="nmAutoComplete(this)" onchange="if(typeof fillGuidePersons===\'function\')fillGuidePersons()" autocomplete="off">'+sugBox+'</div>'
-    +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
+  div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" oninput="nmAutoComplete(this);if(typeof fillGuidePersons===\'function\')fillGuidePersons()" onchange="if(typeof fillGuidePersons===\'function\')fillGuidePersons()" autocomplete="off">'+sugBox+'</div>'
+    +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" inputmode="numeric" maxlength="10" placeholder="Mobile" oninput="mobDigits(this);nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
     +'<div class="fgr" style="position:relative"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..." oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox+'</div>'
     +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox
     +'<button type="button" onclick="removePersonRow(this)" style="position:absolute;top:0;right:0;background:#ffebee;color:#c62828;border:none;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;line-height:1">×</button>'
@@ -9118,8 +9273,8 @@ function setPersons(arr){
     if(i>0) div.style.cssText = 'position:relative;margin-bottom:6px;padding:6px 8px;background:#f8f9ff;border:1px dashed var(--bor);border-radius:7px';
     else div.style.cssText = 'position:relative;margin-bottom:6px';
     var sugBox2 = '<div class="nm-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--blue);border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto"></div>';
-    div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" value="'+escHtml(p.name||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
-      +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" placeholder="Mobile" value="'+escHtml(p.mobile||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
+    div.innerHTML = '<div class="fgr" style="position:relative"><label>Full Name</label><input class="pNm" placeholder="Full Name" value="'+escHtml(p.name||'')+'" oninput="nmAutoComplete(this);if(typeof fillGuidePersons===\'function\')fillGuidePersons()" autocomplete="off">'+sugBox2+'</div>'
+      +'<div class="fgr" style="position:relative"><label>Mobile</label><input class="pMob" type="tel" inputmode="numeric" maxlength="10" placeholder="Mobile" value="'+escHtml(p.mobile||'')+'" oninput="mobDigits(this);nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
       +'<div class="fgr" style="position:relative"><label>Mansab (Designation)</label><input class="pMansab" placeholder="e.g. Nazim, Muhtamim..." value="'+escHtml(p.mansab||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2+'</div>'
       +'<div class="fgr" style="position:relative"><label>Employee Code</label><input class="pEc" placeholder="Emp Code" value="'+escHtml(p.empCode||p.empcode||'')+'" oninput="nmAutoComplete(this)" autocomplete="off">'+sugBox2
       +(i>0?'<button type="button" onclick="removePersonRow(this)" style="position:absolute;top:0;right:0;background:#ffebee;color:#c62828;border:none;border-radius:50%;width:20px;height:20px;font-size:.75rem;cursor:pointer;line-height:1">×</button>':'')  
