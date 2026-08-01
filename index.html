@@ -508,7 +508,13 @@ function _cleanC(o){
     } else if(v && typeof v.toDate==='function'){
       r[k] = v;
     } else if(Array.isArray(v)){
-      r[k] = v.map(function(x){ return typeof x==='string'?_e(x):x; });
+      r[k] = v.map(function(x){
+        if(typeof x==='string') return _e(x);
+        if(x && typeof x==='object' && typeof x.toDate!=='function') return _cleanC(x);
+        return x;
+      });
+    } else if(v && typeof v==='object' && typeof v.toDate!=='function'){
+      r[k] = _cleanC(v);
     } else {
       r[k] = v;
     }
@@ -2156,8 +2162,10 @@ async function fbInit(){
     // Admin check background mein
     fbGetU().then(function(us){
       if(!us.find(function(u){return u.username==='admin';})){
-        makePwHash('Admin@786#Secure').then(function(defHash){
+        var _tmpPw = 'Adm-'+Math.random().toString(36).slice(2,10)+'-'+Date.now().toString(36).slice(-4);
+        makePwHash(_tmpPw).then(function(defHash){
           db.collection('users').doc('admin').set({username:'admin',password:defHash,fullname:'Super Admin',role:'admin',active:true,mustChangePw:true,note:'',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},createdAt:new Date().toISOString()});
+          try{ alert('⚠️ Admin account naya bana.\nTemporary password: '+_tmpPw+'\n\nIsse login karke TURANT apna password set karein!'); }catch(e){ console.warn('Admin temp pw:', _tmpPw); }
         });
       }
     });
@@ -2182,17 +2190,37 @@ var _casesFiltered = []; // filtered+sorted full list (IDs + basic fields)
 var _casesPageData = []; // current page ke full docs
 
 function _applyRestriction(arr){
-  if(cu && cu.username !== 'admin'){
+  if(cu && cu.username !== 'admin' && cu.role !== 'admin' && cu.role !== 'superadmin'){
     var dr=cu.dataRestrict||{};
+    var out=arr;
+    // Region — strict (jaisa pehle tha, tested)
     if(dr.regions&&dr.regions.length>0){
-      return arr.filter(function(c){
+      out=out.filter(function(c){
         var cReg=(c.region||'').trim().toLowerCase();
-        return dr.regions.some(function(r){
-          var rr=(r||'').trim().toLowerCase();
-          return cReg===rr;
-        });
+        return dr.regions.some(function(r){ return (r||'').trim().toLowerCase()===cReg; });
       });
     }
+    // Baaki restrictions — additional narrowing (case me field khaali ho to mat roko, purana data safe)
+    function _narrow(list, getVal){
+      if(!list||!list.length) return;
+      out=out.filter(function(c){
+        var v=(getVal(c)||'').trim().toLowerCase();
+        if(!v) return true;
+        return list.some(function(x){ return (x||'').trim().toLowerCase()===v; });
+      });
+    }
+    _narrow(dr.states, function(c){return c.state;});
+    _narrow(dr.divisions, function(c){return c.division;});
+    _narrow(dr.districts, function(c){return c.district;});
+    _narrow(dr.saels, function(c){return c.sael;});
+    if(dr.depts&&dr.depts.length){
+      out=out.filter(function(c){
+        var cd=(c.depts&&c.depts.length)?c.depts:(c.dept?[c.dept]:[]);
+        if(!cd.length) return true;
+        return cd.some(function(d){ var dl=(d||'').trim().toLowerCase(); return dr.depts.some(function(x){ return (x||'').trim().toLowerCase()===dl; }); });
+      });
+    }
+    return out;
   }
   return arr;
 }
@@ -2214,6 +2242,7 @@ function _processCasesRaw(rawArr){
   cc = rawArr.slice(); // already plain objects
   _sortByCaseNoDesc(cc);
   cc = _applyRestriction(cc);
+  window._ccLoaded=true;
 
   // Year dropdown hamesha cc load hone ke baad refresh karo
   repInitYears();
@@ -2243,6 +2272,7 @@ function _processCases(docs){
   cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
   _sortByCaseNoDesc(cc);
   cc = _applyRestriction(cc);
+  window._ccLoaded=true;
 
   // MultiSelects — sirf ek baar init karo
   if(!_msReady){initMultiSelects();_msReady=true;}
@@ -5434,7 +5464,7 @@ function resetF(){
   ['tTot','tPd','tRm','tNaf','tWaj','fCall','fMail','fWA','fCTotal'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   tInsts=[];renderInstallments();
   document.getElementById('hDt').value='';
-  document.getElementById('fOD').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fOD').value=_localDate();
   document.getElementById('fYr').value=new Date().getFullYear();
   // Clear autosave on new case
   localStorage.removeItem('caseAutoSave');
@@ -6302,10 +6332,12 @@ var DESIG_PRESETS = {
 };
 
 function applyDesignationPreset(){
-  var desig = document.getElementById('uDesig').value;
+  var _dEl=document.getElementById('uDesig'); if(!_dEl) return;
+  var desig = _dEl.value;
   var preview = document.getElementById('desigPreview');
   var previewWrap = document.getElementById('desigPreviewWrap');
   var roleEl = document.getElementById('uRl');
+  if(!previewWrap || !preview){ return; }
   if(!desig){ previewWrap.style.display='none'; return; }
   var preset = DESIG_PRESETS[desig];
   if(!preset){ previewWrap.style.display='none'; return; }
@@ -6325,13 +6357,13 @@ function applyDesignationPreset(){
 
 function autoPm(){const r=document.getElementById('uRl').value;sPm({admin:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},staff:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false},viewer:{view:true,add:false,edit:false,del:false,search:true,reports:true,users:false,settings:false}}[r]||{});}
 async function saveUser(){
-  const un=document.getElementById('uUN').value.trim(),pw=document.getElementById('uPW').value;
+  const un=document.getElementById('uUN').value.trim(),pw=document.getElementById('uPW').value.trim();
   let fn=document.getElementById('uFN').value.trim();
   if(!un){toast('❌ Username required');return;}
   if(/[\/.]/.test(un)){toast('❌ Username mein / ya . nahi ho sakta');return;}
   if(!fn) fn=un;
   if(!eUId&&!pw){toast('❌ Password required for new user');return;}
-  if(uc.find(x=>x.username===un&&x.id!==eUId)){toast('❌ Username exists');return;}
+  if(uc.find(x=>(x.username||'').toLowerCase()===un.toLowerCase()&&x.id!==eUId)){toast('❌ Username exists (case ka farak nahi)');return;}
   // Multi-select dataRestrict — save as arrays
   const dr={
     regions: drGetChecked('uDRegBox'),
@@ -6362,7 +6394,11 @@ async function saveUser(){
   var desigVal='';const d={username:un,fullname:fn,password:finalPw,role:_autoRole,designation:desigVal,active:document.getElementById('uAc').value==='1',note:document.getElementById('uNt').value.trim(),perms:gPm(),dataRestrict:cleanDR,updatedAt:new Date().toISOString()};
   // Use set without merge to completely overwrite (removes old fields like region/sael/division/state)
   try{
-    if(eUId) await db.collection('users').doc(eUId).set(d);
+    if(eUId){
+      var _old=uc.find(function(x){return x.id===eUId;});
+      if(_old){ if(_old.createdAt) d.createdAt=_old.createdAt; if(_old.mustChangePw!==undefined) d.mustChangePw=_old.mustChangePw; }
+      await db.collection('users').doc(eUId).set(d);
+    }
     else await db.collection('users').doc(un.toLowerCase()).set(d);
     toast('✅ User saved!');
     cmo('mUser');
@@ -6435,10 +6471,17 @@ function autoFillCaseNo(retries){
   var inp = document.getElementById('fCNo');
   if(!inp || inp.value.trim()) return; // Already filled
 
-  // cc abhi bhi load ho raha hai — retry karo
-  if(!cc || cc.length === 0){
+  // cc abhi load ho raha hai — retry (loaded flag se pehchano, sirf length se nahi)
+  if(!window._ccLoaded){
     retries = (retries||0) + 1;
     if(retries < 20) setTimeout(function(){ autoFillCaseNo(retries); }, 300);
+    return;
+  }
+  // Loaded ho gaya. Agar 0 cases (fresh DB ya restricted region me koi case nahi) → pehla number
+  if(!cc || cc.length === 0){
+    var yr0 = document.getElementById('fYr').value || new Date().getFullYear();
+    inp.value = 'MSR/H/'+String(yr0).slice(-2)+'/0001';
+    triggerAutoSave();
     return;
   }
 
@@ -6526,9 +6569,15 @@ function triggerAutoSave(){
       openDate: (document.getElementById('fOD')||{}).value||'',
       year: (document.getElementById('fYr')||{}).value||'',
       mufattish: (document.getElementById('fMuf')||{}).value||'',
-      subject: (document.getElementById('fSub')||{}).value||'',
+      sael: (document.getElementById('fSael')||{}).value||'',
       region: (document.getElementById('fReg')||{}).value||'',
       state: (document.getElementById('fSt')||{}).value||'',
+      division: (document.getElementById('fDiv')||{}).value||'',
+      district: (document.getElementById('fDist')||{}).value||'',
+      city: (document.getElementById('fCity')||{}).value||'',
+      subject: (document.getElementById('fSub')||{}).value||'',
+      detail: (document.getElementById('fDet')||{}).value||'',
+      persons: (typeof getPersons==='function'?getPersons():[]),
       savedAt: new Date().toLocaleTimeString()
     };
     localStorage.setItem('caseAutoSave', JSON.stringify(snap));
@@ -6549,7 +6598,15 @@ function checkAutoSave(){
     if((el=document.getElementById('fOD'))) el.value=snap.openDate||'';
     if((el=document.getElementById('fYr'))){ el.value=snap.year||''; toggleOldLoc(el.value); }
     if((el=document.getElementById('fMuf'))) el.value=snap.mufattish||'';
+    if((el=document.getElementById('fSael'))) el.value=snap.sael||'';
+    if((el=document.getElementById('fReg'))){ el.value=snap.region||''; if(typeof fFS==='function') fFS(); }
+    if((el=document.getElementById('fSt'))){ el.value=snap.state||''; if(typeof fFD==='function') fFD(); }
+    if((el=document.getElementById('fDiv'))){ el.value=snap.division||''; if(typeof fFDi==='function') fFDi(); }
+    if((el=document.getElementById('fDist'))) el.value=snap.district||'';
+    if((el=document.getElementById('fCity'))) el.value=snap.city||'';
     if((el=document.getElementById('fSub'))) el.value=snap.subject||'';
+    if((el=document.getElementById('fDet'))) el.value=snap.detail||'';
+    if(snap.persons && snap.persons.length && typeof setPersons==='function'){ setPersons(snap.persons); if(typeof fillGuidePersons==='function') fillGuidePersons(); }
     localStorage.removeItem('caseAutoSave');
     toast('✅ Draft restored!');
   } else {
@@ -6900,22 +6957,29 @@ async function bulkChangeStatus(status){
   if(status==='closed'){ toast('❌ Bulk se Closed nahi — case kholke Closing Date + Rahnumai bharo'); return; }
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   if(!confirm(selectedCases.size+' cases ka status "'+status+'" karein?'))return;
-  await Promise.all(Array.from(selectedCases).map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));
-  var updCount = selectedCases.size;
+  var _ids=Array.from(selectedCases);
+  var results=await Promise.allSettled(_ids.map(function(id){return db.collection('cases').doc(id).update({status:status,updatedAt:new Date().toISOString()});}));
+  var ok=results.filter(function(r){return r.status==='fulfilled';}).length;
+  var fail=results.length-ok;
   reloadCases();
-  selectedCases.clear();updateBulkBar();toast('✅ '+updCount+' cases updated!');
+  selectedCases.clear();updateBulkBar();
+  toast(fail>0 ? ('⚠️ '+ok+' updated, '+fail+' fail (permission?)') : ('✅ '+ok+' cases updated!'));
 }
 async function bulkDelete(){
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   var cnt=selectedCases.size;
   if(!confirm(cnt+' cases DELETE karein? Undo nahi hoga!'))return;
   var _ids=Array.from(selectedCases);
-  await Promise.all(_ids.map(function(id){return db.collection('cases').doc(id).delete();}));
+  var results=await Promise.allSettled(_ids.map(function(id){return db.collection('cases').doc(id).delete();}));
   cacheInvalidate();
-  _ids.forEach(function(id){ cc = cc.filter(function(c){return c.id!==id;}); });
+  var okIds=[];
+  results.forEach(function(r,i){ if(r.status==='fulfilled') okIds.push(_ids[i]); });
+  okIds.forEach(function(id){ cc = cc.filter(function(c){return c.id!==id;}); });
   try{ cacheSave(cc.slice()); }catch(e){}
   _rerenderCurrent();
-  selectedCases.clear();updateBulkBar();toast('🗑️ '+cnt+' cases deleted!');
+  selectedCases.clear();updateBulkBar();
+  var fail=_ids.length-okIds.length;
+  toast(fail>0 ? ('⚠️ '+okIds.length+' deleted, '+fail+' fail (permission?)') : ('🗑️ '+okIds.length+' cases deleted!'));
 }
 
 // ===== CASE SHARE LINK =====
@@ -9115,6 +9179,8 @@ function mobDigits(inp){
   else { w.textContent=''; }
 }
 function amtNum(inp){ var v=(inp.value||'').replace(/[^0-9.]/g,''); var i=v.indexOf('.'); if(i>=0){ v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,''); } inp.value=v; }
+// Local date YYYY-MM-DD (UTC bug fix — India me raat ko pichli date na aaye)
+function _localDate(d){ d=d||new Date(); var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 function nmAutoComplete(inp){
   var q = (inp.value||'').trim().toLowerCase();
   var box = inp.parentNode.querySelector('.nm-sug');
@@ -9487,7 +9553,7 @@ async function importClientsFromCases(){
 
   // Existing clients ka naam set banao
   var existingNames = {};
-  _clients.forEach(function(c){ existingNames[c.naam.trim().toLowerCase()] = true; });
+  _clients.forEach(function(c){ existingNames[(c.naam||'').trim().toLowerCase()+'|'+((c.phone||'').trim())] = true; });
 
   // Cases se sab persons nikalo
   var toImport = [];
@@ -9495,7 +9561,7 @@ async function importClientsFromCases(){
     var persons = c.persons || [];
     // Old single person format bhi check karo
     if(c.name && c.name.trim()){
-      var key = c.name.trim().toLowerCase();
+      var key = c.name.trim().toLowerCase()+'|'+((c.mobile||'').trim());
       if(!existingNames[key]){
         existingNames[key] = true;
         toImport.push({
@@ -9511,7 +9577,7 @@ async function importClientsFromCases(){
     }
     persons.forEach(function(p){
       if(p.name && p.name.trim()){
-        var key2 = p.name.trim().toLowerCase();
+        var key2 = p.name.trim().toLowerCase()+'|'+((p.mobile||p.mob||'').trim());
         if(!existingNames[key2]){
           existingNames[key2] = true;
           toImport.push({
