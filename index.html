@@ -1671,7 +1671,8 @@ function _cleanC(o){
         <!-- DATA RESTRICTION - MULTI SELECT -->
         <div class="fgr fw" style="border:1.5px solid #e3f2fd;border-radius:9px;padding:12px;background:#f7fbff;margin-top:4px">
           <label style="font-weight:700;color:var(--blue);font-size:.78rem;display:block;margin-bottom:6px">🔒 Data Restriction (optional)</label>
-          <p style="font-size:.69rem;color:var(--mt);margin-bottom:10px">Multiple select kar sakte ho. Jo khali chhodoge uska koi filter nahi lagega.</p>
+          <p style="font-size:.69rem;color:var(--mt);margin-bottom:4px">Multiple select kar sakte ho. Jo khali chhodoge uska koi filter nahi lagega.</p>
+          <p style="font-size:.66rem;color:var(--mt);margin-bottom:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:5px 8px">ℹ️ <b>Region</b> = pakki (server-level) security. <b>State / Division / District / Sael / Department</b> = additional view filter (display narrowing). Consistent values rakhein warna cases chhup sakte hain.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
 
             <!-- REGION -->
@@ -1944,8 +1945,9 @@ function fmMergeFonts(arr){
 }
 
 function fmRebuildFONTS(){
-  var removedUrdu = JSON.parse(localStorage.getItem('fmRemoved_urdu')||'[]');
-  var removedEng  = JSON.parse(localStorage.getItem('fmRemoved_english')||'[]');
+  var removedUrdu, removedEng;
+  try{ removedUrdu = JSON.parse(localStorage.getItem('fmRemoved_urdu')||'[]'); }catch(e){ removedUrdu=[]; }
+  try{ removedEng  = JSON.parse(localStorage.getItem('fmRemoved_english')||'[]'); }catch(e){ removedEng=[]; }
   // Rebuild window.FONTS
   window.FONTS = [];
   window.FONTS.push('--- Urdu Fonts ---');
@@ -3172,8 +3174,12 @@ function calcTawnTotal(){
   var wajRow=document.getElementById('tWajRow');
   var wajHidden = wajRow && getComputedStyle(wajRow).display==='none';
   var waj = wajHidden ? 0 : (parseFloat(document.getElementById('tWaj').value)||0); // Wajiba hide (maaf/no/select) → total mein 0
-  var naf = parseFloat(document.getElementById('tNaf').value)||0;
-  var mad = parseFloat(document.getElementById('tMaddat').value)||0;
+  var nafRow=document.getElementById('tNafRow');
+  var nafHidden = nafRow && getComputedStyle(nafRow).display==='none';
+  var naf = nafHidden ? 0 : (parseFloat(document.getElementById('tNaf').value)||0); // Nafila hide (select nahi) → total mein 0
+  var madRow=document.getElementById('tMaddatRow');
+  var madHidden = madRow && getComputedStyle(madRow).display==='none';
+  var mad = madHidden ? 0 : (parseFloat(document.getElementById('tMaddat').value)||0);
   var total = (waj + naf + mad) || 0;
   document.getElementById('tTot').value = total || '';
   calcT();
@@ -4289,6 +4295,10 @@ function _srchCell(c, key){
   var v;
   if(key==='dept'){ v = (c.depts&&c.depts.length)?c.depts.join(', '):(c.dept||''); }
   else if(key==='guide'){ v = (c.guides&&c.guides.length)?c.guides.join(', '):(c.guide||''); }
+  else if(key==='status'){
+    var _sm={pending_z:'Pending Zimmedar',pending_o:'Pending (Office)',ifta:'Sent to Ifta',meeting:'Meeting',office:'Office',closed:'Closed'};
+    v = _sm[c.status] || c.status || '';
+  }
   else { v = c[key]; }
   v = (v==null)?'':String(v);
   if(['subject','detail','remarks','rahnumai'].indexOf(key)>-1) v = _stripTags(v);
@@ -5652,6 +5662,14 @@ async function _saveCaseInner(){
       _reqFail('fCNo','Case No "'+cn+'" already exists ('+(dupCase.openDate||'')+') — dusra number daalein');
       return;
     }
+    // Server pe bhi fresh check — do users same waqt wala race window kam karo (local cc stale ho sakta)
+    try{
+      var _srvDup = await db.collection('cases').where('caseNo','==',cn).limit(1).get();
+      if(_srvDup && !_srvDup.empty){
+        _reqFail('fCNo','Case No "'+cn+'" already exists (server) — dusra number daalein');
+        return;
+      }
+    }catch(_se){ /* server check block/fail hua to local check pe rely — save aage badhega */ }
   }
   const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:sanitizeHtml(document.getElementById('fSub').value).trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:sanitizeHtml(document.getElementById('fRem').value).trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:sanitizeHtml(document.getElementById('fRah').value).trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
@@ -5863,7 +5881,7 @@ function editC(id){
   // FIX: agar tawan mein money data hai par Raqam (Money) checkbox off save tha,
   // to checkbox ON karke section dikhao — warna saved amount chhupa reh jaata hai
   (function(){
-    var hasMoney = (c.tDirectAmt&&c.tDirectAmt!=='0'&&c.tDirectAmt!=='') ||
+    var hasMoney = (c.tTypeRaqam===true) || (c.tDirectAmt&&c.tDirectAmt!=='0'&&c.tDirectAmt!=='') ||
                    (c.tPd&&c.tPd!=='0'&&c.tPd!=='') ||
                    (c.tTot&&c.tTot!=='0'&&c.tTot!=='') ||
                    (c.tNaf&&c.tNaf!=='') || (c.tWaj&&c.tWaj!=='') ||
@@ -5891,6 +5909,7 @@ function editC(id){
     _sv('tAshiyaRaqamAmt', c.tAshiyaRaqamAmt);
     var _aw=document.getElementById('tAshiyaWasool');
     if(_aw){ _aw.value=c.tAshiyaWasool||''; if(typeof onAshiyaWasool==='function') onAshiyaWasool(); }
+    if(typeof onAshiyaProcess==='function') onAshiyaProcess();
   })();
   // Full & Final received amount/date/ref wapas bharo (edit pe blank na ho)
   (function(){
@@ -6019,14 +6038,14 @@ function rUsers(){
 }
 function openUM(id){
   eUId=id||null;document.getElementById('umTit').textContent=id?'Edit User':'New User';
-  if(id){const u=uc.find(x=>x.id===id);if(!u)return;document.getElementById('uUN').value=u.username;document.getElementById('uFN').value=u.fullname;document.getElementById('uPW').value='';document.getElementById('uRl').value=u.role||'viewer';document.getElementById('uAc').value=u.active!==false?'1':'0';document.getElementById('uNt').value=u.note||'';
+  if(id){const u=uc.find(x=>x.id===id);if(!u)return;document.getElementById('uUN').value=u.username;document.getElementById('uUN').readOnly=true;document.getElementById('uFN').value=u.fullname;document.getElementById('uPW').value='';document.getElementById('uRl').value=u.role||'viewer';document.getElementById('uAc').value=u.active!==false?'1':'0';document.getElementById('uNt').value=u.note||'';
     var de=document.getElementById('uDesig');if(de)de.value=u.designation||'';
     sPm(u.perms||{});
     if(u.designation){setTimeout(applyDesignationPreset,50);}else{var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';}
     var dr=u.dataRestrict||{};
     initUDRestrict(dr);
   }
-  else{['uUN','uFN','uPW','uNt'].forEach(id=>document.getElementById(id).value='');document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';var de=document.getElementById('uDesig');if(de)de.value='';var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';sPm({view:true,search:true});initUDRestrict({});}
+  else{['uUN','uFN','uPW','uNt'].forEach(id=>document.getElementById(id).value='');document.getElementById('uUN').readOnly=false;document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';var de=document.getElementById('uDesig');if(de)de.value='';var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';sPm({view:true,search:true});initUDRestrict({});}
   document.getElementById('mUser').classList.add('open');
 }
 function sPm(p){document.getElementById('pv').checked=!!p.view;document.getElementById('pa').checked=!!p.add;document.getElementById('pe').checked=!!p.edit;document.getElementById('pd').checked=!!(p.del||p.delete);document.getElementById('ps').checked=!!p.search;document.getElementById('pr').checked=!!p.reports;document.getElementById('pu').checked=!!p.users;document.getElementById('pst').checked=!!p.settings;}
@@ -6396,7 +6415,16 @@ async function saveUser(){
   try{
     if(eUId){
       var _old=uc.find(function(x){return x.id===eUId;});
-      if(_old){ if(_old.createdAt) d.createdAt=_old.createdAt; if(_old.mustChangePw!==undefined) d.mustChangePw=_old.mustChangePw; }
+      if(_old){
+        // Purane flat restriction fields hatao (ab dataRestrict me hain), baaki sab (metadata/designation) preserve
+        var _merged=Object.assign({}, _old);
+        ['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){ delete _merged[k]; });
+        Object.assign(_merged, d);
+        if(_old.createdAt) _merged.createdAt=_old.createdAt;
+        if(_old.mustChangePw!==undefined) _merged.mustChangePw=_old.mustChangePw;
+        if((!d.designation||d.designation==='') && _old.designation) _merged.designation=_old.designation;
+        d=_merged;
+      }
       await db.collection('users').doc(eUId).set(d);
     }
     else await db.collection('users').doc(un.toLowerCase()).set(d);
@@ -6590,8 +6618,9 @@ function triggerAutoSave(){
 function checkAutoSave(){
   var saved = localStorage.getItem('caseAutoSave');
   if(!saved) return;
-  var snap = JSON.parse(saved);
-  if(!snap.caseNo) return;
+  var snap;
+  try{ snap = JSON.parse(saved); }catch(_e){ localStorage.removeItem('caseAutoSave'); return; }
+  if(!snap || !snap.caseNo) return;
   if(confirm('💾 Auto-saved draft mila:\nCase No: '+snap.caseNo+'\nSaved at: '+snap.savedAt+'\n\nRestore karein?')){
     var el;
     if((el=document.getElementById('fCNo'))) el.value=snap.caseNo||'';
@@ -9553,7 +9582,7 @@ async function importClientsFromCases(){
 
   // Existing clients ka naam set banao
   var existingNames = {};
-  _clients.forEach(function(c){ existingNames[(c.naam||'').trim().toLowerCase()+'|'+((c.phone||'').trim())] = true; });
+  _clients.forEach(function(c){ existingNames[(c.naam||'').trim().toLowerCase()+'|'+((c.phone||'').trim())+'|'+((c.empCode||'').trim())] = true; });
 
   // Cases se sab persons nikalo
   var toImport = [];
@@ -9561,7 +9590,7 @@ async function importClientsFromCases(){
     var persons = c.persons || [];
     // Old single person format bhi check karo
     if(c.name && c.name.trim()){
-      var key = c.name.trim().toLowerCase()+'|'+((c.mobile||'').trim());
+      var key = c.name.trim().toLowerCase()+'|'+((c.mobile||'').trim())+'|'+((c.empCode||'').trim());
       if(!existingNames[key]){
         existingNames[key] = true;
         toImport.push({
@@ -9577,7 +9606,7 @@ async function importClientsFromCases(){
     }
     persons.forEach(function(p){
       if(p.name && p.name.trim()){
-        var key2 = p.name.trim().toLowerCase()+'|'+((p.mobile||p.mob||'').trim());
+        var key2 = p.name.trim().toLowerCase()+'|'+((p.mobile||p.mob||'').trim())+'|'+((p.empCode||p.empcode||'').trim());
         if(!existingNames[key2]){
           existingNames[key2] = true;
           toImport.push({
