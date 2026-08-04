@@ -10047,7 +10047,8 @@ function deptClose(){
     sizes.forEach(function(s){
       css += '.ql-picker.ql-size .ql-picker-item[data-value="'+s+'"]::before,.ql-picker.ql-size .ql-picker-label[data-value="'+s+'"]::before{content:"'+s.replace('px','')+'";}';
     });
-    css += '.ql-editor{font-size:15px;min-height:90px;} .ql-container{font-size:15px;}';
+    css += '.ql-editor{font-size:15px;min-height:90px;unicode-bidi:plaintext;} .ql-editor p,.ql-editor div,.ql-editor li{unicode-bidi:plaintext;} .ql-container{font-size:15px;}';
+    css += '.ql-snow .ql-picker.ql-font{width:120px}.ql-snow .ql-picker.ql-font .ql-picker-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:18px}.ql-snow .ql-picker.ql-font .ql-picker-options{width:200px}.ql-snow .ql-picker.ql-font .ql-picker-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ql-snow .ql-toolbar{white-space:nowrap}';
     var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
     window._quillFonts = fonts.map(fk);
     window._quillSizes = sizes;
