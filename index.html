@@ -10025,11 +10025,41 @@ function deptClose(){
     if(inp) inp.value='';
   };
 
+  // Quill mein app ke custom fonts + sizes register karo (ek baar)
+  window._quillSetup = false;
+  window._setupQuillFormats = function(){
+    if(window._quillSetup || typeof Quill==='undefined') return;
+    var fk = function(n){ return 'f'+n.replace(/[^a-zA-Z0-9]/g,'').toLowerCase(); };
+    var fonts = (window.FONTS||[]).filter(function(f){ return f && f.indexOf('---')<0; });
+    var Font = Quill.import('formats/font');
+    Font.whitelist = fonts.map(fk);
+    Quill.register(Font, true);
+    var Size = Quill.import('attributors/style/size');
+    var sizes = ['8px','9px','10px','11px','12px','14px','16px','18px','20px','22px','24px','28px','32px','36px','48px','72px'];
+    Size.whitelist = sizes;
+    Quill.register(Size, true);
+    var css = '';
+    fonts.forEach(function(n){
+      var k = fk(n);
+      css += '.ql-font-'+k+'{font-family:"'+n+'" !important;}';
+      css += '.ql-picker.ql-font .ql-picker-item[data-value="'+k+'"]::before,.ql-picker.ql-font .ql-picker-label[data-value="'+k+'"]::before{content:"'+n+'";font-family:"'+n+'";}';
+    });
+    sizes.forEach(function(s){
+      css += '.ql-picker.ql-size .ql-picker-item[data-value="'+s+'"]::before,.ql-picker.ql-size .ql-picker-label[data-value="'+s+'"]::before{content:"'+s.replace('px','')+'";}';
+    });
+    css += '.ql-editor{font-size:15px;min-height:90px;} .ql-container{font-size:15px;}';
+    var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
+    window._quillFonts = fonts.map(fk);
+    window._quillSizes = sizes;
+    window._quillSetup = true;
+  };
+
   // Modern Word-like editor (Quill) — fallback: Quill na ho to purana contenteditable
   window.initQuill = function(edId, placeholder){
     try{
       if(typeof Quill==='undefined') return false;
       if(window._quills[edId]) return true;
+      window._setupQuillFormats();
       var tb = document.getElementById(edId+'-tb');
       var ed = document.getElementById(edId);
       var inp = document.getElementById(edId.replace('rte-',''));
@@ -10041,7 +10071,7 @@ function deptClose(){
       var q = new Quill(ed, {
         theme:'snow', placeholder: placeholder||'',
         modules:{ toolbar:[
-          [{'font':[]},{'size':['small',false,'large','huge']}],
+          [{'font': window._quillFonts||[]},{'size': window._quillSizes||[]}],
           ['bold','italic','underline','strike'],
           [{'color':[]},{'background':[]}],
           [{'align':[]}],
@@ -10051,6 +10081,7 @@ function deptClose(){
           ['clean']
         ]}
       });
+      q.root.setAttribute('dir','auto'); // Urdu RTL / English LTR apne aap
       if(existing && existing.trim()) q.root.innerHTML = existing;
       else if(inp && inp.value) q.root.innerHTML = inp.value;
       q.on('text-change', function(){ if(inp) inp.value = q.root.innerHTML; });
