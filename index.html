@@ -321,6 +321,8 @@ document.addEventListener('DOMContentLoaded', function(){
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -760,11 +762,11 @@ function _cleanC(o){
           <div class="fgr fw"><label>Subject</label>
             <div class="rte-wrap" id="rte-fSub-wrap">
               <div class="rte-toolbar" id="rte-fSub-tb"></div>
-              <div class="rte-body" id="rte-fSub" contenteditable="true" data-placeholder="Subject likhein..."></div>
+              <div class="rte-body" id="rte-fSub" contenteditable="true" dir="auto" data-placeholder="Subject likhein..."></div>
             </div>
             <input type="hidden" id="fSub">
           </div>
-          <div class="fgr fw"><label>Case Details</label><textarea id="fDet" rows="3"></textarea></div>
+          <div class="fgr fw"><label>Case Details</label><textarea id="fDet" rows="3" dir="auto" oninput="this.style.height='auto';this.style.height=(this.scrollHeight+2)+'px'" style="overflow:hidden;resize:vertical"></textarea></div>
         </div>
       </div>
       <div class="sbox">
@@ -777,7 +779,7 @@ function _cleanC(o){
           <div class="fgr fw"><label>Remarks</label>
             <div class="rte-wrap" id="rte-fRem-wrap">
               <div class="rte-toolbar" id="rte-fRem-tb"></div>
-              <div class="rte-body" id="rte-fRem" contenteditable="true" data-placeholder="Remarks likhein..."></div>
+              <div class="rte-body" id="rte-fRem" contenteditable="true" dir="auto" data-placeholder="Remarks likhein..."></div>
             </div>
             <input type="hidden" id="fRem">
           </div>
@@ -799,7 +801,7 @@ function _cleanC(o){
           <div class="fgr fw"><label>Rahnumai Text</label>
             <div class="rte-wrap" id="rte-fRah-wrap">
               <div class="rte-toolbar" id="rte-fRah-tb"></div>
-              <div class="rte-body" id="rte-fRah" contenteditable="true" data-placeholder="Sharai Rahnumai likhein..." style="min-height:80px"></div>
+              <div class="rte-body" id="rte-fRah" contenteditable="true" dir="auto" data-placeholder="Sharai Rahnumai likhein..." style="min-height:80px"></div>
             </div>
             <input type="hidden" id="fRah">
           </div>
@@ -7243,7 +7245,8 @@ function renderTawan(){
       // Received = tawnSt==='closed' OR (tJm==='yes' AND paid > 0)
       // Partial   = tJm==='partial'
       // Not Received = baaki sab
-      var isReceived = c.tawnSt==='closed' || (c.tJm==='yes' && paid > 0);
+      // Received/fulfilled = tawnSt closed OR (tJm=yes & paid>0) OR Maaf karaya (Rehnumai pe amal — maafi bhi fulfillment)
+      var isReceived = c.tawnSt==='closed' || (c.tJm==='yes' && paid > 0) || c.tDR==='maaf';
       var isPartial  = !isReceived && c.tJm==='partial';
       var isNotReceived = !isReceived && !isPartial;
       if(fWus==='yes'     && !isReceived)    return false;
@@ -7257,8 +7260,8 @@ function renderTawan(){
 
   // Stats
   const tot = tw.length;
-  const wusool = tw.filter(c=>c.tJm==='yes').length;
-  const pending = tw.filter(c=>c.tJm==='no'||!c.tJm).length;
+  const wusool = tw.filter(c=> c.tDR==='maaf' || c.tJm==='yes').length; // Maaf bhi fulfilled (Rehnumai amal hua)
+  const pending = tw.filter(c=> c.tDR!=='maaf' && (c.tJm==='no'||!c.tJm)).length; // Maaf pending nahi
   const totalAmt = tw.reduce((s,c)=>s+(parseFloat(c.tTot)||0),0);
   const wajAmt   = tw.reduce((s,c)=>s+(parseFloat(c.tPd)||0),0);
   const nafAmt   = tw.reduce((s,c)=>s+(parseFloat(c.tRm)||0),0);
@@ -9984,40 +9987,92 @@ function deptClose(){
     return;
   }
 
-  // Sync contenteditable HTML → hidden input
+  window._quills = window._quills || {};
+  // Sync contenteditable/Quill HTML → hidden input
   window.syncRTE = function(edId){
-    var ed = document.getElementById(edId);
     var inp = document.getElementById(edId.replace('rte-',''));
-    if(ed && inp){ autoDir(ed); inp.value = ed.innerHTML; }
+    var q = window._quills[edId];
+    if(q){ if(inp) inp.value = q.root.innerHTML; return; }
+    var ed = document.getElementById(edId);
+    if(ed && inp){ if(typeof autoDir==='function') autoDir(ed); inp.value = ed.innerHTML; }
   };
 
-  // Set value into contenteditable (for edit mode)
+  // Set value into editor (for edit mode)
   window.setRTE = function(edId, html){
-    var ed = document.getElementById(edId);
     var inp = document.getElementById(edId.replace('rte-',''));
+    var q = window._quills[edId];
+    if(q){ q.root.innerHTML = html||''; if(inp) inp.value = html||''; return; }
+    var ed = document.getElementById(edId);
     if(ed){ ed.innerHTML = html||''; }
     if(inp){ inp.value = html||''; }
   };
 
   // Get value from RTE
   window.getRTE = function(edId){
+    var q = window._quills[edId];
+    if(q) return q.root.innerHTML;
     var ed = document.getElementById(edId);
     return ed ? ed.innerHTML : '';
   };
 
   // Clear RTE
   window.clearRTE = function(edId){
-    var ed = document.getElementById(edId);
     var inp = document.getElementById(edId.replace('rte-',''));
+    var q = window._quills[edId];
+    if(q){ q.setText(''); if(inp) inp.value=''; return; }
+    var ed = document.getElementById(edId);
     if(ed) ed.innerHTML='';
     if(inp) inp.value='';
+  };
+
+  // Modern Word-like editor (Quill) — fallback: Quill na ho to purana contenteditable
+  window.initQuill = function(edId, placeholder){
+    try{
+      if(typeof Quill==='undefined') return false;
+      if(window._quills[edId]) return true;
+      var tb = document.getElementById(edId+'-tb');
+      var ed = document.getElementById(edId);
+      var inp = document.getElementById(edId.replace('rte-',''));
+      if(!ed) return false;
+      if(tb) tb.style.display='none';
+      var existing = ed.innerHTML;
+      ed.removeAttribute('contenteditable');
+      ed.innerHTML='';
+      var q = new Quill(ed, {
+        theme:'snow', placeholder: placeholder||'',
+        modules:{ toolbar:[
+          [{'font':[]},{'size':['small',false,'large','huge']}],
+          ['bold','italic','underline','strike'],
+          [{'color':[]},{'background':[]}],
+          [{'align':[]}],
+          [{'list':'ordered'},{'list':'bullet'}],
+          [{'indent':'-1'},{'indent':'+1'}],
+          [{'direction':'rtl'}],
+          ['clean']
+        ]}
+      });
+      if(existing && existing.trim()) q.root.innerHTML = existing;
+      else if(inp && inp.value) q.root.innerHTML = inp.value;
+      q.on('text-change', function(){ if(inp) inp.value = q.root.innerHTML; });
+      window._quills[edId] = q;
+      return true;
+    }catch(e){ console.warn('Quill init fail '+edId, e); return false; }
   };
 
   // Init all three editors
   document.addEventListener('DOMContentLoaded', function(){
     buildToolbar('rte-fSub-tb','rte-fSub');
     buildToolbar('rte-fRem-tb','rte-fRem');
-    buildToolbar('rte-fRah-tb','rte-fRah');
+    // Rahnumai — modern Quill editor (Quill load hone ka wait, fallback: purana editor)
+    (function(){
+      function tryInit(n){
+        if(typeof Quill!=='undefined' && window.initQuill){
+          if(!window.initQuill('rte-fRah','Sharai Rahnumai likhein...')) buildToolbar('rte-fRah-tb','rte-fRah');
+        } else if(n<40){ setTimeout(function(){ tryInit(n+1); }, 150); }
+        else { buildToolbar('rte-fRah-tb','rte-fRah'); }
+      }
+      tryInit(0);
+    })();
     // Date inputs — kahi bhi click karo, calendar khule
     document.addEventListener('click', function(e){
       if(e.target && e.target.type === 'date'){
