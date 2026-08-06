@@ -1415,6 +1415,22 @@ function _cleanC(o){
     <!-- Trend Chart & Mufattish Breakdown -->
     <div id="rpExtra" style="margin-top:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px"></div>
     <div id="rpYearCompare" style="margin-top:14px"></div>
+    <div id="breakdownSec" style="margin-top:20px;background:#fff;border:1px solid var(--bor);border-radius:12px;padding:14px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <h3 style="font-size:.92rem;color:var(--bd);margin:0;display:flex;align-items:center;gap:6px">📊 Breakdown Table</h3>
+        <label style="font-size:.75rem;color:var(--mt)">Group by:</label>
+        <select id="bdGroup" onchange="renderBreakdown()" style="padding:6px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.78rem;background:#fff">
+          <option value="region">Region</option>
+          <option value="state">State</option>
+          <option value="division" selected>Division</option>
+          <option value="district">District</option>
+          <option value="dept">Department</option>
+        </select>
+        <button onclick="bdExcel()" style="margin-left:auto;padding:5px 12px;font-size:.72rem;border:none;background:#217346;color:#fff;border-radius:7px;cursor:pointer;font-weight:600">📊 Excel</button>
+        <button onclick="bdPDF()" style="padding:5px 12px;font-size:.72rem;border:none;background:#c0392b;color:#fff;border-radius:7px;cursor:pointer;font-weight:600">📄 PDF</button>
+      </div>
+      <div id="bdTable" style="overflow-x:auto"></div>
+    </div>
   </div>
 
   <!-- CLIENTS -->
@@ -4957,6 +4973,71 @@ function _tawnSummaryHtml(){
     '<th style="padding:8px;text-align:right;color:var(--red)">Baqi</th>'+
     '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
+// ===== BREAKDOWN TABLE (Region/State/Division/District/Dept wise, status columns) =====
+function _bdLabel(gf){ return {region:'Region',state:'State',division:'Division',district:'District',dept:'Department'}[gf]||gf; }
+function _bdCompute(){
+  var gf = (document.getElementById('bdGroup')||{}).value || 'division';
+  var cases = (typeof repGetFilteredCases==='function') ? repGetFilteredCases() : (cc||[]);
+  var statuses = [['pending_z','Pending Zimmedar'],['pending_o','Pending (Office)'],['ifta','Sent to Ifta'],['meeting','Meeting'],['office','Office'],['closed','Closed']];
+  var groups = {};
+  cases.forEach(function(c){
+    var key;
+    if(gf==='dept'){ key = (c.depts&&c.depts.length)?c.depts.join(', '):(c.dept||''); }
+    else { key = c[gf]||''; }
+    key = (key||'').toString().trim() || '(Blank)';
+    if(!groups[key]) groups[key] = {total:0};
+    var st = c.status||'';
+    groups[key][st] = (groups[key][st]||0)+1;
+    groups[key].total++;
+  });
+  var keys = Object.keys(groups).sort(function(a,b){ return a.localeCompare(b,undefined,{numeric:true}); });
+  var totals = {total:0};
+  keys.forEach(function(k){ statuses.forEach(function(s){ totals[s[0]]=(totals[s[0]]||0)+(groups[k][s[0]]||0); }); totals.total+=groups[k].total; });
+  return {gf:gf, keys:keys, groups:groups, statuses:statuses, totals:totals};
+}
+function renderBreakdown(){
+  var el = document.getElementById('bdTable'); if(!el) return;
+  var d = _bdCompute(); window._bdData = d;
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:.76rem;white-space:nowrap"><thead><tr style="background:var(--blue);color:#fff">';
+  html += '<th style="padding:7px 10px;text-align:left;position:sticky;left:0;background:var(--blue);z-index:1">'+_bdLabel(d.gf)+'</th>';
+  d.statuses.forEach(function(s){ html += '<th style="padding:7px 8px;text-align:center">'+s[1]+'</th>'; });
+  html += '<th style="padding:7px 8px;text-align:center">Total</th></tr></thead><tbody>';
+  d.keys.forEach(function(k,i){
+    var bg = i%2?'#f8fafc':'#fff';
+    html += '<tr style="border-bottom:1px solid var(--bor);background:'+bg+'">';
+    html += '<td style="padding:6px 10px;font-weight:600;position:sticky;left:0;background:'+bg+'">'+_e(k)+'</td>';
+    d.statuses.forEach(function(s){ var n=d.groups[k][s[0]]||0; html += '<td style="padding:6px 8px;text-align:center">'+(n||'')+'</td>'; });
+    html += '<td style="padding:6px 8px;text-align:center;font-weight:700">'+d.groups[k].total+'</td></tr>';
+  });
+  html += '<tr style="background:#e8f5e9;font-weight:700;border-top:2px solid var(--green)"><td style="padding:7px 10px;position:sticky;left:0;background:#e8f5e9">Total</td>';
+  d.statuses.forEach(function(s){ html += '<td style="padding:7px 8px;text-align:center">'+(d.totals[s[0]]||0)+'</td>'; });
+  html += '<td style="padding:7px 8px;text-align:center">'+d.totals.total+'</td></tr>';
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+function bdExcel(){
+  var d = window._bdData || _bdCompute();
+  var rows = '<tr><th>'+_bdLabel(d.gf)+'</th>'; d.statuses.forEach(function(s){ rows+='<th>'+s[1]+'</th>'; }); rows+='<th>Total</th></tr>';
+  d.keys.forEach(function(k){ rows+='<tr><td>'+String(k).replace(/</g,'')+'</td>'; d.statuses.forEach(function(s){ rows+='<td>'+(d.groups[k][s[0]]||0)+'</td>'; }); rows+='<td>'+d.groups[k].total+'</td></tr>'; });
+  rows+='<tr><td>Total</td>'; d.statuses.forEach(function(s){ rows+='<td>'+(d.totals[s[0]]||0)+'</td>'; }); rows+='<td>'+d.totals.total+'</td></tr>';
+  var html='<html><head><meta charset="utf-8"></head><body><table border="1">'+rows+'</table></body></html>';
+  var blob=new Blob([html],{type:'application/vnd.ms-excel'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Breakdown_'+d.gf+'_'+new Date().toISOString().slice(0,10)+'.xls'; a.click();
+}
+function bdPDF(){
+  try{
+    var d = window._bdData || _bdCompute();
+    var jsPDFCtor = (window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+    var doc = new jsPDFCtor({orientation:'landscape'});
+    var head=[[_bdLabel(d.gf)].concat(d.statuses.map(function(s){return s[1];})).concat(['Total'])];
+    var body=d.keys.map(function(k){ return [k].concat(d.statuses.map(function(s){return d.groups[k][s[0]]||0;})).concat([d.groups[k].total]); });
+    body.push(['Total'].concat(d.statuses.map(function(s){return d.totals[s[0]]||0;})).concat([d.totals.total]));
+    doc.setFontSize(13); doc.text(_bdLabel(d.gf)+'-wise Breakdown', 14, 14);
+    doc.autoTable({head:head, body:body, startY:20, styles:{fontSize:8}, headStyles:{fillColor:[21,101,192]}});
+    doc.save('Breakdown_'+d.gf+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  }catch(e){ alert('PDF error: '+e.message); }
+}
+
 function rRep(){
   var now = new Date();
   updRepYears();        // year options bharo
@@ -5441,6 +5522,7 @@ function rRep(){
   mufHTML += '</div>';
 
   document.getElementById('rpExtra').innerHTML = trendHTML + mufHTML;
+  if(typeof renderBreakdown==='function'){ try{ renderBreakdown(); }catch(e){} }
 }
 
 // Case CRUD
