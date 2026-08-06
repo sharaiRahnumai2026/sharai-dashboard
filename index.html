@@ -5308,6 +5308,66 @@ function rRep(){
   mxR = Math.max.apply(null, Object.values(bR).concat([1]));
   // ===== END bR sync =====
 
+  // ===== BUILD STATE STATS (same logic as regionStats) =====
+  var stateStats = {};
+  fcc.forEach(function(c){
+    var st = c.state||'Unknown';
+    if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var cd = parseLocalDate(c.closeDate);
+    var closed = isClosed(c);
+    
+    var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
+    var inSabiqa = false;
+    if(fromD && od < fromD){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;
+        else if(cd && cd >= fromD) inSabiqa = true;
+      }
+    }
+    
+    if(inMoujuda) stateStats[st].moujuda++;
+    if(inSabiqa)  stateStats[st].sabiqa++;
+    if(inMoujuda || inSabiqa){
+      stateStats[st].kulMasail++;
+      var closedInRange = closed && cd && (!fromD || cd >= fromD) && cd <= _rangeEnd;
+      if(closedInRange) stateStats[st].halShuda++;
+      else              stateStats[st].pending++;
+    }
+  });
+  // ===== END STATE STATS =====
+
+  // ===== BUILD DIVISION STATS (same logic as regionStats) =====
+  var divisionStats = {};
+  fcc.forEach(function(c){
+    var div = c.division||'Unknown';
+    if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var cd = parseLocalDate(c.closeDate);
+    var closed = isClosed(c);
+    
+    var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
+    var inSabiqa = false;
+    if(fromD && od < fromD){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;
+        else if(cd && cd >= fromD) inSabiqa = true;
+      }
+    }
+    
+    if(inMoujuda) divisionStats[div].moujuda++;
+    if(inSabiqa)  divisionStats[div].sabiqa++;
+    if(inMoujuda || inSabiqa){
+      divisionStats[div].kulMasail++;
+      var closedInRange = closed && cd && (!fromD || cd >= fromD) && cd <= _rangeEnd;
+      if(closedInRange) divisionStats[div].halShuda++;
+      else              divisionStats[div].pending++;
+    }
+  });
+  // ===== END DIVISION STATS =====
+
   // Fixed colors per region name — position change hone par bhi color same rahe
   var _fixedColorMap={
     'Ajmer Region':'#2e7d32',
@@ -5425,7 +5485,109 @@ function rRep(){
     +'</div></div>';
   regionCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
 
-  var h = regionCards;
+  // ===== STATE-WISE CARDS =====
+  var stateKeys = Object.keys(stateStats).filter(function(s){ return stateStats[s].kulMasail>0 || stateStats[s].sabiqa>0; }).sort();
+  var stateCards = '';
+  if(stateKeys.length > 0){
+    stateCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">📍 State-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+    
+    // Build state tawan/halfiya stats
+    var stateTawn = {}, stateHalf = {};
+    fcc.forEach(function(c){
+      var st = c.state||'Unknown';
+      var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
+      if(gs.indexOf('tawan')>-1){
+        if(!stateTawn[st]) stateTawn[st]={total:0,pending:0,closed:0};
+        stateTawn[st].total++;
+        if(c.tawnSt==='closed') stateTawn[st].closed++;
+        else stateTawn[st].pending++;
+      }
+      if(gs.indexOf('halfia')>-1){
+        if(!stateHalf[st]) stateHalf[st]={total:0,pending:0,closed:0};
+        stateHalf[st].total++;
+        if(c.halfiaSt==='closed') stateHalf[st].closed++;
+        else stateHalf[st].pending++;
+      }
+    });
+    
+    stateKeys.forEach(function(st, idx){
+      var s = stateStats[st];
+      var col = ['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#c62828'][idx % 6];
+      var pct = s.kulMasail>0 ? Math.round(s.halShuda/s.kulMasail*100) : 0;
+      var tw = stateTawn[st]||{total:0,pending:0,closed:0};
+      var hf = stateHalf[st]||{total:0,pending:0,closed:0};
+      
+      stateCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
+        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor)">📍 '+st+'</div>'
+        +'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f5f5f5">'
+        +'<div style="padding:8px 8px;border-right:1px solid var(--bor);font-size:.72rem;font-weight:700;color:var(--bd)">Stats</div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+s.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" title="موجودہ"><div style="font-size:1rem;font-weight:800;color:#2196f3">'+s.moujuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">موجودہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" title="Total"><div style="font-size:1rem;font-weight:800;color:var(--bd)">'+s.kulMasail+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2">Total</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+s.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
+        +'</div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+s.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
+        +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">T</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">P</div></div><div style="padding:6px 4px;text-align:center;"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">C</div></div></div>' : '')
+        +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Half</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">T</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">P</div></div><div style="padding:6px 4px;text-align:center;"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">C</div></div></div>' : '')
+        +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
+        +'</div>';
+    });
+    stateCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
+  }
+  // ===== END STATE CARDS =====
+
+  // ===== DIVISION-WISE CARDS =====
+  var divisionKeys = Object.keys(divisionStats).filter(function(d){ return divisionStats[d].kulMasail>0 || divisionStats[d].sabiqa>0; }).sort();
+  var divisionCards = '';
+  if(divisionKeys.length > 0){
+    divisionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏘️ Division-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+    
+    // Build division tawan/halfiya stats
+    var divisionTawn = {}, divisionHalf = {};
+    fcc.forEach(function(c){
+      var div = c.division||'Unknown';
+      var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
+      if(gs.indexOf('tawan')>-1){
+        if(!divisionTawn[div]) divisionTawn[div]={total:0,pending:0,closed:0};
+        divisionTawn[div].total++;
+        if(c.tawnSt==='closed') divisionTawn[div].closed++;
+        else divisionTawn[div].pending++;
+      }
+      if(gs.indexOf('halfia')>-1){
+        if(!divisionHalf[div]) divisionHalf[div]={total:0,pending:0,closed:0};
+        divisionHalf[div].total++;
+        if(c.halfiaSt==='closed') divisionHalf[div].closed++;
+        else divisionHalf[div].pending++;
+      }
+    });
+    
+    divisionKeys.forEach(function(div, idx){
+      var d = divisionStats[div];
+      var col = ['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#c62828'][idx % 6];
+      var pct = d.kulMasail>0 ? Math.round(d.halShuda/d.kulMasail*100) : 0;
+      var tw = divisionTawn[div]||{total:0,pending:0,closed:0};
+      var hf = divisionHalf[div]||{total:0,pending:0,closed:0};
+      
+      divisionCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
+        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor)">🏘️ '+div+'</div>'
+        +'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f5f5f5">'
+        +'<div style="padding:8px 8px;border-right:1px solid var(--bor);font-size:.72rem;font-weight:700;color:var(--bd)">Stats</div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+d.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" title="موجودہ"><div style="font-size:1rem;font-weight:800;color:#2196f3">'+d.moujuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">موجودہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" title="Total"><div style="font-size:1rem;font-weight:800;color:var(--bd)">'+d.kulMasail+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2">Total</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+d.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
+        +'</div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+d.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
+        +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">T</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">P</div></div><div style="padding:6px 4px;text-align:center;"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">C</div></div></div>' : '')
+        +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Half</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">T</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">P</div></div><div style="padding:6px 4px;text-align:center;"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">C</div></div></div>' : '')
+        +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
+        +'</div>';
+    });
+    divisionCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
+  }
+  // ===== END DIVISION CARDS =====
+
+  var h = regionCards + stateCards + divisionCards;
   var _fw = document.getElementById('repFutureWarn');
   if(_fw) _fw.style.display = 'none';
   document.getElementById('rpC').innerHTML='';
