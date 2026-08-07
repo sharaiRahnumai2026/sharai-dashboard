@@ -5039,10 +5039,6 @@ function bdPDF(){
 }
 
 function rRep(){
-  // ===== FILTER VARIABLES =====
-  var _repSelectedState = window._repSelectedState || null;
-  var _repSelectedDivision = window._repSelectedDivision || null;
-  
   // ===== NORMALIZE DIVISION FUNCTION =====
   function normalizeDivision(div) {
     if(!div) return 'Unknown';
@@ -5533,22 +5529,10 @@ function rRep(){
   regionCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
 
   // ===== STATE-WISE CARDS =====
-  // Filter states if selected
-  var allStateKeys = Object.keys(stateStats).filter(function(s){ return stateStats[s].kulMasail>0 || stateStats[s].sabiqa>0; }).sort();
-  var stateKeys = _repSelectedState ? allStateKeys.filter(function(s){ return s.toLowerCase() === _repSelectedState.toLowerCase(); }) : allStateKeys;
-  
-  // Add filter UI if state selected
-  var stateFilterUI = '';
-  if(_repSelectedState){
-    stateFilterUI = '<div style="background:#e8f5e9;border-left:4px solid #2e7d32;padding:10px 12px;margin-bottom:12px;border-radius:4px;display:flex;align-items:center;gap:8px">'
-      +'<span style="font-size:.75rem;font-weight:600">🔍 Filtered by State: <strong>'+_repSelectedState+'</strong></span>'
-      +'<button onclick="window._repSelectedState=null;rRep();" style="margin-left:auto;padding:4px 10px;background:#2e7d32;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:.7rem;font-weight:600">✕ Clear</button>'
-      +'</div>';
-  }
-  
+  var stateKeys = Object.keys(stateStats).filter(function(s){ return stateStats[s].kulMasail>0 || stateStats[s].sabiqa>0; }).sort();
   var stateCards = '';
   if(stateKeys.length > 0){
-    stateCards = stateFilterUI + '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">📍 State-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+    stateCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">📍 State-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
     
     // Build state tawan/halfiya stats
     var stateTawn = {}, stateHalf = {};
@@ -5619,22 +5603,10 @@ function rRep(){
   // ===== END STATE CARDS =====
 
   // ===== DIVISION-WISE CARDS =====
-  // Filter divisions if selected
-  var allDivisionKeys = Object.keys(divisionStats).filter(function(d){ return divisionStats[d].kulMasail>0 || divisionStats[d].sabiqa>0; }).sort();
-  var divisionKeys = _repSelectedDivision ? allDivisionKeys.filter(function(d){ return d.toLowerCase() === _repSelectedDivision.toLowerCase(); }) : allDivisionKeys;
-  
-  // Add filter UI if division selected
-  var divisionFilterUI = '';
-  if(_repSelectedDivision){
-    divisionFilterUI = '<div style="background:#e3f2fd;border-left:4px solid #1565c0;padding:10px 12px;margin-bottom:12px;border-radius:4px;display:flex;align-items:center;gap:8px">'
-      +'<span style="font-size:.75rem;font-weight:600">🔍 Filtered by Division: <strong>'+_repSelectedDivision+'</strong></span>'
-      +'<button onclick="window._repSelectedDivision=null;rRep();" style="margin-left:auto;padding:4px 10px;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:.7rem;font-weight:600">✕ Clear</button>'
-      +'</div>';
-  }
-  
+  var divisionKeys = Object.keys(divisionStats).filter(function(d){ return divisionStats[d].kulMasail>0 || divisionStats[d].sabiqa>0; }).sort();
   var divisionCards = '';
   if(divisionKeys.length > 0){
-    divisionCards = divisionFilterUI + '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏘️ Division-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
+    divisionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏘️ Division-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
     
     // Build division tawan/halfiya stats
     var divisionTawn = {}, divisionHalf = {};
@@ -7048,27 +7020,6 @@ function gtClickRegion(region){
   goPage('search'); setTimeout(function(){ doSrch(); }, 200);
 }
 function gtClickState(state){
-  window._repSelectedState = state;
-  rRep();  // Re-render reports with filter
-}
-
-function gtClickDiv(division){
-  window._repSelectedDivision = division;
-  rRep();  // Re-render reports with filter
-}
-
-function gtClickStateClear(){
-  window._repSelectedState = null;
-  rRep();
-}
-
-function gtClickDivClear(){
-  window._repSelectedDivision = null;
-  rRep();
-}
-
-// OLD SEARCH PAGE HANDLERS (kept for other uses)
-function gtClickStateSearch(state){
   doSrch._customFilter=null;
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
   ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
@@ -7077,6 +7028,21 @@ function gtClickStateSearch(state){
   var _stN=(state||'').trim().toLowerCase();
   doSrch._customFilter=function(c){
     if((c.state||'').trim().toLowerCase()!==_stN) return false;
+    if(_df && !_df(c)) return false;
+    return true;
+  };
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+
+function gtClickDiv(division){
+  doSrch._customFilter=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  _applyRegionFilter();
+  var _df=_repDateFilter();
+  var _dvN=(division||'').trim().toLowerCase();
+  doSrch._customFilter=function(c){
+    if((c.division||'').trim().toLowerCase()!==_dvN) return false;
     if(_df && !_df(c)) return false;
     return true;
   };
