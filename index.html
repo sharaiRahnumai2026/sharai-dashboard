@@ -5039,6 +5039,49 @@ function bdPDF(){
 }
 
 function rRep(){
+  // ===== NORMALIZE DIVISION FUNCTION =====
+  function normalizeDivision(div) {
+    if(!div) return 'Unknown';
+    var cleaned = div.replace(/^\d+\s+/, '').trim();
+    var mergeMap = {
+      'Aurangabad': 'Aurangabad',
+      '213 Aurangabad': 'Aurangabad',
+      'Nagpur': 'Nagpur',
+      '208 Nagpur': 'Nagpur',
+      'Amravati': 'Amravati',
+      '205 Amravati': 'Amravati',
+      'Pune': 'Pune',
+      '207 Pune': 'Pune',
+      'Nashik': 'Nashik',
+      '212 Nashik': 'Nashik',
+      'Ratnagiri': 'Ratnagiri',
+      '203 Ratnagiri': 'Ratnagiri',
+      'Ratnagiri Division': 'Ratnagiri',
+      'Cuttack': 'Cuttack',
+      '504 Cuttack': 'Cuttack',
+      '504 Odisha': 'Cuttack',
+      'Gonda': 'Gonda',
+      '321 Gonda': 'Gonda',
+      'Gorakhpur': 'Gorakhpur',
+      '315 Gorakhpur': 'Gorakhpur',
+      'Bilaspur': 'Bilaspur',
+      '210 Bilaspur': 'Bilaspur',
+      'Kolkata': 'Kolkata',
+      '501 Kolkata': 'Kolkata',
+      '501 Kolkata (Presidency)': 'Kolkata',
+      'Tata Nagar': 'Tata Nagar',
+      '502 Tata Nagar (Kolhan)': 'Tata Nagar',
+      '502 Tata Nagar (Kolhan': 'Tata Nagar',
+      'Bareilly': 'Bareilly',
+      '311 Bareilly': 'Bareilly',
+      '301 Bareilly': 'Bareilly',
+      'Raipur': 'Raipur',
+      'Raipur & Chhattisgarh': 'Raipur',
+      'Raipur & Chhatisgarh': 'Raipur'
+    };
+    return mergeMap[cleaned] || cleaned;
+  }
+  // ===== END NORMALIZE =====
   var now = new Date();
   updRepYears();        // year options bharo
   _repSaveState();      // current filter state yaad rakho (back ke liye)
@@ -5341,7 +5384,7 @@ function rRep(){
   // ===== BUILD DIVISION STATS (same logic as regionStats) =====
   var divisionStats = {};
   fcc.forEach(function(c){
-    var div = c.division||'Unknown';
+    var div = normalizeDivision(c.division);  // NORMALIZED!
     if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
@@ -5532,7 +5575,21 @@ function rRep(){
         +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
         +'</div>';
     });
-    stateCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
+    
+    // State Grand Total
+    var stateTotSab = 0, stateTotMoj = 0, stateTotKul = 0, stateTotClosed = 0;
+    stateKeys.forEach(function(s){ stateTotSab += stateStats[s].sabiqa; stateTotMoj += stateStats[s].moujuda; stateTotKul += stateStats[s].kulMasail; stateTotClosed += stateStats[s].halShuda; });
+    stateCards += '</div></div><div style="background:#004d40;color:#fff;padding:12px;border-radius:8px;text-align:center;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+stateTotSab+'</div><div style="font-size:.65rem;color:#80cbc4">سابقہ</div></div>'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+stateTotMoj+'</div><div style="font-size:.65rem;color:#80cbc4">موجودہ</div></div>'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+stateTotKul+'</div><div style="font-size:.65rem;color:#80cbc4">Total</div></div>'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+stateTotClosed+'</div><div style="font-size:.65rem;color:#4db8a8">Closed</div></div>'
+      +'</div>'
+      +'<div style="text-align:center;gap:8px;display:flex;justify-content:center;margin-bottom:14px">'
+      +'<button onclick="exStateCards()" style="padding:6px 12px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600">📊 PDF</button>'
+      +'<button onclick="exStateCardsXls()" style="padding:6px 12px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600">📈 Excel</button>'
+      +'</div>'
+      +'<hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
   }
   // ===== END STATE CARDS =====
 
@@ -5545,7 +5602,7 @@ function rRep(){
     // Build division tawan/halfiya stats
     var divisionTawn = {}, divisionHalf = {};
     fcc.forEach(function(c){
-      var div = c.division||'Unknown';
+      var div = normalizeDivision(c.division);  // NORMALIZED!
       var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
       if(gs.indexOf('tawan')>-1){
         if(!divisionTawn[div]) divisionTawn[div]={total:0,pending:0,closed:0};
@@ -5583,7 +5640,21 @@ function rRep(){
         +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
         +'</div>';
     });
-    divisionCards += '</div></div><hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
+    
+    // Division Grand Total
+    var divTotSab = 0, divTotMoj = 0, divTotKul = 0, divTotClosed = 0;
+    divisionKeys.forEach(function(d){ divTotSab += divisionStats[d].sabiqa; divTotMoj += divisionStats[d].moujuda; divTotKul += divisionStats[d].kulMasail; divTotClosed += divisionStats[d].halShuda; });
+    divisionCards += '</div></div><div style="background:#1a237e;color:#fff;padding:12px;border-radius:8px;text-align:center;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+divTotSab+'</div><div style="font-size:.65rem;color:#b3e5fc">سابقہ</div></div>'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+divTotMoj+'</div><div style="font-size:.65rem;color:#b3e5fc">موجودہ</div></div>'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+divTotKul+'</div><div style="font-size:.65rem;color:#b3e5fc">Total</div></div>'
+      +'<div><div style="font-size:1.2rem;font-weight:800">'+divTotClosed+'</div><div style="font-size:.65rem;color:#4dd0e1">Closed</div></div>'
+      +'</div>'
+      +'<div style="text-align:center;gap:8px;display:flex;justify-content:center;margin-bottom:14px">'
+      +'<button onclick="exDivCards()" style="padding:6px 12px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600">📊 PDF</button>'
+      +'<button onclick="exDivCardsXls()" style="padding:6px 12px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600">📈 Excel</button>'
+      +'</div>'
+      +'<hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px">';
   }
   // ===== END DIVISION CARDS =====
 
@@ -8939,6 +9010,326 @@ function repDownloadPDF(){
   var fname = 'Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
   toast('✅ PDF download ho raha hai!');
+}
+
+// ===== STATE CARDS EXPORT =====
+function exStateCards(){
+  if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
+  var fcc = repGetFilteredCases();
+  var label = repGetFilterLabel();
+  var stateStats = {};
+  fcc.forEach(function(c){
+    var st = c.state||'Unknown';
+    if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var cd = parseLocalDate(c.closeDate);
+    var closed = isClosed(c);
+    var inMoujuda = od <= _rangeEnd;
+    var inSabiqa = false;
+    if(od < _rangeEnd && (!closed || (cd && cd >= _rangeStart))){
+      inSabiqa = true;
+    }
+    if(inMoujuda) stateStats[st].moujuda++;
+    if(inSabiqa) stateStats[st].sabiqa++;
+    if(inMoujuda || inSabiqa){
+      stateStats[st].kulMasail++;
+      if(closed && cd && cd >= _rangeStart) stateStats[st].halShuda++;
+      else stateStats[st].pending++;
+    }
+  });
+  
+  var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || jsPDF;
+  var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
+  
+  doc.setFontSize(18);
+  doc.setFont('helvetica','bold');
+  doc.text('Shariah Advisory Board - State Report', 148, 15, {align:'center'});
+  doc.setFontSize(11);
+  doc.setFont('helvetica','normal');
+  doc.text('Period: '+label+'  |  Generated: '+new Date().toLocaleDateString('en-IN'), 148, 22, {align:'center'});
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('State-wise Summary', 14, 30);
+  
+  var stRows = [];
+  var gT=0,gS=0,gM=0,gP=0,gC=0;
+  Object.keys(stateStats).sort().forEach(function(st){
+    var s = stateStats[st];
+    var pct=s.kulMasail>0?Math.round(s.halShuda/s.kulMasail*100):0;
+    stRows.push([st,s.kulMasail,s.sabiqa,s.moujuda,s.pending,s.halShuda,pct+'%']);
+    gT+=s.kulMasail;gS+=s.sabiqa;gM+=s.moujuda;gP+=s.pending;gC+=s.halShuda;
+  });
+  var gPct=gT>0?Math.round(gC/gT*100):0;
+  stRows.push(['TOTAL',gT,gS,gM,gP,gC,gPct+'%']);
+  
+  doc.autoTable({
+    startY:33,
+    head:[['State','Total','Sabiqa','Moujuda','Pending','Closed','Close %']],
+    body:stRows,
+    theme:'grid',
+    headStyles:{fillColor:[0,77,64],textColor:255,fontStyle:'bold',fontSize:9},
+    bodyStyles:{fontSize:9},
+    columnStyles:{0:{cellWidth:45},1:{cellWidth:18,halign:'center'},2:{cellWidth:20,halign:'center'},3:{cellWidth:20,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'},6:{cellWidth:16,halign:'center'}},
+    didParseCell:function(d){
+      if(d.row.index===stRows.length-1){d.cell.styles.fillColor=[0,77,64];d.cell.styles.textColor=255;d.cell.styles.fontStyle='bold';}
+    }
+  });
+  
+  var fname = 'State_Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(fname);
+  toast('✅ State PDF download ho raha hai!');
+}
+
+// ===== DIVISION CARDS EXPORT =====
+function exDivCards(){
+  if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
+  
+  // Normalization function (same as in rRep)
+  function normalizeDivision(div) {
+    if(!div) return 'Unknown';
+    var cleaned = div.replace(/^\d+\s+/, '').trim();
+    var mergeMap = {
+      'Aurangabad': 'Aurangabad',
+      '213 Aurangabad': 'Aurangabad',
+      'Nagpur': 'Nagpur',
+      '208 Nagpur': 'Nagpur',
+      'Amravati': 'Amravati',
+      '205 Amravati': 'Amravati',
+      'Pune': 'Pune',
+      '207 Pune': 'Pune',
+      'Nashik': 'Nashik',
+      '212 Nashik': 'Nashik',
+      'Ratnagiri': 'Ratnagiri',
+      '203 Ratnagiri': 'Ratnagiri',
+      'Ratnagiri Division': 'Ratnagiri',
+      'Cuttack': 'Cuttack',
+      '504 Cuttack': 'Cuttack',
+      '504 Odisha': 'Cuttack',
+      'Gonda': 'Gonda',
+      '321 Gonda': 'Gonda',
+      'Gorakhpur': 'Gorakhpur',
+      '315 Gorakhpur': 'Gorakhpur',
+      'Bilaspur': 'Bilaspur',
+      '210 Bilaspur': 'Bilaspur',
+      'Kolkata': 'Kolkata',
+      '501 Kolkata': 'Kolkata',
+      '501 Kolkata (Presidency)': 'Kolkata',
+      'Tata Nagar': 'Tata Nagar',
+      '502 Tata Nagar (Kolhan)': 'Tata Nagar',
+      '502 Tata Nagar (Kolhan': 'Tata Nagar',
+      'Bareilly': 'Bareilly',
+      '311 Bareilly': 'Bareilly',
+      '301 Bareilly': 'Bareilly',
+      'Raipur': 'Raipur',
+      'Raipur & Chhattisgarh': 'Raipur',
+      'Raipur & Chhatisgarh': 'Raipur'
+    };
+    return mergeMap[cleaned] || cleaned;
+  }
+  
+  var fcc = repGetFilteredCases();
+  var label = repGetFilterLabel();
+  var divisionStats = {};
+  fcc.forEach(function(c){
+    var div = normalizeDivision(c.division);
+    if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var cd = parseLocalDate(c.closeDate);
+    var closed = isClosed(c);
+    var inMoujuda = od <= _rangeEnd;
+    var inSabiqa = false;
+    if(od < _rangeEnd && (!closed || (cd && cd >= _rangeStart))){
+      inSabiqa = true;
+    }
+    if(inMoujuda) divisionStats[div].moujuda++;
+    if(inSabiqa) divisionStats[div].sabiqa++;
+    if(inMoujuda || inSabiqa){
+      divisionStats[div].kulMasail++;
+      if(closed && cd && cd >= _rangeStart) divisionStats[div].halShuda++;
+      else divisionStats[div].pending++;
+    }
+  });
+  
+  var jsPDFClass = (window.jspdf&&window.jspdf.jsPDF) || jsPDF;
+  var doc = new jsPDFClass({orientation:'landscape', unit:'mm', format:'a4'});
+  
+  doc.setFontSize(18);
+  doc.setFont('helvetica','bold');
+  doc.text('Shariah Advisory Board - Division Report', 148, 15, {align:'center'});
+  doc.setFontSize(11);
+  doc.setFont('helvetica','normal');
+  doc.text('Period: '+label+'  |  Generated: '+new Date().toLocaleDateString('en-IN'), 148, 22, {align:'center'});
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('Division-wise Summary', 14, 30);
+  
+  var dvRows = [];
+  var gT=0,gS=0,gM=0,gP=0,gC=0;
+  Object.keys(divisionStats).sort().forEach(function(div){
+    var d = divisionStats[div];
+    var pct=d.kulMasail>0?Math.round(d.halShuda/d.kulMasail*100):0;
+    dvRows.push([div,d.kulMasail,d.sabiqa,d.moujuda,d.pending,d.halShuda,pct+'%']);
+    gT+=d.kulMasail;gS+=d.sabiqa;gM+=d.moujuda;gP+=d.pending;gC+=d.halShuda;
+  });
+  var gPct=gT>0?Math.round(gC/gT*100):0;
+  dvRows.push(['TOTAL',gT,gS,gM,gP,gC,gPct+'%']);
+  
+  doc.autoTable({
+    startY:33,
+    head:[['Division','Total','Sabiqa','Moujuda','Pending','Closed','Close %']],
+    body:dvRows,
+    theme:'grid',
+    headStyles:{fillColor:[26,35,126],textColor:255,fontStyle:'bold',fontSize:9},
+    bodyStyles:{fontSize:9},
+    columnStyles:{0:{cellWidth:45},1:{cellWidth:18,halign:'center'},2:{cellWidth:20,halign:'center'},3:{cellWidth:20,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'},6:{cellWidth:16,halign:'center'}},
+    didParseCell:function(d){
+      if(d.row.index===dvRows.length-1){d.cell.styles.fillColor=[26,35,126];d.cell.styles.textColor=255;d.cell.styles.fontStyle='bold';}
+    }
+  });
+  
+  var fname = 'Division_Report_'+label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(fname);
+  toast('✅ Division PDF download ho raha hai!');
+}
+
+// ===== STATE & DIVISION EXCEL EXPORTS =====
+function exStateCardsXls(){
+  var fcc = repGetFilteredCases();
+  var label = repGetFilterLabel();
+  var stateStats = {};
+  fcc.forEach(function(c){
+    var st = c.state||'Unknown';
+    if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var closed = isClosed(c);
+    var inMoujuda = od <= _rangeEnd;
+    var inSabiqa = false;
+    if(od < _rangeEnd && (!closed || (closed))){
+      inSabiqa = true;
+    }
+    if(inMoujuda) stateStats[st].moujuda++;
+    if(inSabiqa) stateStats[st].sabiqa++;
+    if(inMoujuda || inSabiqa){
+      stateStats[st].kulMasail++;
+      if(closed) stateStats[st].halShuda++;
+      else stateStats[st].pending++;
+    }
+  });
+  
+  var rows = [['State','Total','Sabiqa','Moujuda','Pending','Closed','Close %']];
+  var gT=0,gS=0,gM=0,gP=0,gC=0;
+  Object.keys(stateStats).sort().forEach(function(st){
+    var s = stateStats[st];
+    var pct=s.kulMasail>0?Math.round(s.halShuda/s.kulMasail*100):0;
+    rows.push([st,s.kulMasail,s.sabiqa,s.moujuda,s.pending,s.halShuda,pct+'%']);
+    gT+=s.kulMasail;gS+=s.sabiqa;gM+=s.moujuda;gP+=s.pending;gC+=s.halShuda;
+  });
+  var gPct=gT>0?Math.round(gC/gT*100):0;
+  rows.push(['TOTAL',gT,gS,gM,gP,gC,gPct+'%']);
+  
+  var csv = rows.map(r => r.map(cell => '"'+cell+'"').join(',')).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'State_Report_'+label.replace(/\s+/g,'_')+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ State Excel download ho raha hai!');
+}
+
+function exDivCardsXls(){
+  // Normalization function
+  function normalizeDivision(div) {
+    if(!div) return 'Unknown';
+    var cleaned = div.replace(/^\d+\s+/, '').trim();
+    var mergeMap = {
+      'Aurangabad': 'Aurangabad',
+      '213 Aurangabad': 'Aurangabad',
+      'Nagpur': 'Nagpur',
+      '208 Nagpur': 'Nagpur',
+      'Amravati': 'Amravati',
+      '205 Amravati': 'Amravati',
+      'Pune': 'Pune',
+      '207 Pune': 'Pune',
+      'Nashik': 'Nashik',
+      '212 Nashik': 'Nashik',
+      'Ratnagiri': 'Ratnagiri',
+      '203 Ratnagiri': 'Ratnagiri',
+      'Ratnagiri Division': 'Ratnagiri',
+      'Cuttack': 'Cuttack',
+      '504 Cuttack': 'Cuttack',
+      '504 Odisha': 'Cuttack',
+      'Gonda': 'Gonda',
+      '321 Gonda': 'Gonda',
+      'Gorakhpur': 'Gorakhpur',
+      '315 Gorakhpur': 'Gorakhpur',
+      'Bilaspur': 'Bilaspur',
+      '210 Bilaspur': 'Bilaspur',
+      'Kolkata': 'Kolkata',
+      '501 Kolkata': 'Kolkata',
+      '501 Kolkata (Presidency)': 'Kolkata',
+      'Tata Nagar': 'Tata Nagar',
+      '502 Tata Nagar (Kolhan)': 'Tata Nagar',
+      '502 Tata Nagar (Kolhan': 'Tata Nagar',
+      'Bareilly': 'Bareilly',
+      '311 Bareilly': 'Bareilly',
+      '301 Bareilly': 'Bareilly',
+      'Raipur': 'Raipur',
+      'Raipur & Chhattisgarh': 'Raipur',
+      'Raipur & Chhatisgarh': 'Raipur'
+    };
+    return mergeMap[cleaned] || cleaned;
+  }
+  
+  var fcc = repGetFilteredCases();
+  var label = repGetFilterLabel();
+  var divisionStats = {};
+  fcc.forEach(function(c){
+    var div = normalizeDivision(c.division);
+    if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
+    var od = parseLocalDate(c.openDate);
+    if(!od) return;
+    var closed = isClosed(c);
+    var inMoujuda = od <= _rangeEnd;
+    var inSabiqa = false;
+    if(od < _rangeEnd && (!closed || (closed))){
+      inSabiqa = true;
+    }
+    if(inMoujuda) divisionStats[div].moujuda++;
+    if(inSabiqa) divisionStats[div].sabiqa++;
+    if(inMoujuda || inSabiqa){
+      divisionStats[div].kulMasail++;
+      if(closed) divisionStats[div].halShuda++;
+      else divisionStats[div].pending++;
+    }
+  });
+  
+  var rows = [['Division','Total','Sabiqa','Moujuda','Pending','Closed','Close %']];
+  var gT=0,gS=0,gM=0,gP=0,gC=0;
+  Object.keys(divisionStats).sort().forEach(function(div){
+    var d = divisionStats[div];
+    var pct=d.kulMasail>0?Math.round(d.halShuda/d.kulMasail*100):0;
+    rows.push([div,d.kulMasail,d.sabiqa,d.moujuda,d.pending,d.halShuda,pct+'%']);
+    gT+=d.kulMasail;gS+=d.sabiqa;gM+=d.moujuda;gP+=d.pending;gC+=d.halShuda;
+  });
+  var gPct=gT>0?Math.round(gC/gT*100):0;
+  rows.push(['TOTAL',gT,gS,gM,gP,gC,gPct+'%']);
+  
+  var csv = rows.map(r => r.map(cell => '"'+cell+'"').join(',')).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'Division_Report_'+label.replace(/\s+/g,'_')+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ Division Excel download ho raha hai!');
 }
 // ===== END EXPORT =====
 
