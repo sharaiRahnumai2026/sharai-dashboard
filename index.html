@@ -5577,17 +5577,26 @@ function rRep(){
     });
     
     // State Grand Total
-    var stateTotSab = 0, stateTotMoj = 0, stateTotKul = 0, stateTotClosed = 0;
-    stateKeys.forEach(function(s){ stateTotSab += stateStats[s].sabiqa; stateTotMoj += stateStats[s].moujuda; stateTotKul += stateStats[s].kulMasail; stateTotClosed += stateStats[s].halShuda; });
-    stateCards += '</div></div><div style="background:#004d40;color:#fff;padding:14px 12px;border-radius:8px;text-align:center;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;grid-column:1/-1">'
-      +'<div style="cursor:pointer" onclick="gtClick(\'abiq\')"><div style="font-size:1.3rem;font-weight:800">'+stateTotSab+'</div><div style="font-size:.65rem;color:#80cbc4;font-weight:600">سابقہ</div></div>'
-      +'<div style="cursor:pointer" onclick="gtClick(\'mojuda\')"><div style="font-size:1.3rem;font-weight:800">'+stateTotMoj+'</div><div style="font-size:.65rem;color:#80cbc4;font-weight:600">موجودہ</div></div>'
-      +'<div style="cursor:pointer" onclick="gtClick(\'all\')"><div style="font-size:1.3rem;font-weight:800">'+stateTotKul+'</div><div style="font-size:.65rem;color:#fff;font-weight:600">کل</div></div>'
-      +'<div style="cursor:pointer" onclick="gtClick(\'closed\')"><div style="font-size:1.3rem;font-weight:800">'+stateTotClosed+'</div><div style="font-size:.65rem;color:#4db8a8;font-weight:600">حل شدہ</div></div>'
-      +'</div>'
-      +'<div style="text-align:center;gap:8px;display:flex;justify-content:center;margin-bottom:14px;grid-column:1/-1">'
-      +'<button onclick="exStateCards()" style="padding:8px 14px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 PDF</button>'
-      +'<button onclick="exStateCardsXls()" style="padding:8px 14px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:4px">📈 Excel</button>'
+    var stateTotSab = 0, stateTotMoj = 0, stateTotKul = 0, stateTotClosed = 0, stateTotPending = 0;
+    stateKeys.forEach(function(s){ 
+      stateTotSab += stateStats[s].sabiqa; 
+      stateTotMoj += stateStats[s].moujuda; 
+      stateTotKul += stateStats[s].kulMasail; 
+      stateTotClosed += stateStats[s].halShuda;
+      stateTotPending += stateStats[s].pending;
+    });
+    stateCards += '</div></div><div style="background:linear-gradient(135deg,#004d40,#00695c);border-radius:10px;padding:16px 14px;color:#fff;grid-column:1/-1;margin-bottom:12px">'
+      +'<div style="font-weight:800;font-size:.95rem;margin-bottom:12px;display:flex;align-items:center;gap:6px">📊 Grand Total — Sab States ('+filterLabel+')</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center">'
+      +'<div style="cursor:pointer" onclick="gtClick(\'abiq\')" title="Saabiqah Pending"><div style="font-size:1.8rem;font-weight:800;color:#ff9800">'+stateTotSab+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">سابقہ پینڈنگ</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'mojuda\')" title="Mojuda Masail"><div style="font-size:1.8rem;font-weight:800;color:#4dd0e1">'+stateTotMoj+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">موجودہ مسائل</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'all\')" title="Total Cases"><div style="font-size:1.8rem;font-weight:800;color:#fff">'+stateTotKul+'</div><div style="font-size:.68rem;opacity:.9;margin-top:4px">کل Cases</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'closed\')" title="Closed"><div style="font-size:1.8rem;font-weight:800;color:#81c784">'+stateTotClosed+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">حل شدہ</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'pending\')" title="Pending"><div style="font-size:1.8rem;font-weight:800;color:#ef5350">'+stateTotPending+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">پینڈنگ</div></div>'
+      +'</div></div>'
+      +'<div style="text-align:center;gap:10px;display:flex;justify-content:center;margin-bottom:14px;grid-column:1/-1">'
+      +'<button onclick="exStateCards()" style="padding:8px 16px;background:#c0392b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>'
+      +'<button onclick="exStateCardsXls()" style="padding:8px 16px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>'
       +'</div>'
       +'<hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px;grid-column:1/-1">';
   }
@@ -5642,17 +5651,26 @@ function rRep(){
     });
     
     // Division Grand Total
-    var divTotSab = 0, divTotMoj = 0, divTotKul = 0, divTotClosed = 0;
-    divisionKeys.forEach(function(d){ divTotSab += divisionStats[d].sabiqa; divTotMoj += divisionStats[d].moujuda; divTotKul += divisionStats[d].kulMasail; divTotClosed += divisionStats[d].halShuda; });
-    divisionCards += '</div></div><div style="background:#1a237e;color:#fff;padding:14px 12px;border-radius:8px;text-align:center;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;grid-column:1/-1">'
-      +'<div style="cursor:pointer" onclick="gtClick(\'abiq\')"><div style="font-size:1.3rem;font-weight:800">'+divTotSab+'</div><div style="font-size:.65rem;color:#b3e5fc;font-weight:600">سابقہ</div></div>'
-      +'<div style="cursor:pointer" onclick="gtClick(\'mojuda\')"><div style="font-size:1.3rem;font-weight:800">'+divTotMoj+'</div><div style="font-size:.65rem;color:#b3e5fc;font-weight:600">موجودہ</div></div>'
-      +'<div style="cursor:pointer" onclick="gtClick(\'all\')"><div style="font-size:1.3rem;font-weight:800">'+divTotKul+'</div><div style="font-size:.65rem;color:#fff;font-weight:600">کل</div></div>'
-      +'<div style="cursor:pointer" onclick="gtClick(\'closed\')"><div style="font-size:1.3rem;font-weight:800">'+divTotClosed+'</div><div style="font-size:.65rem;color:#4dd0e1;font-weight:600">حل شدہ</div></div>'
-      +'</div>'
-      +'<div style="text-align:center;gap:8px;display:flex;justify-content:center;margin-bottom:14px;grid-column:1/-1">'
-      +'<button onclick="exDivCards()" style="padding:8px 14px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 PDF</button>'
-      +'<button onclick="exDivCardsXls()" style="padding:8px 14px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:4px">📈 Excel</button>'
+    var divTotSab = 0, divTotMoj = 0, divTotKul = 0, divTotClosed = 0, divTotPending = 0;
+    divisionKeys.forEach(function(d){ 
+      divTotSab += divisionStats[d].sabiqa; 
+      divTotMoj += divisionStats[d].moujuda; 
+      divTotKul += divisionStats[d].kulMasail; 
+      divTotClosed += divisionStats[d].halShuda;
+      divTotPending += divisionStats[d].pending;
+    });
+    divisionCards += '</div></div><div style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:10px;padding:16px 14px;color:#fff;grid-column:1/-1;margin-bottom:12px">'
+      +'<div style="font-weight:800;font-size:.95rem;margin-bottom:12px;display:flex;align-items:center;gap:6px">📊 Grand Total — Sab Divisions ('+filterLabel+')</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center">'
+      +'<div style="cursor:pointer" onclick="gtClick(\'abiq\')" title="Saabiqah Pending"><div style="font-size:1.8rem;font-weight:800;color:#ff9800">'+divTotSab+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">سابقہ پینڈنگ</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'mojuda\')" title="Mojuda Masail"><div style="font-size:1.8rem;font-weight:800;color:#90caf9">'+divTotMoj+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">موجودہ مسائل</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'all\')" title="Total Cases"><div style="font-size:1.8rem;font-weight:800;color:#fff">'+divTotKul+'</div><div style="font-size:.68rem;opacity:.9;margin-top:4px">کل Cases</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'closed\')" title="Closed"><div style="font-size:1.8rem;font-weight:800;color:#69f0ae">'+divTotClosed+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">حل شدہ</div></div>'
+      +'<div style="cursor:pointer" onclick="gtClick(\'pending\')" title="Pending"><div style="font-size:1.8rem;font-weight:800;color:#f44336">'+divTotPending+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">پینڈنگ</div></div>'
+      +'</div></div>'
+      +'<div style="text-align:center;gap:10px;display:flex;justify-content:center;margin-bottom:14px;grid-column:1/-1">'
+      +'<button onclick="exDivCards()" style="padding:8px 16px;background:#c0392b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>'
+      +'<button onclick="exDivCardsXls()" style="padding:8px 16px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>'
       +'</div>'
       +'<hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px;grid-column:1/-1">';
   }
