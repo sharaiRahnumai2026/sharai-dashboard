@@ -9198,6 +9198,11 @@ function exRegionCards(){
 
 function exRegionCardsXls(){
   var label = repGetFilterLabel();
+  var range = getReportFilterRange();
+  var _repRangeStart = range.fromD;
+  var _repRangeEnd = range.toD;
+  var _sabiqaYearBound = range.sabiqaYearBound;
+  
   var regionStats = {};
   cc.forEach(function(c){
     var r = c.region||'Unknown';
@@ -9314,6 +9319,11 @@ function repExportExcel(){
 function exStateCards(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
   var label = repGetFilterLabel();
+  var range = getReportFilterRange();
+  var _repRangeStart = range.fromD;
+  var _repRangeEnd = range.toD;
+  var _sabiqaYearBound = range.sabiqaYearBound;
+  
   var stateStats = {};
   cc.forEach(function(c){
     var st = c.state||'Unknown';
@@ -9433,6 +9443,11 @@ function exDivCards(){
   }
   
   var label = repGetFilterLabel();
+  var range = getReportFilterRange();
+  var _repRangeStart = range.fromD;
+  var _repRangeEnd = range.toD;
+  var _sabiqaYearBound = range.sabiqaYearBound;
+  
   var divisionStats = {};
   cc.forEach(function(c){
     var div = normalizeDivision(c.division);
@@ -9507,6 +9522,11 @@ function exDivCards(){
 // ===== STATE & DIVISION EXCEL EXPORTS =====
 function exStateCardsXls(){
   var label = repGetFilterLabel();
+  var range = getReportFilterRange();
+  var _repRangeStart = range.fromD;
+  var _repRangeEnd = range.toD;
+  var _sabiqaYearBound = range.sabiqaYearBound;
+  
   var stateStats = {};
   cc.forEach(function(c){
     var st = c.state||'Unknown';
@@ -9602,6 +9622,11 @@ function exDivCardsXls(){
   }
   
   var label = repGetFilterLabel();
+  var range = getReportFilterRange();
+  var _repRangeStart = range.fromD;
+  var _repRangeEnd = range.toD;
+  var _sabiqaYearBound = range.sabiqaYearBound;
+  
   var divisionStats = {};
   cc.forEach(function(c){
     var div = normalizeDivision(c.division);
