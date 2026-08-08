@@ -5354,7 +5354,8 @@ function rRep(){
   // ===== BUILD STATE STATS (same logic as regionStats - use cc not fcc) =====
   var stateStats = {};
   cc.forEach(function(c){
-    var st = c.state||'Unknown';
+    if(!c.state) return;  // Skip cases without state
+    var st = c.state;
     if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
@@ -5384,6 +5385,7 @@ function rRep(){
   // ===== BUILD DIVISION STATS (same logic as regionStats - use cc not fcc) =====
   var divisionStats = {};
   cc.forEach(function(c){
+    if(!c.division) return;  // Skip cases without division
     var div = normalizeDivision(c.division);  // NORMALIZED!
     if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
