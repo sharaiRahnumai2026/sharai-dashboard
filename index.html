@@ -4787,6 +4787,18 @@ function repGoSearch(regionEnc, filter){
     _pendingFilters = {rg: short, gd: 'halfia', customFilter: function(c){ return inRange(c) && c.halfiaSt !== 'closed'; }};
   } else if(filter === 'halfia_closed'){
     _pendingFilters = {rg: short, gd: 'halfia', customFilter: function(c){ return inRange(c) && c.halfiaSt === 'closed'; }};
+  } else if(filter === 'transfer_all'){
+    _pendingFilters = {rg: short, gd: 'tabadla', customFilter: function(c){ return inRange(c); }};
+  } else if(filter === 'transfer_pending'){
+    _pendingFilters = {rg: short, gd: 'tabadla', customFilter: function(c){ return inRange(c) && !(c.tabadlaSt==='closed'||c.tbD==='yes'); }};
+  } else if(filter === 'transfer_closed'){
+    _pendingFilters = {rg: short, gd: 'tabadla', customFilter: function(c){ return inRange(c) && (c.tabadlaSt==='closed'||c.tbD==='yes'); }};
+  } else if(filter === 'mazrat_all'){
+    _pendingFilters = {rg: short, gd: 'mazratnama', customFilter: function(c){ return inRange(c); }};
+  } else if(filter === 'mazrat_pending'){
+    _pendingFilters = {rg: short, gd: 'mazratnama', customFilter: function(c){ return inRange(c) && !(c.mazratSt==='closed'||c.mazSt==='yes'||c.mazSt==='closed'); }};
+  } else if(filter === 'mazrat_closed'){
+    _pendingFilters = {rg: short, gd: 'mazratnama', customFilter: function(c){ return inRange(c) && (c.mazratSt==='closed'||c.mazSt==='yes'||c.mazSt==='closed'); }};
   } else {
     _pendingFilters = {rg: short, customFilter: function(c){ return inRange(c); }};
   }
@@ -5456,7 +5468,7 @@ function rRep(){
   var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span><button onclick="toggleHiddenRegions()" style="margin-left:auto;padding:3px 10px;font-size:.68rem;border:1.5px solid var(--blue);background:#fff;color:var(--blue);border-radius:6px;cursor:pointer;font-weight:600">👁️ Hidden regions</button></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
 
   // Build per-region tawan/halfiya stats — same filtered cases (fcc) use karo
-  var regionTawn = {}, regionHalf = {};
+  var regionTawn = {}, regionHalf = {}, regionTrans = {}, regionMaz = {};
   fcc.forEach(function(c){
     var r = c.region||'Unknown';
     var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
@@ -5472,6 +5484,18 @@ function rRep(){
       if(c.halfiaSt==='closed') regionHalf[r].closed++;
       else regionHalf[r].pending++;
     }
+    if(gs.indexOf('tabadla')>-1){
+      if(!regionTrans[r]) regionTrans[r]={total:0,pending:0,closed:0};
+      regionTrans[r].total++;
+      if(c.tabadlaSt==='closed'||c.tbD==='yes') regionTrans[r].closed++;
+      else regionTrans[r].pending++;
+    }
+    if(gs.indexOf('mazratnama')>-1){
+      if(!regionMaz[r]) regionMaz[r]={total:0,pending:0,closed:0};
+      regionMaz[r].total++;
+      if(c.mazratSt==='closed'||c.mazSt==='yes'||c.mazSt==='closed') regionMaz[r].closed++;
+      else regionMaz[r].pending++;
+    }
   });
 
   regionKeys.forEach(function(r, idx2){
@@ -5480,6 +5504,8 @@ function rRep(){
     var pct = s.kulMasail>0 ? Math.round(s.halShuda/s.kulMasail*100) : 0;
     var tw  = regionTawn[r]||{total:0,pending:0,closed:0};
     var hf  = regionHalf[r]||{total:0,pending:0,closed:0};
+    var tr  = regionTrans[r]||{total:0,pending:0,closed:0};
+    var mz  = regionMaz[r]||{total:0,pending:0,closed:0};
     var rFull = r; // region name for click filter
 
     regionCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
@@ -5512,6 +5538,24 @@ function rRep(){
           +'<div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div>'
           +'<div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div>'
           +'<div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div>'
+          +'</div>'
+        : '')
+      // Transfer row
+      +(tr.total>0
+        ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f1f8e9">'
+          +'<div style="padding:6px 8px;display:flex;align-items:center;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#2e7d32">🔄 Transfer</span></div>'
+          +'<div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'transfer_all\')"><div style="font-size:.9rem;font-weight:800;color:#2e7d32">'+tr.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div>'
+          +'<div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'transfer_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tr.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div>'
+          +'<div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'transfer_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tr.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div>'
+          +'</div>'
+        : '')
+      // Mazratnama row
+      +(mz.total>0
+        ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#efebe9">'
+          +'<div style="padding:6px 8px;display:flex;align-items:center;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#795548">📝 Mazratnama</span></div>'
+          +'<div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'mazrat_all\')"><div style="font-size:.9rem;font-weight:800;color:#795548">'+mz.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div>'
+          +'<div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'mazrat_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+mz.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div>'
+          +'<div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearch(\''+encodeURIComponent(rFull)+'\',\'mazrat_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+mz.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div>'
           +'</div>'
         : '')
       // Progress bar
@@ -5547,7 +5591,7 @@ function rRep(){
     stateCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">📍 State-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
     
     // Build state tawan/halfiya stats
-    var stateTawn = {}, stateHalf = {};
+    var stateTawn = {}, stateHalf = {}, stateTrans = {}, stateMaz = {};
     fcc.forEach(function(c){
       var st = c.state||'Unknown';
       var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
@@ -5563,6 +5607,18 @@ function rRep(){
         if(c.halfiaSt==='closed') stateHalf[st].closed++;
         else stateHalf[st].pending++;
       }
+      if(gs.indexOf('tabadla')>-1){
+        if(!stateTrans[st]) stateTrans[st]={total:0,pending:0,closed:0};
+        stateTrans[st].total++;
+        if(c.tabadlaSt==='closed'||c.tbD==='yes') stateTrans[st].closed++;
+        else stateTrans[st].pending++;
+      }
+      if(gs.indexOf('mazratnama')>-1){
+        if(!stateMaz[st]) stateMaz[st]={total:0,pending:0,closed:0};
+        stateMaz[st].total++;
+        if(c.mazratSt==='closed'||c.mazSt==='yes'||c.mazSt==='closed') stateMaz[st].closed++;
+        else stateMaz[st].pending++;
+      }
     });
     
     stateKeys.forEach(function(st, idx){
@@ -5571,10 +5627,12 @@ function rRep(){
       var pct = s.kulMasail>0 ? Math.round(s.halShuda/s.kulMasail*100) : 0;
       var tw = stateTawn[st]||{total:0,pending:0,closed:0};
       var hf = stateHalf[st]||{total:0,pending:0,closed:0};
+      var tr = stateTrans[st]||{total:0,pending:0,closed:0};
+      var mz = stateMaz[st]||{total:0,pending:0,closed:0};
       
       var stEnc = encodeURIComponent(st).replace(/'/g,'%27');
       stateCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
-        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'all\')">📍 '+st+'</div>'
+        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="repGoSearchState(\''+stEnc+'\',\'all\')"><span>📍 '+st+'</span><span style="background:rgba(255,255,255,.25);border-radius:12px;padding:2px 10px;font-size:.75rem;font-weight:700">'+s.kulMasail+' کل</span></div>'
         +'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f5f5f5">'
         +'<div style="padding:8px 8px;border-right:1px solid var(--bor);font-size:.72rem;font-weight:700;color:var(--bd)">Stats</div>'
         +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'sabiqa\')" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+s.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
@@ -5583,8 +5641,10 @@ function rRep(){
         +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'closed\')" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+s.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
         +'</div>'
         +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'pending\')" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+s.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
-        +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_all\')"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'tawan_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
-        +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Half</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'tawan_all\')"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'tawan_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'tawan_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Halfiya Bayan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(tr.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f1f8e9"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#2e7d32">🔄 Transfer</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'transfer_all\')"><div style="font-size:.9rem;font-weight:800;color:#2e7d32">'+tr.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'transfer_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tr.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'transfer_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tr.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(mz.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#efebe9"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#795548">📝 Mazratnama</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'mazrat_all\')"><div style="font-size:.9rem;font-weight:800;color:#795548">'+mz.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'mazrat_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+mz.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'mazrat_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+mz.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
         +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
         +'</div>';
     });
@@ -5618,7 +5678,7 @@ function rRep(){
     divisionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏘️ Division-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
     
     // Build division tawan/halfiya stats
-    var divisionTawn = {}, divisionHalf = {};
+    var divisionTawn = {}, divisionHalf = {}, divisionTrans = {}, divisionMaz = {};
     fcc.forEach(function(c){
       var div = normalizeDivision(c.division);  // NORMALIZED!
       var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
@@ -5634,6 +5694,18 @@ function rRep(){
         if(c.halfiaSt==='closed') divisionHalf[div].closed++;
         else divisionHalf[div].pending++;
       }
+      if(gs.indexOf('tabadla')>-1){
+        if(!divisionTrans[div]) divisionTrans[div]={total:0,pending:0,closed:0};
+        divisionTrans[div].total++;
+        if(c.tabadlaSt==='closed'||c.tbD==='yes') divisionTrans[div].closed++;
+        else divisionTrans[div].pending++;
+      }
+      if(gs.indexOf('mazratnama')>-1){
+        if(!divisionMaz[div]) divisionMaz[div]={total:0,pending:0,closed:0};
+        divisionMaz[div].total++;
+        if(c.mazratSt==='closed'||c.mazSt==='yes'||c.mazSt==='closed') divisionMaz[div].closed++;
+        else divisionMaz[div].pending++;
+      }
     });
     
     divisionKeys.forEach(function(div, idx){
@@ -5642,10 +5714,12 @@ function rRep(){
       var pct = d.kulMasail>0 ? Math.round(d.halShuda/d.kulMasail*100) : 0;
       var tw = divisionTawn[div]||{total:0,pending:0,closed:0};
       var hf = divisionHalf[div]||{total:0,pending:0,closed:0};
+      var tr = divisionTrans[div]||{total:0,pending:0,closed:0};
+      var mz = divisionMaz[div]||{total:0,pending:0,closed:0};
       
       var dvEnc = encodeURIComponent(div).replace(/'/g,'%27');
       divisionCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
-        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'all\')">🏘️ '+div+'</div>'
+        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="repGoSearchDiv(\''+dvEnc+'\',\'all\')"><span>🏘️ '+div+'</span><span style="background:rgba(255,255,255,.25);border-radius:12px;padding:2px 10px;font-size:.75rem;font-weight:700">'+d.kulMasail+' کل</span></div>'
         +'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f5f5f5">'
         +'<div style="padding:8px 8px;border-right:1px solid var(--bor);font-size:.72rem;font-weight:700;color:var(--bd)">Stats</div>'
         +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'sabiqa\')" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+d.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
@@ -5654,8 +5728,10 @@ function rRep(){
         +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'closed\')" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+d.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
         +'</div>'
         +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'pending\')" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+d.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
-        +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_all\')"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'tawan_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
-        +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Half</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'tawan_all\')"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'tawan_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'tawan_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Halfiya Bayan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(tr.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f1f8e9"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#2e7d32">🔄 Transfer</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'transfer_all\')"><div style="font-size:.9rem;font-weight:800;color:#2e7d32">'+tr.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'transfer_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tr.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'transfer_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tr.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
+        +(mz.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#efebe9"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#795548">📝 Mazratnama</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'mazrat_all\')"><div style="font-size:.9rem;font-weight:800;color:#795548">'+mz.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'mazrat_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+mz.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'mazrat_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+mz.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
         +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
         +'</div>';
     });
@@ -7091,6 +7167,14 @@ function repGoSearchState(stateEnc, filter){
   doSrch._customFilter=null;
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
   ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var _stN=(state||'').trim().toLowerCase();
+  var _gp = _repGuidePred(filter);
+  if(_gp){
+    var _sids = {};
+    if(_repBktState[state] && _repBktState[state].all){ _repBktState[state].all.forEach(function(id){ _sids[id]=1; }); }
+    doSrch._customFilter=function(c){ return !!_sids[c.id] && _gp(c); };
+    goPage('search'); setTimeout(function(){ doSrch(); }, 200); return;
+  }
   var _bktMap = {all:'all', closed:'closed', pending:'pending', sabiqa:'sabiqa', moujuda:'moujuda'};
   var key = _bktMap[filter] || 'all';
   var ids = {};
@@ -7107,6 +7191,13 @@ function repGoSearchDiv(divEnc, filter){
   doSrch._customFilter=null;
   ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
   ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var _gp = _repGuidePred(filter);
+  if(_gp){
+    var _dids = {};
+    if(_repBktDiv[divName] && _repBktDiv[divName].all){ _repBktDiv[divName].all.forEach(function(id){ _dids[id]=1; }); }
+    doSrch._customFilter=function(c){ return !!_dids[c.id] && _gp(c); };
+    goPage('search'); setTimeout(function(){ doSrch(); }, 200); return;
+  }
   var _bktMap = {all:'all', closed:'closed', pending:'pending', sabiqa:'sabiqa', moujuda:'moujuda'};
   var key = _bktMap[filter] || 'all';
   var ids = {};
@@ -7115,6 +7206,29 @@ function repGoSearchDiv(divEnc, filter){
   }
   doSrch._customFilter=function(c){ return !!ids[c.id]; };
   goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+
+// Guide-row filter predicate (tawan/halfia/transfer/mazrat _ all/pending/closed)
+function _repGuidePred(filter){
+  var parts = String(filter||'').split('_');
+  if(parts.length!==2) return null;
+  var g = parts[0], sub = parts[1];
+  var map = {
+    tawan:    {guide:'tawan',      done:function(c){ return c.tawnSt==='closed'; }},
+    halfia:   {guide:'halfia',     done:function(c){ return c.halfiaSt==='closed'; }},
+    transfer: {guide:'tabadla',    done:function(c){ return c.tabadlaSt==='closed'||c.tbD==='yes'; }},
+    mazrat:   {guide:'mazratnama', done:function(c){ return c.mazratSt==='closed'||c.mazSt==='yes'||c.mazSt==='closed'; }}
+  };
+  var m = map[g];
+  if(!m) return null;
+  return function(c){
+    var gs = c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []);
+    if(gs.indexOf(m.guide)<0) return false;
+    if(sub==='all') return true;
+    if(sub==='closed') return m.done(c);
+    if(sub==='pending') return !m.done(c);
+    return true;
+  };
 }
 
 function gtClickDept(dept){
