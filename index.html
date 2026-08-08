@@ -9326,7 +9326,8 @@ function exStateCards(){
   
   var stateStats = {};
   cc.forEach(function(c){
-    var st = c.state||'Unknown';
+    if(!c.state) return;  // Skip cases without state
+    var st = c.state;
     if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
@@ -9450,6 +9451,7 @@ function exDivCards(){
   
   var divisionStats = {};
   cc.forEach(function(c){
+    if(!c.division) return;  // Skip cases without division
     var div = normalizeDivision(c.division);
     if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
@@ -9529,7 +9531,8 @@ function exStateCardsXls(){
   
   var stateStats = {};
   cc.forEach(function(c){
-    var st = c.state||'Unknown';
+    if(!c.state) return;  // Skip cases without state
+    var st = c.state;
     if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
@@ -9629,6 +9632,7 @@ function exDivCardsXls(){
   
   var divisionStats = {};
   cc.forEach(function(c){
+    if(!c.division) return;  // Skip cases without division
     var div = normalizeDivision(c.division);
     if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
