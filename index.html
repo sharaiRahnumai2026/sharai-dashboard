@@ -5594,10 +5594,6 @@ function rRep(){
       +'<div style="cursor:pointer" onclick="gtClick(\'closed\')" title="Closed"><div style="font-size:1.8rem;font-weight:800;color:#81c784">'+stateTotClosed+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">حل شدہ</div></div>'
       +'<div style="cursor:pointer" onclick="gtClick(\'pending\')" title="Pending"><div style="font-size:1.8rem;font-weight:800;color:#ef5350">'+stateTotPending+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">پینڈنگ</div></div>'
       +'</div></div>'
-      +'<div style="text-align:center;gap:10px;display:flex;justify-content:center;margin-bottom:14px;grid-column:1/-1">'
-      +'<button onclick="exStateCards()" style="padding:8px 16px;background:#c0392b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>'
-      +'<button onclick="exStateCardsXls()" style="padding:8px 16px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>'
-      +'</div>'
       +'<hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px;grid-column:1/-1">';
   }
   // ===== END STATE CARDS =====
@@ -5668,10 +5664,6 @@ function rRep(){
       +'<div style="cursor:pointer" onclick="gtClick(\'closed\')" title="Closed"><div style="font-size:1.8rem;font-weight:800;color:#69f0ae">'+divTotClosed+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">حل شدہ</div></div>'
       +'<div style="cursor:pointer" onclick="gtClick(\'pending\')" title="Pending"><div style="font-size:1.8rem;font-weight:800;color:#f44336">'+divTotPending+'</div><div style="font-size:.68rem;opacity:.9;direction:ltr;font-family:var(--urdu-font);margin-top:4px">پینڈنگ</div></div>'
       +'</div></div>'
-      +'<div style="text-align:center;gap:10px;display:flex;justify-content:center;margin-bottom:14px;grid-column:1/-1">'
-      +'<button onclick="exDivCards()" style="padding:8px 16px;background:#c0392b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>'
-      +'<button onclick="exDivCardsXls()" style="padding:8px 16px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>'
-      +'</div>'
       +'<hr style="border:none;border-top:1.5px solid var(--bor);margin:6px 0 14px;grid-column:1/-1">';
   }
   // ===== END DIVISION CARDS =====
@@ -9074,6 +9066,19 @@ function repDownloadPDF(){
 }
 
 // ===== STATE CARDS EXPORT =====
+// ===== GLOBAL DATE PARSER =====
+function parseLocalDate(ds){
+  if(!ds) return null;
+  ds = String(ds).trim();
+  var parts = ds.split('-');
+  if(parts.length===3) return new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  if(parts.length===1 && /^\d{4}$/.test(ds)) return new Date(parseInt(ds),0,1);
+  if(parts.length===2 && /^\d{4}$/.test(parts[0]) && /^\d{1,2}$/.test(parts[1]))
+    return new Date(parseInt(parts[0]),parseInt(parts[1])-1,1);
+  return new Date(ds);
+}
+// ===== END GLOBAL DATE PARSER =====
+
 // ===== REGION CARDS EXPORT =====
 function exRegionCards(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
