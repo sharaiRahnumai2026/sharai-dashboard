@@ -4796,6 +4796,8 @@ function repGoSearch(regionEnc, filter){
 // Reports: bucket-of-ids (card number aur click-through ko match karne ke liye)
 var _repBkt = {};      // region -> {sabiqa,moujuda,all,closed,pending} (arrays of case ids)
 var _repBktAll = {};   // grand total (sab regions ka union)
+var _repBktState = {}; // state -> {sabiqa,moujuda,all,closed,pending} (arrays of case ids)
+var _repBktDiv = {};   // division(normalized) -> {sabiqa,moujuda,all,closed,pending} (arrays of case ids)
 function _repSaveState(){
   try{
     var st={ y:(document.getElementById('repYear')||{}).value||'', m:(document.getElementById('repMonth')||{}).value||'', f:(document.getElementById('repFilter')||{}).value||'all' };
@@ -5353,6 +5355,8 @@ function rRep(){
 
   // ===== BUILD STATE STATS (same logic as regionStats - use cc not fcc) =====
   var stateStats = {};
+  _repBktState = {};
+  function _bktSt(s){ if(!_repBktState[s]) _repBktState[s]={sabiqa:[],moujuda:[],all:[],closed:[],pending:[]}; return _repBktState[s]; }
   cc.forEach(function(c){
     if(!c.state) return;  // Skip cases without state
     var st = c.state;
@@ -5361,6 +5365,7 @@ function rRep(){
     if(!od) return;
     var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
+    var bSt = _bktSt(st);
     
     var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
     var inSabiqa = false;
@@ -5371,19 +5376,22 @@ function rRep(){
       }
     }
     
-    if(inMoujuda) stateStats[st].moujuda++;
-    if(inSabiqa)  stateStats[st].sabiqa++;
+    if(inMoujuda){ stateStats[st].moujuda++; bSt.moujuda.push(c.id); }
+    if(inSabiqa){  stateStats[st].sabiqa++;  bSt.sabiqa.push(c.id); }
     if(inMoujuda || inSabiqa){
       stateStats[st].kulMasail++;
+      bSt.all.push(c.id);
       var closedInRange = closed && cd && (!fromD || cd >= fromD) && cd <= _rangeEnd;
-      if(closedInRange) stateStats[st].halShuda++;
-      else              stateStats[st].pending++;
+      if(closedInRange){ stateStats[st].halShuda++; bSt.closed.push(c.id); }
+      else             { stateStats[st].pending++;  bSt.pending.push(c.id); }
     }
   });
   // ===== END STATE STATS =====
 
   // ===== BUILD DIVISION STATS (same logic as regionStats - use cc not fcc) =====
   var divisionStats = {};
+  _repBktDiv = {};
+  function _bktDv(d){ if(!_repBktDiv[d]) _repBktDiv[d]={sabiqa:[],moujuda:[],all:[],closed:[],pending:[]}; return _repBktDiv[d]; }
   cc.forEach(function(c){
     if(!c.division) return;  // Skip cases without division
     var div = normalizeDivision(c.division);  // NORMALIZED!
@@ -5392,6 +5400,7 @@ function rRep(){
     if(!od) return;
     var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
+    var bDv = _bktDv(div);
     
     var inMoujuda = (!fromD || od >= fromD) && od <= _rangeEnd;
     var inSabiqa = false;
@@ -5402,13 +5411,14 @@ function rRep(){
       }
     }
     
-    if(inMoujuda) divisionStats[div].moujuda++;
-    if(inSabiqa)  divisionStats[div].sabiqa++;
+    if(inMoujuda){ divisionStats[div].moujuda++; bDv.moujuda.push(c.id); }
+    if(inSabiqa){  divisionStats[div].sabiqa++;  bDv.sabiqa.push(c.id); }
     if(inMoujuda || inSabiqa){
       divisionStats[div].kulMasail++;
+      bDv.all.push(c.id);
       var closedInRange = closed && cd && (!fromD || cd >= fromD) && cd <= _rangeEnd;
-      if(closedInRange) divisionStats[div].halShuda++;
-      else              divisionStats[div].pending++;
+      if(closedInRange){ divisionStats[div].halShuda++; bDv.closed.push(c.id); }
+      else             { divisionStats[div].pending++;  bDv.pending.push(c.id); }
     }
   });
   // ===== END DIVISION STATS =====
@@ -5562,16 +5572,17 @@ function rRep(){
       var tw = stateTawn[st]||{total:0,pending:0,closed:0};
       var hf = stateHalf[st]||{total:0,pending:0,closed:0};
       
+      var stEnc = encodeURIComponent(st).replace(/'/g,'%27');
       stateCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
-        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer" onclick="gtClickState(\''+st+'\')">📍 '+st+'</div>'
+        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'all\')">📍 '+st+'</div>'
         +'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f5f5f5">'
         +'<div style="padding:8px 8px;border-right:1px solid var(--bor);font-size:.72rem;font-weight:700;color:var(--bd)">Stats</div>'
-        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClickState(\''+st+'\')" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+s.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
-        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClickState(\''+st+'\')" title="موجودہ"><div style="font-size:1rem;font-weight:800;color:#2196f3">'+s.moujuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">موجودہ</div></div>'
-        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClickState(\''+st+'\')" title="Total"><div style="font-size:1rem;font-weight:800;color:var(--bd)">'+s.kulMasail+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;font-weight:600">کل</div></div>'
-        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="gtClickState(\''+st+'\')" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+s.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'sabiqa\')" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+s.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'moujuda\')" title="موجودہ"><div style="font-size:1rem;font-weight:800;color:#2196f3">'+s.moujuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">موجودہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'all\')" title="Total"><div style="font-size:1rem;font-weight:800;color:var(--bd)">'+s.kulMasail+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;font-weight:600">کل</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'closed\')" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+s.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
         +'</div>'
-        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="gtClickState(\''+st+'\')" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+s.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchState(\''+stEnc+'\',\'pending\')" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+s.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
         +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_all\')"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'tawan_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
         +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Half</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
         +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
@@ -5632,16 +5643,17 @@ function rRep(){
       var tw = divisionTawn[div]||{total:0,pending:0,closed:0};
       var hf = divisionHalf[div]||{total:0,pending:0,closed:0};
       
+      var dvEnc = encodeURIComponent(div).replace(/'/g,'%27');
       divisionCards += '<div style="background:var(--card);border-radius:10px;box-shadow:var(--sh);border:1px solid var(--bor);overflow:hidden">'
-        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer" onclick="gtClickDiv(\''+div+'\')">🏘️ '+div+'</div>'
+        +'<div style="background:'+col+';color:#fff;padding:10px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'all\')">🏘️ '+div+'</div>'
         +'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#f5f5f5">'
         +'<div style="padding:8px 8px;border-right:1px solid var(--bor);font-size:.72rem;font-weight:700;color:var(--bd)">Stats</div>'
-        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClickDiv(\''+div+'\')" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+d.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
-        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClickDiv(\''+div+'\')" title="موجودہ"><div style="font-size:1rem;font-weight:800;color:#2196f3">'+d.moujuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">موجودہ</div></div>'
-        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClickDiv(\''+div+'\')" title="Total"><div style="font-size:1rem;font-weight:800;color:var(--bd)">'+d.kulMasail+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;font-weight:600">کل</div></div>'
-        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="gtClickDiv(\''+div+'\')" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+d.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'sabiqa\')" title="سابقہ"><div style="font-size:1rem;font-weight:800;color:#ff9800">'+d.sabiqa+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">سابقہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'moujuda\')" title="موجودہ"><div style="font-size:1rem;font-weight:800;color:#2196f3">'+d.moujuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">موجودہ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'all\')" title="Total"><div style="font-size:1rem;font-weight:800;color:var(--bd)">'+d.kulMasail+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;font-weight:600">کل</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'closed\')" title="Closed"><div style="font-size:1rem;font-weight:800;color:var(--green)">'+d.halShuda+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">حل شدہ</div></div>'
         +'</div>'
-        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="gtClickDiv(\''+div+'\')" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+d.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
+        +'<div style="padding:8px 4px;text-align:center;cursor:pointer" onclick="repGoSearchDiv(\''+dvEnc+'\',\'pending\')" title="Pending"><div style="font-size:1rem;font-weight:800;color:var(--red)">'+d.pending+'</div><div style="font-size:.57rem;color:var(--mt);line-height:1.2;direction:ltr;font-family:var(--urdu-font)">پینڈنگ</div></div>'
         +(tw.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fff8f5"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#e65100">💰 Tawan</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_all\')"><div style="font-size:.9rem;font-weight:800;color:#e65100">'+tw.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'tawan_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+tw.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'tawan_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+tw.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
         +(hf.total>0 ? '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--bor);background:#fdf5ff"><div style="padding:6px 8px;border-right:1px solid var(--bor)"><span style="font-size:.72rem;font-weight:700;color:#9c27b0">📜 Half</span></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_all\')"><div style="font-size:.9rem;font-weight:800;color:#9c27b0">'+hf.total+'</div><div style="font-size:.57rem;color:var(--mt)">Total</div></div><div style="padding:6px 4px;text-align:center;border-right:1px solid var(--bor);cursor:pointer" onclick="gtClick(\'halfia_pending\')"><div style="font-size:.9rem;font-weight:800;color:var(--red)">'+hf.pending+'</div><div style="font-size:.57rem;color:var(--mt)">Pending</div></div><div style="padding:6px 4px;text-align:center;cursor:pointer" onclick="gtClick(\'halfia_closed\')"><div style="font-size:.9rem;font-weight:800;color:var(--green)">'+hf.closed+'</div><div style="font-size:.57rem;color:var(--mt)">Closed</div></div></div>' : '')
         +'<div style="padding:6px 10px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:#eee;border-radius:4px;height:6px"><div style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;transition:width .3s"></div></div><span style="font-size:.7rem;color:'+col+';font-weight:700">'+pct+'%</span></div>'
@@ -5695,15 +5707,13 @@ function rRep(){
     +'</div>'
     +'</div>';
   
+  h = exportInterface + h;
   // ===== END EXPORT INTERFACE =====
   
   var _fw = document.getElementById('repFutureWarn');
   if(_fw) _fw.style.display = 'none';
-  
-  // Insert export interface to rpRC
-  document.getElementById('rpRC').innerHTML = exportInterface;
-  // Insert cards to rpC
-  document.getElementById('rpC').innerHTML = h;
+  document.getElementById('rpC').innerHTML='';
+  document.getElementById('rpRC').innerHTML = h;
 
   var tRm = tTot - tPd;
   var hC = fcc.filter(function(c){ return c.guide==='halfia'; });
@@ -5719,7 +5729,7 @@ function rRep(){
   ];
   // Sort by size descending - biggest first
   cards.sort(function(a,b){ return b.size - a.size; });
-  // rpC already filled with Region/State/Division cards - don't clear!
+  document.getElementById('rpC').innerHTML = ''; // bars hataye (user request)
   var _yc=document.getElementById('rpYearCompare'); if(_yc)_yc.innerHTML=''; // Year compare hataya (user request)
 
   // ===== TREND CHART (Monthly) =====
@@ -7072,6 +7082,38 @@ function gtClickDiv(division){
     if(_df && !_df(c)) return false;
     return true;
   };
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+
+// STATE card ke number pe click — bucket-ids se EXACT wahi cases jo card pe gine gaye
+function repGoSearchState(stateEnc, filter){
+  var state = decodeURIComponent(stateEnc);
+  doSrch._customFilter=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var _bktMap = {all:'all', closed:'closed', pending:'pending', sabiqa:'sabiqa', moujuda:'moujuda'};
+  var key = _bktMap[filter] || 'all';
+  var ids = {};
+  if(_repBktState[state] && _repBktState[state][key]){
+    _repBktState[state][key].forEach(function(id){ ids[id]=1; });
+  }
+  doSrch._customFilter=function(c){ return !!ids[c.id]; };
+  goPage('search'); setTimeout(function(){ doSrch(); }, 200);
+}
+
+// DIVISION card ke number pe click — bucket-ids se EXACT wahi cases (normalized key)
+function repGoSearchDiv(divEnc, filter){
+  var divName = decodeURIComponent(divEnc);
+  doSrch._customFilter=null;
+  ['ms-sMuf','ms-sYr','ms-sRg','ms-sSt','ms-sDv','ms-sDi','ms-sDp','ms-sStat','ms-sGd'].forEach(function(id){ if(MS[id]){MS[id].selected=new Set();msUpdateBtn(id);} });
+  ['sq','sCN','sDF','sDT'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var _bktMap = {all:'all', closed:'closed', pending:'pending', sabiqa:'sabiqa', moujuda:'moujuda'};
+  var key = _bktMap[filter] || 'all';
+  var ids = {};
+  if(_repBktDiv[divName] && _repBktDiv[divName][key]){
+    _repBktDiv[divName][key].forEach(function(id){ ids[id]=1; });
+  }
+  doSrch._customFilter=function(c){ return !!ids[c.id]; };
   goPage('search'); setTimeout(function(){ doSrch(); }, 200);
 }
 
