@@ -9049,26 +9049,31 @@ function repDownloadPDF(){
 // ===== STATE CARDS EXPORT =====
 function exStateCards(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
-  var fcc = repGetFilteredCases();
   var label = repGetFilterLabel();
   var stateStats = {};
-  fcc.forEach(function(c){
+  cc.forEach(function(c){
     var st = c.state||'Unknown';
     if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
     var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
-    var inMoujuda = od <= _rangeEnd;
+    
+    var inMoujuda = (!_repRangeStart || od >= _repRangeStart) && od <= _repRangeEnd;
     var inSabiqa = false;
-    if(od < _rangeEnd && (!closed || (cd && cd >= _rangeStart))){
-      inSabiqa = true;
+    if(_repRangeStart && od < _repRangeStart){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;
+        else if(cd && cd >= _repRangeStart) inSabiqa = true;
+      }
     }
+    
     if(inMoujuda) stateStats[st].moujuda++;
     if(inSabiqa) stateStats[st].sabiqa++;
     if(inMoujuda || inSabiqa){
       stateStats[st].kulMasail++;
-      if(closed && cd && cd >= _rangeStart) stateStats[st].halShuda++;
+      var closedInRange = closed && cd && (!_repRangeStart || cd >= _repRangeStart) && cd <= _repRangeEnd;
+      if(closedInRange) stateStats[st].halShuda++;
       else stateStats[st].pending++;
     }
   });
@@ -9163,26 +9168,31 @@ function exDivCards(){
     return mergeMap[cleaned] || cleaned;
   }
   
-  var fcc = repGetFilteredCases();
   var label = repGetFilterLabel();
   var divisionStats = {};
-  fcc.forEach(function(c){
+  cc.forEach(function(c){
     var div = normalizeDivision(c.division);
     if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
     var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
-    var inMoujuda = od <= _rangeEnd;
+    
+    var inMoujuda = (!_repRangeStart || od >= _repRangeStart) && od <= _repRangeEnd;
     var inSabiqa = false;
-    if(od < _rangeEnd && (!closed || (cd && cd >= _rangeStart))){
-      inSabiqa = true;
+    if(_repRangeStart && od < _repRangeStart){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;
+        else if(cd && cd >= _repRangeStart) inSabiqa = true;
+      }
     }
+    
     if(inMoujuda) divisionStats[div].moujuda++;
     if(inSabiqa) divisionStats[div].sabiqa++;
     if(inMoujuda || inSabiqa){
       divisionStats[div].kulMasail++;
-      if(closed && cd && cd >= _rangeStart) divisionStats[div].halShuda++;
+      var closedInRange = closed && cd && (!_repRangeStart || cd >= _repRangeStart) && cd <= _repRangeEnd;
+      if(closedInRange) divisionStats[div].halShuda++;
       else divisionStats[div].pending++;
     }
   });
@@ -9232,25 +9242,31 @@ function exDivCards(){
 
 // ===== STATE & DIVISION EXCEL EXPORTS =====
 function exStateCardsXls(){
-  var fcc = repGetFilteredCases();
   var label = repGetFilterLabel();
   var stateStats = {};
-  fcc.forEach(function(c){
+  cc.forEach(function(c){
     var st = c.state||'Unknown';
     if(!stateStats[st]) stateStats[st]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
+    var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
-    var inMoujuda = od <= _rangeEnd;
+    
+    var inMoujuda = (!_repRangeStart || od >= _repRangeStart) && od <= _repRangeEnd;
     var inSabiqa = false;
-    if(od < _rangeEnd && (!closed || (closed))){
-      inSabiqa = true;
+    if(_repRangeStart && od < _repRangeStart){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;
+        else if(cd && cd >= _repRangeStart) inSabiqa = true;
+      }
     }
+    
     if(inMoujuda) stateStats[st].moujuda++;
     if(inSabiqa) stateStats[st].sabiqa++;
     if(inMoujuda || inSabiqa){
       stateStats[st].kulMasail++;
-      if(closed) stateStats[st].halShuda++;
+      var closedInRange = closed && cd && (!_repRangeStart || cd >= _repRangeStart) && cd <= _repRangeEnd;
+      if(closedInRange) stateStats[st].halShuda++;
       else stateStats[st].pending++;
     }
   });
@@ -9321,25 +9337,31 @@ function exDivCardsXls(){
     return mergeMap[cleaned] || cleaned;
   }
   
-  var fcc = repGetFilteredCases();
   var label = repGetFilterLabel();
   var divisionStats = {};
-  fcc.forEach(function(c){
+  cc.forEach(function(c){
     var div = normalizeDivision(c.division);
     if(!divisionStats[div]) divisionStats[div]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
+    var cd = parseLocalDate(c.closeDate);
     var closed = isClosed(c);
-    var inMoujuda = od <= _rangeEnd;
+    
+    var inMoujuda = (!_repRangeStart || od >= _repRangeStart) && od <= _repRangeEnd;
     var inSabiqa = false;
-    if(od < _rangeEnd && (!closed || (closed))){
-      inSabiqa = true;
+    if(_repRangeStart && od < _repRangeStart){
+      if(!_sabiqaYearBound || od >= _sabiqaYearBound){
+        if(!closed) inSabiqa = true;
+        else if(cd && cd >= _repRangeStart) inSabiqa = true;
+      }
     }
+    
     if(inMoujuda) divisionStats[div].moujuda++;
     if(inSabiqa) divisionStats[div].sabiqa++;
     if(inMoujuda || inSabiqa){
       divisionStats[div].kulMasail++;
-      if(closed) divisionStats[div].halShuda++;
+      var closedInRange = closed && cd && (!_repRangeStart || cd >= _repRangeStart) && cd <= _repRangeEnd;
+      if(closedInRange) divisionStats[div].halShuda++;
       else divisionStats[div].pending++;
     }
   });
