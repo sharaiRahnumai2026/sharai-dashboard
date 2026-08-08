@@ -1400,7 +1400,7 @@ function _cleanC(o){
         </div>
         <button onclick="rRep()" style="padding:6px 12px;background:var(--green);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700">✅ Apply</button>
         <button onclick="repClearFilters()" style="padding:6px 12px;background:#fff;color:var(--red);border:1.5px solid var(--red);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600">✕ Clear</button>
-        <div style="display:flex;gap:5px;margin-left:4px">
+        <div style="display:none;gap:5px;margin-left:4px">
           <button onclick="repShowRegionSelect()" style="padding:6px 12px;background:#1d6f42;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📊 Excel</button>
           <button onclick="repDownloadPDF()" style="padding:6px 12px;background:#c0392b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">📄 PDF</button>
           <button onclick="repPrintAnalytics()" style="padding:6px 12px;background:#6a1b9a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:4px">🖨️ Analytics</button>
@@ -5686,7 +5686,7 @@ function rRep(){
         +'</select>'
       +'</div>'
       +'<div style="margin-left:auto;display:flex;gap:8px;align-items:center">'
-        +'<button id="toggleExportHidden" onclick="toggleExportHidden()" style="padding:8px 14px;border:0.5px solid var(--bor);border-radius:8px;background:var(--card);color:var(--bd);cursor:pointer;font-weight:500;font-size:.95rem;transition:all .2s">👁️ Hidden regions</button>'
+        +'<button id="toggleExportHidden" onclick="toggleExportHidden()" style="padding:8px 14px;border:0.5px solid var(--bor);border-radius:8px;background:var(--card);color:var(--bd);cursor:pointer;font-weight:500;font-size:.95rem;transition:all .2s;display:none">👁️ Hidden regions</button>'
         +'<button onclick="repExportPDF()" style="padding:8px 16px;background:#d63031;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:500;font-size:.95rem;transition:all .2s">PDF</button>'
         +'<button onclick="repExportExcel()" style="padding:8px 16px;background:#27ae60;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:500;font-size:.95rem;transition:all .2s">Excel</button>'
       +'</div>'
@@ -9077,12 +9077,56 @@ function parseLocalDate(ds){
     return new Date(parseInt(parts[0]),parseInt(parts[1])-1,1);
   return new Date(ds);
 }
+
+function isClosed(c){
+  return (c.status||'').toLowerCase() === 'closed';
+}
+
+function getReportFilterRange(){
+  var now = new Date();
+  var selYear  = parseInt((document.getElementById('repYear')||{}).value||'') || 0;
+  var selMonth = parseInt((document.getElementById('repMonth')||{}).value||'') || 0;
+  var quickVal = (document.getElementById('repFilter')||{}).value || 'all';
+  var fromD = null, toD = null, sabiqaYearBound = null;
+  
+  if(quickVal==='thismonth'){ fromD=new Date(now.getFullYear(),now.getMonth(),1); toD=new Date(now.getFullYear(),now.getMonth()+1,0); }
+  else if(quickVal==='lastmonth'){ fromD=new Date(now.getFullYear(),now.getMonth()-1,1); toD=new Date(now.getFullYear(),now.getMonth(),0); }
+  else if(quickVal==='last3'){ fromD=new Date(now.getFullYear(),now.getMonth()-2,1); toD=new Date(now.getFullYear(),now.getMonth()+1,0); }
+  else if(quickVal==='last6'){ fromD=new Date(now.getFullYear(),now.getMonth()-5,1); toD=new Date(now.getFullYear(),now.getMonth()+1,0); }
+  else if(quickVal==='thisyear'){ fromD=new Date(now.getFullYear(),0,1); toD=new Date(now.getFullYear(),11,31); }
+  else if(quickVal==='lastyear'){ fromD=new Date(now.getFullYear()-1,0,1); toD=new Date(now.getFullYear()-1,11,31); }
+  else if(quickVal==='custom'){
+    var _crF=(document.getElementById('repFrom')||{}).value;
+    var _crT=(document.getElementById('repTo')||{}).value;
+    if(_crF) fromD=new Date(_crF);
+    if(_crT){ toD=new Date(_crT); toD.setHours(23,59,59,999); }
+    if(!fromD&&!toD){
+      if(selYear&&selMonth){ fromD=new Date(selYear,selMonth-1,1); toD=new Date(selYear,selMonth,0); }
+      else if(selYear){ fromD=new Date(selYear,0,1); toD=new Date(selYear,11,31); }
+    }
+  }
+  else{
+    if(selYear&&selMonth){ fromD=new Date(selYear,selMonth-1,1); toD=new Date(selYear,selMonth,0); }
+    else if(selYear){ fromD=new Date(selYear,0,1); toD=new Date(selYear,11,31); }
+    else if(selMonth){ fromD=new Date(now.getFullYear(),selMonth-1,1); toD=new Date(now.getFullYear(),selMonth,0); }
+  }
+  
+  if(!toD) toD = new Date();
+  sabiqaYearBound = selYear ? new Date(selYear, 0, 1) : null;
+  
+  return { fromD: fromD, toD: toD, sabiqaYearBound: sabiqaYearBound };
+}
 // ===== END GLOBAL DATE PARSER =====
 
 // ===== REGION CARDS EXPORT =====
 function exRegionCards(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){toast('❌ PDF library load nahi hui');return;}
   var label = repGetFilterLabel();
+  var range = getReportFilterRange();
+  var _repRangeStart = range.fromD;
+  var _repRangeEnd = range.toD;
+  var _sabiqaYearBound = range.sabiqaYearBound;
+  
   var regionStats = {};
   cc.forEach(function(c){
     var r = c.region||'Unknown';
@@ -9209,9 +9253,19 @@ function exRegionCardsXls(){
 window._repExportShowHidden = false;
 
 function updateExportPreview(){
-  // Update preview when selection changes
+  // Show/hide hidden regions toggle based on selection
   var select = document.getElementById('repExportSelect');
-  // Preview update can be added here if needed
+  var toggleBtn = document.getElementById('toggleExportHidden');
+  
+  if(select.value === 'region'){
+    toggleBtn.style.display = 'block';
+  } else {
+    toggleBtn.style.display = 'none';
+    window._repExportShowHidden = false;
+    toggleBtn.style.background = 'var(--card)';
+    toggleBtn.style.color = 'var(--bd)';
+    toggleBtn.textContent = '👁️ Hidden regions';
+  }
 }
 
 function toggleExportHidden(){
@@ -9233,17 +9287,27 @@ function toggleExportHidden(){
 function repExportPDF(){
   var select = document.getElementById('repExportSelect');
   var type = select.value;
-  if(type === 'region') exRegionCards();
-  else if(type === 'state') exStateCards();
-  else if(type === 'division') exDivCards();
+  try {
+    if(type === 'region') exRegionCards();
+    else if(type === 'state') exStateCards();
+    else if(type === 'division') exDivCards();
+  } catch(e) {
+    console.error('Export error:', e);
+    toast('❌ Export failed: ' + e.message);
+  }
 }
 
 function repExportExcel(){
   var select = document.getElementById('repExportSelect');
   var type = select.value;
-  if(type === 'region') exRegionCardsXls();
-  else if(type === 'state') exStateCardsXls();
-  else if(type === 'division') exDivCardsXls();
+  try {
+    if(type === 'region') exRegionCardsXls();
+    else if(type === 'state') exStateCardsXls();
+    else if(type === 'division') exDivCardsXls();
+  } catch(e) {
+    console.error('Export error:', e);
+    toast('❌ Export failed: ' + e.message);
+  }
 }
 // ===== END EXPORT INTERFACE FUNCTIONS =====
 
