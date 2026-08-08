@@ -5695,13 +5695,15 @@ function rRep(){
     +'</div>'
     +'</div>';
   
-  h = exportInterface + h;
   // ===== END EXPORT INTERFACE =====
   
   var _fw = document.getElementById('repFutureWarn');
   if(_fw) _fw.style.display = 'none';
-  document.getElementById('rpC').innerHTML='';
-  document.getElementById('rpRC').innerHTML = h;
+  
+  // Insert export interface to rpRC
+  document.getElementById('rpRC').innerHTML = exportInterface;
+  // Insert cards to rpC
+  document.getElementById('rpC').innerHTML = h;
 
   var tRm = tTot - tPd;
   var hC = fcc.filter(function(c){ return c.guide==='halfia'; });
@@ -5717,7 +5719,7 @@ function rRep(){
   ];
   // Sort by size descending - biggest first
   cards.sort(function(a,b){ return b.size - a.size; });
-  document.getElementById('rpC').innerHTML = ''; // bars hataye (user request)
+  // rpC already filled with Region/State/Division cards - don't clear!
   var _yc=document.getElementById('rpYearCompare'); if(_yc)_yc.innerHTML=''; // Year compare hataya (user request)
 
   // ===== TREND CHART (Monthly) =====
