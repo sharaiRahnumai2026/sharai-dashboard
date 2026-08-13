@@ -2929,10 +2929,15 @@ function onPgmChange(){
     var chk=document.getElementById('fGd_'+g);
     if(chk){ if(anyTicked[g] && !chk.checked){ chk.checked=true; } }
   });
-  if(typeof togGuideMulti==='function') togGuideMulti();
-  if(typeof fillGuidePersons==='function') fillGuidePersons();
-  // Tawan per-person mode mein cards bhi matrix se refresh
-  if(typeof _tawnMode!=='undefined' && _tawnMode==='perperson' && typeof tawnPPLoad==='function') tawnPPLoad();
+  window._pgmSkipMatrixRender = true;   // tick ke waqt matrix rebuild mat karo (click na ude)
+  try{
+    if(typeof togGuideMulti==='function') togGuideMulti();
+    if(typeof fillGuidePersons==='function') fillGuidePersons();
+    // Tawan per-person mode mein cards bhi matrix se refresh
+    if(typeof _tawnMode!=='undefined' && _tawnMode==='perperson' && typeof tawnPPLoad==='function') tawnPPLoad();
+  } finally {
+    window._pgmSkipMatrixRender = false;
+  }
 }
 function pgmPersonsForGuide(guide){
   // Jis guide ke liye jo persons tick hain unke naam
@@ -2952,8 +2957,8 @@ function fillGuidePersons(){
       if(_r){ _r.checked=true; if(typeof tawnModeSet==='function') tawnModeSet(_want); }
     }
   }
-  // Matrix render (2+ persons + guide select pe)
-  if(typeof renderPersonGuideMatrix==='function') renderPersonGuideMatrix();
+  // Matrix render (2+ persons + guide select pe) — tick ke waqt skip (warna click ud jaata hai)
+  if(!window._pgmSkipMatrixRender && typeof renderPersonGuideMatrix==='function') renderPersonGuideMatrix();
   // Old single dropdowns hatao (matrix ne replace kiya)
   document.querySelectorAll('.guidePersonSel').forEach(function(sel){
     var wrap = sel.closest('.fgr') || sel.parentNode;
@@ -6174,7 +6179,7 @@ async function _saveCaseInner(){
       tWapasAshiyaDesc:document.getElementById('tWapasAshiyaDesc')?document.getElementById('tWapasAshiyaDesc').value.trim():'',
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
-      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}var _ms=document.getElementById('mazSt')?document.getElementById('mazSt').value:'';if(_ms!=='yes')return 'open';var _dd=document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'';return _dd==='closed'?'closed':'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}var _ms=document.getElementById('mazSt')?document.getElementById('mazSt').value:'';return _ms==='yes'?'closed':'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   // Save se pehle preview (sirf naya case) — Edit ya Save
   if(!eId){ var _go=await confirmSavePreview(data); if(!_go) return; }
   try{
