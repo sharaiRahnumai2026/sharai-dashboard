@@ -2997,7 +2997,12 @@ function _renderMazratPP(ps, multi){
   var area=document.getElementById('mazPPArea'), rows=document.getElementById('mazPPRows');
   if(!area||!rows) return;
   ['mazSt','mazDt'].forEach(function(id){ var el=document.getElementById(id); var w=el&&(el.closest('.fgr')); if(w) w.style.display = multi ? 'none' : ''; });
+  var _mazBox=document.getElementById('mazratStBox');
   if(multi){
+    // per-person mode: single Aaya/Status ke stale values clear karo (warna galat save/display)
+    var _ms=document.getElementById('mazSt'); if(_ms) _ms.value='';
+    var _md=document.getElementById('mazDt'); if(_md) _md.value='';
+    if(_mazBox) _mazBox.style.display='none';
     area.style.display='block';
     var prev={};
     rows.querySelectorAll('.mazPPRow').forEach(function(r){ prev[r.dataset.name]={st:(r.querySelector('.mazppSt')||{}).value,dt:(r.querySelector('.mazppDt')||{}).value}; });
