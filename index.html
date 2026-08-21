@@ -1442,17 +1442,10 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div class="stitle" style="justify-content:space-between;align-items:flex-start">
       <div>
         <h2>🧑‍💼 Client Management</h2>
-        <div id="clientSummary" style="font-size:.7rem;color:var(--mt);margin-top:3px">Client Master — Case Save par Auto Create + Auto Link</div>
+        <div id="clientSummary" style="font-size:.7rem;color:var(--mt);margin-top:3px">Client Master — Case Save par Auto Create + Auto Link • Old Import Disabled</div>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">
         <button id="clientRefreshBtn" class="btn bout bsm" onclick="loadClients(true)">🔄 Refresh</button>
-        <details id="clientToolsWrap" class="client-tools">
-          <summary class="btn bout bsm">⚙️ Tools</summary>
-          <div class="client-tools-menu">
-            <button id="clientImportBtn" class="btn bout bsm" onclick="importClientsFromCases()">📥 Import Old Cases</button>
-            <button id="clientLinkBtn" class="btn bout bsm" onclick="migrateClientLinks()" style="display:none">🔗 Repair Old Links</button>
-          </div>
-        </details>
         <button id="clientTrashBtn" class="btn bred bsm" onclick="openClientTrash()" style="display:none">🗑️ Client Recycle Bin</button>
         <button id="clientNewBtn" class="btn bpri bsm" onclick="openClientForm()">➕ New Client</button>
       </div>
@@ -10735,6 +10728,113 @@ function _clientNameKeys(c){
   add(c&&c.naam);(c&&Array.isArray(c.nameAliases)?c.nameAliases:[]).forEach(add);
   return out;
 }
+
+// ===== CLIENT URDU DISPLAY / OLD IMPORT REPAIR =====
+window.__clientOldImportUrduFix=true;
+var _CLIENT_URDU_NAME_MAP={"AHMAD HUSAIN BARKATI":"احمد حسین برکاتی","ARSHID BHAI":"ارشد بھائی","Aadil Attari":"عادل عطاری","Abdul Gaffar":"عبد الغفار","Abdul Kalam":"عبد الکلام","Abdul Wahid":"عبد الواحد","Abdullah Azeem":"عبد اللہ عظیم","Abdur Razzaq":"عبد الرزاق","Abdus Sattar":"عبد الستار","Abrar Hussain":"ابرار حسین","Adil Bhai":"عادل بھائی","Adil Madani":"عادل مدنی","Afkar Ahmed":"افکار احمد","Afzal Hussain":"افضل حسین","Ahmed Shahid":"احمد شاہد","Akib Bhai":"عاقب بھائی","Alani Madani":"الانی مدنی","Ali Sher Madani":"علی شیر مدنی","Altaf Attari":"الطاف عطاری","Aman Attari":"امان عطاری","Aman Bhai":"امان بھائی","Anisur Rahman":"انیس الرحمن","Anwar Bhai":"انور بھائی","Arbaz Khan":"ارباز خان","Arbaz Quraishi":"ارباز قریشی","Arif Madani":"عارف مدنی","Arif Mirza":"عارف مرزا","Arif Rahman":"عارف رحمان","Arsalan Raza":"ارسلان رضا","Asif Bhai (Hind Maliyat)":"آصف بھائی (ہند مالیات)","Asif Madani":"آصف مدنی","Asim Madani":"عاصم مدنی","Aslam Bhai":"اسلم بھائی","Azad Madani":"آزاد مدنی","Azhar bhai":"اظہر بھائی","Azharuddeen":"اظہر الدین","Basarat":"بصارت","Bashir Attari":"بشیر عطاری","Bilal Attari":"بلال عطاری","Binte Nasir":"بنت ناصر","Burhan Madani":"برہان مدنی","Danish":"دانش","Danish Siddiqui":"دانش صدیقی","Dilshad Attari":"دلشاد عطاری","Dilshad Shb":"دلشاد صاحب","Fahim Bhai":"فہیم بھائی","Faisal":"فیصل","Faisal Bhai":"فیصل بھائی","Farman Attari":"فرمان عطاری","Farooq Attari":"فاروق عطاری","Faruk Abbasi":"فاروق عباسی","Firoz Madani":"فیروز مدنی","Ghulam Rasool Attari":"غلام رسول عطاری","Gufran Raza":"غفران رضا","Gulam Dastageer Bhai":"غلام دستگیر بھائی","Gulam Gous":"غلام غوث","Gulam Jilani attari":"غلام جیلانی عطاری","Gulam Mohiuddin":"غلام محی الدین","Gulam Mustafa Attari":"غلام مصطفیٰ عطاری","Gulammohiyuddin":"غلام محی الدین","HASNAIN":"حسنین","Hafiz Badar Akhtar":"حافظ بدر اختر","Hafiz Munawwar Raza":"حافظ منور رضا","Hasan Raza":"حسن رضا","Ibrahim Madani":"ابراہیم مدنی","Ilyas Khan":"الیاس خان","Imamul Haque":"امام الحق","Imran Alam":"عمران عالم","Imran Bhai":"عمران بھائی","Imran Khan Amjadi":"عمران خان امجدی","Irfan Nizami":"عرفان نظامی","Ishaque Shaikh":"اسحاق شیخ","Ishar Attari":"ایشار عطاری","Ismail Akhtar":"اسماعیل اختر","JABIR BHAI":"جابر بھائی","Jafar Madani":"جعفر مدنی","Jalaluddin Misbahi":"جلال الدین مصباحی","Jameel Attari":"جمیل عطاری","Javed Attari":"جاوید عطاری","Junaid":"جنید","Junaid Qadri":"جنید قادری","Kaif Bhai":"کیف بھائی","Kamran Madani":"کامران مدنی","Kamran Razvi":"کامران رضوی","Kashif Bhai":"کاشف بھائی","Liyaqat Qadri":"لیاقت قادری","MAQSOOD ALI":"مقصود علی","MUKHTAR MADANI":"مختار مدنی","Mahmood Attari":"محمود عطاری","Mairaaj Khan":"معراج خان","Makhdoom Bapu":"مخدوم باپو","Manzoor Attari":"منظور عطاری","Manzoor Khan":"منظور خان","Md Masum Rayeen":"محمد معصوم رائین","Md Shamsher Ali / Md Sahabuddin":"محمد شمشیر علی / محمد شهاب الدین","Mehtab Alam":"مہتاب عالم","Mohamad aslam":"محمد اسلم","Mohammad Afaaq":"محمد آفاق","Mohammad Alam":"محمد عالم","Mohammad Arshad":"محمد ارشد","Mohammad Ashraf":"محمد اشرف","Mohammad Nawab Khan":"محمد نواب خان","Mohammad Qasim":"محمد قاسم","Mohammad Sameer Raza":"محمد سمیر رضا","Mohammad Shahbhaz":"محمد شہباز","Mohammed Rafiq H Thaned":"محمد رفیق ایچ تھانیڈ","Mohd Amir":"محمد عامر","Mohd Azeem":"محمد عظیم","Mohsin Bhai":"محسن بھائی","Mubarak Bhai":"مبارک بھائی","Muhammad Kaif":"محمد کیف","Musharraf Ali":"مشرف علی","Mustakim Mansuri":"مستقیم منصوری","Muzaffar Bhai":"مظفر بھائی","NADEEM KHAN NASIR AHMED":"ندیم خان ناصر احمد","NISAR RAZA MADANI":"نثار رضا مدنی","Nadeem Memon":"ندیم میمن","Naim  Bhai":"نعیم بھائی","Noman Bhai":"نعمان بھائی","Owais Raza":"اویس رضا","Qari Gulam Waris":"قاری غلام وارث","Qari Imran":"قاری عمران","Rashid Bhai":"راشد بھائی","Rashid Misbahi":"راشد مصباحی","Raushan":"روشن","Rizwan":"رضوان","SHAHNAWAZ KHALIFA":"شہنواز خلیفہ","SHAIKH KAFEEL ATTARI":"شیخ کفیل عطاری","Sabir Attari":"صابر عطاری","Sabir Belim":"صابر بیلیم","Sabir Madani":"صابر مدنی","Saddam Bhai":"صدام بھائی","Saddam Madani":"صدام مدنی","Saiyed Sajid Bapu":"سید ساجد باپو","Saleem Hani":"سلیم ہانی","Salman Attari":"سلمان عطاری","Samir Khan":"سمیر خان","Sarfaraz Attari (Talibe Ilm JTM Kota)":"سرفراز عطاری (طالب علم جے ٹی ایم کوٹا)","Sayeed Zamiruddin":"سعید ضمیر الدین","Sayyed Abbas Junaidi":"سید عباس جنیدی","Sayyed Abdul Gani":"سید عبد الغنی","Sayyed Abdus Subhan":"سید عبد السبحان","Seema Bi":"سیما بی","Shadab":"شاداب","Shadab Bhai":"شاداب بھائی","Shahbaz Bhai":"شہباز بھائی","Shahid Attaro":"شاہد عطاری","Shahid Raza":"شاہد رضا","Shaikh Abdur Razzaq Attari":"شیخ عبد الرزاق عطاری","Shaikh Naim":"شیخ نعیم","Shakir Madani":"شاکر مدنی","Shamshad Alam":"شمشاد عالم","Shekh Fida":"شیخ فدا","Shoaib Ansari":"شعیب انصاری","Shoeb Attari":"شعیب عطاری","Shuaib Attari":"شعیب عطاری","Sohel Akhtar Misbahi":"سہیل اختر مصباحی","Suhail Ahmad":"سہیل احمد","Suheel Ahmad Shah":"سہیل احمد شاہ","Tabrez Bhai":"تبریز بھائی","Tahir Madani":"طاہر مدنی","Tanveer ahmad":"تنویر احمد","Tasleem Ahmad":"تسلیم احمد","Tasleem Bin Idrees":"تسلیم بن ادریس","Taslimuddin Bhai":"تسلیم الدین بھائی","Tofique":"توفیق","Waseem Attari":"وسیم عطاری","Yaseen Bhai":"یاسین بھائی","Zahuruddin Attari":"ظہور الدین عطاری","Zaid Attari":"زید عطاری","Zeeshan Attari":"ذیشان عطاری","Zishan Madani":"ذیشان مدنی","Ziyauddin":"ضیاء الدین","shafiq Bhai":"شفیق بھائی","sheeraz attari":"شیراز عطاری"};
+function _clientUrduName(v){
+  v=String(v||'').trim();
+  return _CLIENT_URDU_NAME_MAP[v]||v;
+}
+function _isUrduClientName(v){return /[\u0600-\u06FF]/.test(String(v||''));}
+
+async function _repairImportedRomanClientsOnce(){
+  if(!_isAdmin()||_isServerScoped()||!hp('clients')||!hp('edit'))return {renamed:0,merged:0};
+  var key='sab_client_import_urdu_repair_v2';
+  try{if(sessionStorage.getItem(key)==='done')return {renamed:0,merged:0};}catch(e){}
+  var roman=(_clients||[]).filter(function(c){return c&&_CLIENT_URDU_NAME_MAP[String(c.naam||'').trim()];});
+  if(!roman.length){try{sessionStorage.setItem(key,'done');}catch(e){}return {renamed:0,merged:0};}
+  toast('🔤 Purane imported English Client names repair ho rahe hain...');
+  var renamed=0,merged=0,caseWrites=0;
+  try{
+    var allCases=null;
+    for(var i=0;i<roman.length;i++){
+      var d=roman[i],oldName=String(d.naam||'').trim(),urdu=_CLIENT_URDU_NAME_MAP[oldName];
+      if(!urdu)continue;
+      var emp=_normEmp(d.empCode),ph=_normPhone(d.phone),oldNorm=_normName(oldName);
+      var others=(_clients||[]).filter(function(c){return c.id!==d.id;});
+      var candidates=[];
+      function addCand(c){if(c&&c.id!==d.id&&candidates.indexOf(c)<0)candidates.push(c);}
+      if(emp)others.filter(function(c){return _normEmp(c.empCode)===emp;}).forEach(addCand);
+      if(ph)others.filter(function(c){return _normPhone(c.phone)===ph;}).forEach(addCand);
+      others.filter(function(c){
+        return Array.isArray(c.nameAliases)&&c.nameAliases.some(function(a){return _normName(a)===oldNorm;})
+          && String(c.naam||'').trim()===urdu;
+      }).forEach(addCand);
+
+      var target=(candidates.length===1&&d.importedFrom==='cases')?candidates[0]:null;
+      if(target&&hp('del')){
+        if(!allCases){
+          var cs=await db.collection('cases').get();
+          allCases=cs.docs.map(function(doc){return {id:doc.id,ref:doc.ref,data:doc.data()};});
+        }
+        var writes=[];
+        allCases.forEach(function(row){
+          var cd=row.data||{},changed=false;
+          var persons=Array.isArray(cd.persons)?JSON.parse(JSON.stringify(cd.persons)):[];
+          persons.forEach(function(pp){if(pp&&pp.clientId===d.id){pp.clientId=target.id;changed=true;}});
+          var ids=Array.isArray(cd.clientIds)?cd.clientIds.slice():[];
+          if(ids.indexOf(d.id)>=0){ids=ids.map(function(x){return x===d.id?target.id:x;});changed=true;}
+          ids=ids.filter(function(x,j,a){return x&&a.indexOf(x)===j;});
+          var top=cd.clientId===d.id?target.id:cd.clientId;
+          if(cd.clientId===d.id)changed=true;
+          if(changed)writes.push({ref:row.ref,data:{persons:persons,clientId:top||'',clientIds:ids,updatedAt:new Date().toISOString()}});
+        });
+        for(var w=0;w<writes.length;w+=400){
+          var cb=db.batch();
+          writes.slice(w,w+400).forEach(function(x){cb.set(x.ref,x.data,{merge:true});});
+          await cb.commit();
+        }
+        caseWrites+=writes.length;
+        var aliases=[oldName].concat(Array.isArray(d.nameAliases)?d.nameAliases:[]);
+        var upd={updatedAt:new Date().toISOString()};
+        if(!target.phone&&d.phone)upd.phone=d.phone;
+        if(!target.empCode&&d.empCode)upd.empCode=d.empCode;
+        if(!(target.desig||target.designation)&&(d.desig||d.designation))upd.desig=d.desig||d.designation;
+        await db.collection('clients').doc(target.id).update(upd);
+        for(var a=0;a<aliases.length;a++)if(aliases[a]){
+          await db.collection('clients').doc(target.id).update({
+            nameAliases:firebase.firestore.FieldValue.arrayUnion(aliases[a])
+          });
+        }
+        var trash=Object.assign({},d,{
+          originalId:d.id,deletedAt:new Date().toISOString(),
+          deletedBy:(cu&&cu.id)||'',deletedByName:(cu&&(cu.fullname||cu.username))||'',
+          deleteReason:'auto_repair_old_roman_import',mergedInto:target.id
+        });
+        delete trash.id;
+        var mb=db.batch();
+        mb.set(db.collection('trashClients').doc(d.id),trash);
+        mb.delete(db.collection('clients').doc(d.id));
+        await mb.commit();
+        _clients=_clients.filter(function(c){return c.id!==d.id;});
+        merged++;
+      }else{
+        await db.collection('clients').doc(d.id).update({
+          naam:urdu,
+          nameAliases:firebase.firestore.FieldValue.arrayUnion(oldName),
+          nameNorm:_normName(urdu),
+          updatedAt:new Date().toISOString()
+        });
+        d.naam=urdu;
+        if(!Array.isArray(d.nameAliases))d.nameAliases=[];
+        if(d.nameAliases.indexOf(oldName)<0)d.nameAliases.push(oldName);
+        renamed++;
+      }
+    }
+    try{sessionStorage.setItem(key,'done');}catch(e){}
+    _clientIndexInvalidate();
+    if(caseWrites){try{cacheInvalidate();await reloadCases();}catch(e){}}
+    try{await logActivity('client_old_import_urdu_repair','',{renamed:renamed,merged:merged,caseWrites:caseWrites});}catch(e){}
+    if(renamed||merged)toast('✅ Client repair: '+renamed+' Urdu rename, '+merged+' accidental duplicate merge');
+    return {renamed:renamed,merged:merged};
+  }catch(e){
+    console.warn('Client Urdu import repair:',e);
+    toast('⚠️ Client Urdu repair incomplete: '+e.message);
+    return {renamed:renamed,merged:merged,error:e};
+  }
+}
+// ===== END CLIENT URDU DISPLAY / OLD IMPORT REPAIR =====
 function _buildClientCaseIndex(){
   var idx={},byId={},byEmp={},byPhone={},byName={};
   (_clients||[]).forEach(function(c){
@@ -10849,8 +10949,9 @@ async function _autoResolveCaseClients(persons){
     }
 
     var ref=db.collection('clients').doc();
+    var displayName=_clientUrduName(name);
     var doc={
-      naam:name,
+      naam:displayName,
       phone:ph||'',
       desig:String(p.mansab||p.desig||p.designation||'').trim(),
       empCode:String(p.empCode||p.empcode||'').trim(),
@@ -10861,6 +10962,7 @@ async function _autoResolveCaseClients(persons){
       updatedAt:new Date().toISOString(),
       autoCreatedFromCase:true
     };
+    if(displayName!==name)doc.nameAliases=[name];
     await ref.set(doc);
     var local=Object.assign({id:ref.id},doc);
     _clients.push(local);
@@ -10892,7 +10994,9 @@ async function loadClients(force){
   try{
     var snap=await db.collection('clients').orderBy('naam').get();
     _clients=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
-    _clientIndexInvalidate();renderClients();
+    _clientIndexInvalidate();
+    await _repairImportedRomanClientsOnce();
+    renderClients();
   }catch(e){if(list)list.innerHTML='<div style="text-align:center;padding:30px;color:var(--red)">❌ '+escHtml(e.message)+'</div>';toast('❌ Clients load: '+e.message);}
 }
 function clearClientSearch(){['cSNaam','cSPhone','cSEmpCode','cSDesig'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});renderClients();}
@@ -11041,13 +11145,8 @@ async function migrateClientLinks(silent){
 }
 
 async function importClientsFromCases(){
-  if(!requirePerm('clients')||!requirePerm('add'))return;if(_isServerScoped()){toast('⛔ Scoped user global Clients import nahi kar sakta');return;}if(!confirm('Cases ke persons ko Client Master mein import karein?\n\nDuplicate Employee Code/Phone skip honge; same-name alag person ko bina strong ID ke duplicate nahi banaya jayega.'))return;
-  try{if(!_clients.length)await loadClients(true);var seenEmp={},seenPhone={},seenBareName={};(_clients||[]).forEach(function(c){var e=_normEmp(c.empCode),p=_normPhone(c.phone),n=_normName(c.naam);if(e)seenEmp[e]=1;if(p)seenPhone[p]=1;if(!e&&!p&&n)seenBareName[n]=1;});var toImport=[];
-    function consider(p){var name=String(p.name||'').trim();if(!name)return;var emp=_normEmp(p.empCode||p.empcode),ph=_normPhone(p.mobile||p.phone),nm=_normName(name);if((emp&&seenEmp[emp])||(ph&&seenPhone[ph])||(!emp&&!ph&&seenBareName[nm]))return;if(emp)seenEmp[emp]=1;if(ph)seenPhone[ph]=1;if(!emp&&!ph)seenBareName[nm]=1;toImport.push({naam:name,phone:ph,desig:p.mansab||p.desig||p.designation||'',empCode:p.empCode||p.empcode||'',nameNorm:nm,phoneNorm:ph,empCodeNorm:emp,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),importedFrom:'cases'});}
-    (cc||[]).forEach(function(c){var ps=c.persons&&c.persons.length?c.persons:(c.name?[{name:c.name,mobile:c.mobile,empCode:c.empCode,mansab:c.mansab}]:[]);ps.forEach(consider);});if(!toImport.length){toast('⚠️ Koi naya unique client nahi mila');return;}toast('⏳ '+toImport.length+' clients import ho rahe hain...');
-    for(var i=0;i<toImport.length;i+=450){var b=db.batch();toImport.slice(i,i+450).forEach(function(d){var r=db.collection('clients').doc();b.set(r,d);});await b.commit();}
-    await logActivity('client_import','',{count:toImport.length});await loadClients(true);if(_isAdmin())await migrateClientLinks(true);toast('✅ '+toImport.length+' clients import ho gaye aur list refresh ho gayi');
-  }catch(e){toast('❌ Client import: '+e.message);}
+  toast('ℹ️ Old Cases import band kar diya gaya hai — Case Save par Client ab automatic create/link hota hai.');
+  return;
 }
 // ===== END CLIENT MANAGEMENT =====
 
