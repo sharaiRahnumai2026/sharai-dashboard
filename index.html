@@ -283,6 +283,30 @@ input[type="date"]::-moz-calendar-picker-indicator,input[type="month"]::-moz-cal
 }
 /* ===== END RICH EDITOR ===== */
 
+
+/* ===== CLIENT FILTER COMPACT ONE-ROW ===== */
+.client-filter-card{width:100%;box-sizing:border-box;padding:10px 12px!important;margin-bottom:12px!important}
+.client-filter-grid{display:grid;grid-template-columns:minmax(135px,1.2fr) minmax(120px,1fr) minmax(120px,1fr) minmax(135px,1.05fr) auto auto auto;gap:8px;align-items:end;width:100%;box-sizing:border-box}
+.client-filter-field{min-width:0}
+.client-filter-field label{font-size:.68rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px;white-space:nowrap}
+.client-filter-field input{width:100%;min-width:0;padding:6px 9px!important;border:1.5px solid var(--bor);border-radius:8px;font-size:.78rem!important;outline:none;box-sizing:border-box;height:34px}
+.client-filter-grid .btn{height:34px;padding:6px 10px;white-space:nowrap;align-self:end}
+#clientFilterCount{font-size:.68rem;color:var(--mt);white-space:nowrap;align-self:center;text-align:right;min-width:max-content}
+@media(max-width:860px){
+  .client-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .client-filter-grid .btn{width:100%;justify-content:center}
+  #clientFilterCount{grid-column:1/-1;text-align:right}
+}
+@media(max-width:520px){.client-filter-grid{grid-template-columns:1fr}}
+
+.client-tools{position:relative}
+.client-tools>summary{list-style:none;cursor:pointer;user-select:none}
+.client-tools>summary::-webkit-details-marker{display:none}
+.client-tools-menu{position:absolute;right:0;top:calc(100% + 5px);z-index:4500;min-width:190px;background:var(--card);border:1px solid var(--bor);border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.16);padding:7px;display:flex;flex-direction:column;gap:6px}
+.client-tools-menu .btn{width:100%;justify-content:flex-start;white-space:nowrap}
+
+/* ===== END CLIENT FILTER COMPACT ===== */
+
 /* ===== SECURITY/RECYCLE/PDF PATCH ===== */
 #pg-trash .btn{white-space:nowrap;}
 @media(max-width:768px){#pg-trash .thead{align-items:flex-start}.livebdg{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbox{padding:28px 22px}.topbar{padding:9px 12px}.content{overflow-x:hidden}}
@@ -1347,7 +1371,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
   <div id="pg-reports" class="pg">
     <div class="stitle" style="flex-wrap:wrap;gap:10px">
       <h2>📊 Reports</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div id="repDateControls" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <!-- Year selector - always visible -->
         <select id="repYear" onchange="repMarkActive(this);rRep()" style="padding:6px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.78rem;outline:none;background:#fff">
           <option value="">📆 Sab Saal</option>
@@ -1418,32 +1442,35 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div class="stitle" style="justify-content:space-between;align-items:flex-start">
       <div>
         <h2>🧑‍💼 Client Management</h2>
-        <div id="clientSummary" style="font-size:.7rem;color:var(--mt);margin-top:3px">Client Master — stable Client ID linking enabled</div>
+        <div id="clientSummary" style="font-size:.7rem;color:var(--mt);margin-top:3px">Client Master — Case Save par Auto Create + Auto Link</div>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">
         <button id="clientRefreshBtn" class="btn bout bsm" onclick="loadClients(true)">🔄 Refresh</button>
-        <button id="clientImportBtn" class="btn bout bsm" onclick="importClientsFromCases()">📥 Import from Cases</button>
-        <button id="clientLinkBtn" class="btn bout bsm" onclick="migrateClientLinks()" style="display:none">🔗 Link Existing Cases</button>
+        <details id="clientToolsWrap" class="client-tools">
+          <summary class="btn bout bsm">⚙️ Tools</summary>
+          <div class="client-tools-menu">
+            <button id="clientImportBtn" class="btn bout bsm" onclick="importClientsFromCases()">📥 Import Old Cases</button>
+            <button id="clientLinkBtn" class="btn bout bsm" onclick="migrateClientLinks()" style="display:none">🔗 Repair Old Links</button>
+          </div>
+        </details>
         <button id="clientTrashBtn" class="btn bred bsm" onclick="openClientTrash()" style="display:none">🗑️ Client Recycle Bin</button>
         <button id="clientNewBtn" class="btn bpri bsm" onclick="openClientForm()">➕ New Client</button>
       </div>
     </div>
-    <!-- Search bar — debounced field search -->
-    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:14px;box-shadow:var(--sh);border:1px solid var(--bor)">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">
-        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">👤 Name</label>
-          <input id="cSNaam" placeholder="Name search..." oninput="scheduleClientRender()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
-        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">📱 Phone</label>
-          <input id="cSPhone" inputmode="numeric" placeholder="Phone search..." oninput="scheduleClientRender()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
-        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">🪪 Employee Code</label>
-          <input id="cSEmpCode" placeholder="Emp code..." oninput="scheduleClientRender()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
-        <div><label style="font-size:.7rem;font-weight:600;color:var(--mt);display:block;margin-bottom:3px">💼 Designation</label>
-          <input id="cSDesig" placeholder="Designation..." oninput="scheduleClientRender()" style="width:100%;padding:7px 10px;border:1.5px solid var(--bor);border-radius:8px;font-size:.8rem;outline:none;box-sizing:border-box"></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <!-- Search bar — compact one-row desktop layout -->
+    <div class="client-filter-card" style="background:var(--card);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--bor)">
+      <div class="client-filter-grid">
+        <div class="client-filter-field"><label>👤 Name</label>
+          <input id="cSNaam" placeholder="Name search..." oninput="scheduleClientRender()"></div>
+        <div class="client-filter-field"><label>📱 Phone</label>
+          <input id="cSPhone" inputmode="numeric" placeholder="Phone search..." oninput="scheduleClientRender()"></div>
+        <div class="client-filter-field"><label>🪪 Employee Code</label>
+          <input id="cSEmpCode" placeholder="Emp code..." oninput="scheduleClientRender()"></div>
+        <div class="client-filter-field"><label>💼 Designation</label>
+          <input id="cSDesig" placeholder="Designation..." oninput="scheduleClientRender()"></div>
         <button onclick="renderClients()" class="btn bpri bsm">✅ Apply</button>
         <button onclick="clearClientSearch()" class="btn bout bsm">✕ Clear</button>
-        <span id="clientFilterCount" style="font-size:.7rem;color:var(--mt);margin-left:auto"></span>
+        <span id="clientFilterCount"></span>
       </div>
     </div>
     <div id="clientList"></div>
@@ -2813,7 +2840,7 @@ function launch(){
   var _dncb=document.getElementById('dashNewCaseBtn');if(_dncb)_dncb.style.display=_canAdd?'':'none';
   var _cncb=document.getElementById('casesNewCaseBtn');if(_cncb)_cncb.style.display=_canAdd?'':'none';
   var _clnav=document.getElementById('nav-clients');if(_clnav)_clnav.style.display=(isA||((cu.perms&&cu.perms.clients)&&!_isServerScoped()))?'flex':'none';
-  var _clNew=document.getElementById('clientNewBtn');if(_clNew)_clNew.style.display=(isA||((cu.perms&&cu.perms.clients)&&(cu.perms&&cu.perms.add)))?'':'none';var _clImp=document.getElementById('clientImportBtn');if(_clImp)_clImp.style.display=(isA||((cu.perms&&cu.perms.clients)&&(cu.perms&&cu.perms.add)))?'':'none';var _clLink=document.getElementById('clientLinkBtn');if(_clLink)_clLink.style.display=isA?'':'none';var _clTrash=document.getElementById('clientTrashBtn');if(_clTrash)_clTrash.style.display=isA?'':'none';
+  var _clNew=document.getElementById('clientNewBtn');if(_clNew)_clNew.style.display=(isA||((cu.perms&&cu.perms.clients)&&(cu.perms&&cu.perms.add)))?'':'none';var _clImp=document.getElementById('clientImportBtn');if(_clImp)_clImp.style.display=(isA||((cu.perms&&cu.perms.clients)&&(cu.perms&&cu.perms.add)))?'':'none';var _clLink=document.getElementById('clientLinkBtn');if(_clLink)_clLink.style.display=isA?'':'none';var _clTools=document.getElementById('clientToolsWrap');if(_clTools)_clTools.style.display=(isA||((cu.perms&&cu.perms.clients)&&(cu.perms&&cu.perms.add)))?'':'none';var _clTrash=document.getElementById('clientTrashBtn');if(_clTrash)_clTrash.style.display=isA?'':'none';
   document.getElementById('nav-users').classList.toggle('hide',!isA);
   document.getElementById('nav-set').classList.toggle('hide',!(isA||(cu.perms&&cu.perms.settings)));
   var _tr=document.getElementById('nav-trash');if(_tr)_tr.classList.toggle('hide',!isA);
@@ -6448,6 +6475,19 @@ async function _saveCaseInner(){
   if(!_caseAllowedByCurrentScope(data)){toast('⛔ Ye case aapke assigned Region / Division / Department scope ke bahar hai');return;}
   // Save se pehle preview (sirf naya case) — Edit ya Save
   if(!eId){ var _go=await confirmSavePreview(data); if(!_go) return; }
+
+  // Client Master automation: Case save ke waqt har person ko Client ID se resolve karo.
+  // Existing Client: link; new unique person: Client auto-create; display naam overwrite nahi hota.
+  try{
+    var _clAuto=await _autoResolveCaseClients(persons);
+    data.persons=persons;
+    data.clientId=(persons[0]||{}).clientId||'';
+    data.clientIds=persons.map(function(p){return p.clientId||'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+    if(_clAuto.created||_clAuto.linked){console.log('Client auto-sync:',_clAuto);}
+  }catch(_clAutoErr){
+    console.warn('Client auto-sync skipped:',_clAutoErr);
+    // Client sync fail se Case save block nahi hoga.
+  }
   try{
     if(eId){
       await db.collection('cases').doc(eId).set(data,{merge:true});
@@ -10732,6 +10772,118 @@ function _buildClientCaseIndex(){
 }
 function _clientCases(c){var idx=_clientCaseIndex||_buildClientCaseIndex();return (idx[c.id]||[]).slice();}
 
+
+// ===== CASE SAVE -> CLIENT AUTO CREATE / AUTO LINK =====
+window.__caseClientAutoSyncFix=true;
+async function _autoResolveCaseClients(persons){
+  persons=Array.isArray(persons)?persons:[];
+  var result={linked:0,created:0,aliases:0,skipped:0};
+  if(!persons.length)return result;
+
+  // Existing clientId ko bina Clients permission ke bhi case payload me preserve rakho.
+  var canReadClients=hp('clients')&&!_isServerScoped();
+  if(!canReadClients){
+    result.skipped=persons.filter(function(p){return p&&p.name&&!p.clientId;}).length;
+    return result;
+  }
+
+  // New Case page par Clients tab kholna zaroori nahi: cache directly Firestore se load hoga.
+  if(!_clients||!_clients.length){
+    var snap=await db.collection('clients').get();
+    _clients=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    _clientIndexInvalidate();
+  }
+
+  var byId={},byEmp={},byPhone={},byName={};
+  function rebuildMaps(){
+    byId={};byEmp={};byPhone={};byName={};
+    (_clients||[]).forEach(function(c){
+      byId[c.id]=c;
+      _uniquePush(byEmp,_normEmp(c.empCode),c.id);
+      _uniquePush(byPhone,_normPhone(c.phone),c.id);
+      _clientNameKeys(c).forEach(function(n){_uniquePush(byName,n,c.id);});
+    });
+  }
+  rebuildMaps();
+
+  var allowCreate=hp('add')&&hp('clients')&&!_isServerScoped();
+  var aliasOps=[];
+
+  for(var i=0;i<persons.length;i++){
+    var p=persons[i]||{};
+    var name=String(p.name||'').trim();
+    var emp=_normEmp(p.empCode||p.empcode);
+    var ph=_normPhone(p.mobile||p.phone);
+    var nm=_normName(name);
+    var id=null;
+
+    // 1) Permanent Client ID.
+    if(p.clientId&&byId[p.clientId])id=p.clientId;
+    // 2) Strong identifiers.
+    if(!id&&emp&&byEmp[emp])id=byEmp[emp];
+    if(!id&&ph&&byPhone[ph])id=byPhone[ph];
+    // 3) Sirf unique name/alias fallback.
+    if(!id&&nm&&byName[nm])id=byName[nm];
+
+    if(id){
+      p.clientId=id;
+      result.linked++;
+      var c=byId[id];
+      if(name&&c&&_clientNameKeys(c).indexOf(nm)<0){
+        aliasOps.push({id:id,name:name});
+        if(!Array.isArray(c.nameAliases))c.nameAliases=[];
+        if(c.nameAliases.indexOf(name)<0)c.nameAliases.push(name);
+        result.aliases++;
+      }
+      continue;
+    }
+
+    // Bina naam ke naya Client Master record create nahi karenge.
+    if(!name||!allowCreate){result.skipped++;continue;}
+
+    // Ambiguous Employee Code / Phone / Name par unsafe duplicate auto-create mat karo.
+    if((emp&&Object.prototype.hasOwnProperty.call(byEmp,emp)&&byEmp[emp]===null)
+      ||(ph&&Object.prototype.hasOwnProperty.call(byPhone,ph)&&byPhone[ph]===null)
+      ||(nm&&Object.prototype.hasOwnProperty.call(byName,nm)&&byName[nm]===null)){
+      result.skipped++;continue;
+    }
+
+    var ref=db.collection('clients').doc();
+    var doc={
+      naam:name,
+      phone:ph||'',
+      desig:String(p.mansab||p.desig||p.designation||'').trim(),
+      empCode:String(p.empCode||p.empcode||'').trim(),
+      nameNorm:nm,
+      phoneNorm:ph,
+      empCodeNorm:emp,
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
+      autoCreatedFromCase:true
+    };
+    await ref.set(doc);
+    var local=Object.assign({id:ref.id},doc);
+    _clients.push(local);
+    p.clientId=ref.id;
+    result.created++;
+    rebuildMaps();
+  }
+
+  // Existing Urdu/Roman display name overwrite nahi karna; sirf alias preserve karna.
+  for(var j=0;j<aliasOps.length;j++){
+    try{
+      await db.collection('clients').doc(aliasOps[j].id).update({
+        nameAliases:firebase.firestore.FieldValue.arrayUnion(aliasOps[j].name),
+        updatedAt:new Date().toISOString()
+      });
+    }catch(e){console.warn('client alias update:',e);}
+  }
+
+  _clientIndexInvalidate();
+  return result;
+}
+// ===== END CASE SAVE -> CLIENT AUTO LINK =====
+
 async function loadClients(force){
   if(!requirePerm('clients'))return;
   if(_isServerScoped()){toast('⛔ Scoped user ko global Clients Master access nahi diya ja sakta');return;}
@@ -11567,15 +11719,15 @@ function deptClose(){
 <style>
 #repAdvancedFilters{background:var(--card);border:1px solid var(--bor);border-radius:12px;padding:12px 14px;margin:0 0 14px;box-shadow:var(--sh)}
 .rep-adv-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}.rep-adv-title{font-weight:800;color:var(--bd);font-size:.86rem}.rep-adv-summary{font-size:.7rem;color:var(--mt);flex:1;min-width:160px}.rep-adv-actions{display:flex;gap:6px;flex-wrap:wrap}.rep-adv-actions button{border:1px solid var(--bor);background:var(--card);color:var(--tx);border-radius:7px;padding:6px 9px;cursor:pointer;font-size:.7rem;font-weight:700}
-.rep-filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}.rep-dd{position:relative}.rep-dd>summary{list-style:none;border:1.5px solid var(--bor);border-radius:8px;background:var(--card);padding:7px 9px;cursor:pointer;font-size:.72rem;color:var(--tx);display:flex;align-items:center;justify-content:space-between;min-height:34px}.rep-dd>summary::-webkit-details-marker{display:none}.rep-dd>summary:after{content:'▾';color:var(--mt);font-size:.65rem;margin-left:6px}.rep-dd[open]>summary{border-color:var(--blue);box-shadow:0 0 0 2px rgba(21,101,192,.08)}
+.rep-filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px;align-items:stretch}.rep-filter-grid>select,.rep-filter-grid>button{min-height:34px;width:100%;box-sizing:border-box}.rep-filter-grid>#repCustomRange{grid-column:span 2;min-height:34px}.rep-filter-grid>#repCustomRange input{min-width:0;flex:1;width:100%;box-sizing:border-box}.rep-dd{position:relative}.rep-dd>summary{list-style:none;border:1.5px solid var(--bor);border-radius:8px;background:var(--card);padding:7px 9px;cursor:pointer;font-size:.72rem;color:var(--tx);display:flex;align-items:center;justify-content:space-between;min-height:34px}.rep-dd>summary::-webkit-details-marker{display:none}.rep-dd>summary:after{content:'▾';color:var(--mt);font-size:.65rem;margin-left:6px}.rep-dd[open]>summary{border-color:var(--blue);box-shadow:0 0 0 2px rgba(21,101,192,.08)}
 .rep-dd-menu{position:absolute;z-index:4000;left:0;top:calc(100% + 4px);width:min(285px,80vw);background:var(--card);border:1px solid var(--bor);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:8px}.rep-dd-search{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--bor);border-radius:6px;background:var(--card);color:var(--tx);font-size:.7rem;margin-bottom:6px;outline:none}.rep-pick-list{max-height:220px;overflow:auto}.rep-pick-item{display:flex;align-items:flex-start;gap:7px;padding:5px 4px;border-radius:5px;cursor:pointer;font-size:.7rem;color:var(--tx);line-height:1.25}.rep-pick-item:hover{background:rgba(21,101,192,.06)}.rep-pick-item input{margin-top:1px;accent-color:var(--blue)}.rep-pick-clear{width:100%;margin-top:6px;border:0;background:#f5f7fa;color:var(--red);border-radius:6px;padding:5px;cursor:pointer;font-size:.68rem;font-weight:700}.rep-active{border-color:var(--blue)!important;background:rgba(21,101,192,.06)!important;color:var(--bd)!important;font-weight:700}
 #repDataQuality{display:none;margin-top:9px;padding:7px 9px;border-radius:7px;background:#fff8e1;border:1px solid #ffe082;color:#8a5a00;font-size:.68rem}
-@media(max-width:768px){.rep-dd-menu{position:fixed;left:12px;right:12px;top:22%;width:auto;max-height:58vh}.rep-pick-list{max-height:38vh}.rep-adv-actions{width:100%}.rep-adv-actions button{flex:1}.rep-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:768px){.rep-dd-menu{position:fixed;left:12px;right:12px;top:22%;width:auto;max-height:58vh}.rep-pick-list{max-height:38vh}.rep-adv-actions{width:100%}.rep-adv-actions button{flex:1}.rep-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rep-filter-grid>#repCustomRange{grid-column:1/-1}}
 </style>
 <script>
 (function(){
   'use strict';
-  if(window.__repDeepAuditFixes) return; window.__repDeepAuditFixes=true;
+  if(window.__repDeepAuditFixes) return; window.__repDeepAuditFixes=true; window.__repUnifiedFilterUI=true;
 
   var _repLegacyRRep = rRep;
   var _repLegacyClear = repClearFilters;
@@ -11697,9 +11849,20 @@ function deptClose(){
     if(document.getElementById('repAdvancedFilters'))return;
     var pg=document.getElementById('pg-reports'),warn=document.getElementById('repFutureWarn');if(!pg||!warn)return;
     var box=document.createElement('div');box.id='repAdvancedFilters';
-    box.innerHTML='<div class="rep-adv-head"><div class="rep-adv-title">🔎 Combined Report Filters</div><div class="rep-adv-summary" id="repAppliedSummary">Sab data</div><div class="rep-adv-actions"><button onclick="repRefreshServer(true)">🔄 Fresh Data</button><button onclick="repToggleBreakdown()">📊 Breakdown</button><button onclick="repClearFilters()">✕ Clear All</button></div></div><div class="rep-filter-grid" id="repFilterGrid"></div><div id="repDataQuality"></div>';
+    box.innerHTML='<div class="rep-adv-head"><div class="rep-adv-title">🔎 Report Filters</div><div class="rep-adv-summary" id="repAppliedSummary">Sab Waqt</div><div class="rep-adv-actions"><button onclick="repRefreshServer(true)">🔄 Fresh Data</button><button onclick="repToggleBreakdown()">📊 Breakdown</button></div></div><div class="rep-filter-grid" id="repFilterGrid"></div><div id="repDataQuality"></div>';
     warn.parentNode.insertBefore(box,warn);
     var grid=box.querySelector('#repFilterGrid');
+
+    // Year/Month/Quick controls aur dimension filters ab ek hi Report Filters box me hain.
+    var dateWrap=document.getElementById('repDateControls');
+    if(dateWrap){
+      Array.prototype.slice.call(dateWrap.children).forEach(function(ch){
+        if(ch.style&&ch.style.display==='none'&&!ch.id)return;
+        grid.appendChild(ch);
+      });
+      dateWrap.remove();
+    }
+
     Object.keys(_repMeta).forEach(function(key){
       var d=document.createElement('details');d.className='rep-dd';
       d.innerHTML='<summary><span id="repLbl-'+key+'">'+_repEsc(_repMeta[key].all)+'</span></summary><div class="rep-dd-menu"><input class="rep-dd-search" placeholder="Search '+_repEsc(_repMeta[key].title)+'..." oninput="_repFilterPick(\''+key+'\',this.value)"><div class="rep-pick-list" id="repPick-'+key+'"></div><button class="rep-pick-clear" type="button" onclick="_repClearDim(\''+key+'\')">Sab Hatao</button></div>';
