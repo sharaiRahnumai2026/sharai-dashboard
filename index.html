@@ -282,6 +282,12 @@ input[type="date"]::-moz-calendar-picker-indicator,input[type="month"]::-moz-cal
   .case-actions .btn{flex:1;justify-content:center;}
 }
 /* ===== END RICH EDITOR ===== */
+
+/* ===== SECURITY/RECYCLE/PDF PATCH ===== */
+#pg-trash .btn{white-space:nowrap;}
+@media(max-width:768px){#pg-trash .thead{align-items:flex-start}.livebdg{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbox{padding:28px 22px}.topbar{padding:9px 12px}.content{overflow-x:hidden}}
+/* ===== END SECURITY PATCH ===== */
+
 </style>
 
 <!-- ===== URDU AUTO-DETECT SCRIPT ===== -->
@@ -372,6 +378,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
@@ -379,9 +386,18 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
-// Firebase global
+// Firebase globals
 var db=null;
+var FIREBASE_CONFIG={
+  apiKey:"AIzaSyBGQsw0Qq1I-W4zl4EzBv1f188lOpE_1I8",
+  authDomain:"sharai-rehnumai-master-file.firebaseapp.com",
+  projectId:"sharai-rehnumai-master-file",
+  storageBucket:"sharai-rehnumai-master-file.firebasestorage.app",
+  messagingSenderId:"282290007616",
+  appId:"1:282290007616:web:d53462fd398303274a79a5"
+};
 
 function initFirebase(){
   try{
@@ -391,27 +407,14 @@ function initFirebase(){
       return;
     }
     if(!firebase.apps.length){
-      firebase.initializeApp({
-        /* 
-         * SECURITY NOTICE: 
-         * Firebase API key yahan visible hai. Zaroor Firebase Console mein:
-         * 1. API restrictions lagaao (sirf apna domain allow karo)
-         * 2. Firestore Security Rules set karo (unauthenticated access band karo)
-         * Without these rules, koi bhi aapke database ko access kar sakta hai.
-         */
-        apiKey:"AIzaSyBGQsw0Qq1I-W4zl4EzBv1f188lOpE_1I8",
-        authDomain:"sharai-rehnumai-master-file.firebaseapp.com",
-        projectId:"sharai-rehnumai-master-file",
-        storageBucket:"sharai-rehnumai-master-file.firebasestorage.app",
-        messagingSenderId:"282290007616",
-        appId:"1:282290007616:web:d53462fd398303274a79a5"
-      });
+      // Firebase web config public hota hai; real protection Auth + Firestore/Storage Rules se hoti hai.
+      firebase.initializeApp(FIREBASE_CONFIG);
     }
     db=firebase.firestore();
     // AUTH: persistence LOCAL — refresh pe auth signed-in bana rahe
     try{ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(_p){}
     // Test connection
-    fbInit().then(restoreS).catch(function(e){
+    fbInit().catch(function(e){
       console.error('fbInit error:',e);
       setFS(false);
     });
@@ -425,48 +428,14 @@ window.addEventListener('DOMContentLoaded', function(){
   setTimeout(initFirebase, 50);
 });
 
-// ===== EMERGENCY PASSWORD RESET (recovery key required) =====
-// SECURITY: pehle ye function bina kisi check ke console se chal jaata tha = full account takeover.
-// Ab recovery key zaroori hai. Logged-in admin pehle setRecoveryKey() chala ke key set kare.
+// ===== EMERGENCY PASSWORD RESET =====
+// SECURITY HARDENED: browser-side emergency reset disable hai. Firebase Auth ke kisi doosre
+// user ka password securely reset karna Admin SDK / Firebase Console ke baghair mumkin nahi.
 async function emergencyReset(){
-  try{
-    var secSnap = await db.collection('settings').doc('security').get();
-    var recHash = secSnap.exists ? (secSnap.data().recoveryHash||'') : '';
-    if(!recHash){
-      alert('❌ Recovery key set nahi hai.\n\nPassword reset ke liye Firebase Console > Firestore > users collection mein jaake password field khud update karo,\nYA pehle admin login karke console mein setRecoveryKey() chalao.');
-      return;
-    }
-    var rk = prompt('🔑 Recovery key daalo:');
-    if(!rk) return;
-    var ok = await verifyPw(rk, recHash);
-    if(!ok){ alert('❌ Galat recovery key.'); return; }
-  }catch(e){ alert('❌ Error: '+e.message); return; }
-  var uname = prompt('Admin username daalo:');
-  if(!uname) return;
-  var newpw = prompt('Naya password daalo (8+ chars):');
-  if(!newpw || newpw.length<8){ alert('❌ Password 8+ characters ka hona chahiye!'); return; }
-  var confirm_pw = prompt('Password dobara daalo (confirm):');
-  if(newpw !== confirm_pw){ alert('Passwords match nahi kiye!'); return; }
-  try{
-    var hash = await makePwHash(newpw);
-    var snap = await db.collection('users').doc(uname).get();
-    if(!snap.exists){ alert('User "'+uname+'" nahi mila!'); return; }
-    await db.collection('users').doc(uname).update({ password: hash, mustChangePw: false });
-    alert('✅ Password reset ho gaya! Ab login karo: '+uname);
-  }catch(e){
-    alert('❌ Error: '+e.message);
-  }
+  alert('🔒 Security update: Emergency browser reset disable hai. Auth-native account ka password Firebase Console > Authentication se manage/reset karein.');
 }
-// Logged-in admin ke liye: recovery key set/change karna (browser console se chalao)
 async function setRecoveryKey(){
-  if(!cu || cu.role!=='admin'){ alert('❌ Sirf logged-in admin recovery key set kar sakta hai.'); return; }
-  var rk = prompt('Nayi recovery key daalo (12+ chars, kahin safe likh lo):');
-  if(!rk || rk.length<12){ alert('❌ Recovery key 12+ characters ki honi chahiye.'); return; }
-  try{
-    var h = await makePwHash(rk);
-    await db.collection('settings').doc('security').set({recoveryHash:h, updatedAt:new Date().toISOString()},{merge:true});
-    alert('✅ Recovery key set ho gayi.');
-  }catch(e){ alert('❌ Error: '+e.message); }
+  if(typeof toast==='function') toast('ℹ️ Recovery-key reset deprecated hai — Firebase Auth use hota hai.');
 }
 // ===== END EMERGENCY RESET =====
 
@@ -576,6 +545,16 @@ function _cleanC(o){
 }
 
 </script>
+
+<!--
+SECURITY DEPLOYMENT NOTE (IMPORTANT):
+1) Firebase Authentication Email/Password provider must be enabled.
+2) Firestore + Storage Security Rules must DENY unauthenticated access.
+3) Role/dataRestrict enforcement must be duplicated in server-side Firestore Rules; UI permission checks are not a security boundary.
+4) New users are Auth-native. Legacy Firestore password hashes are deleted after successful one-time migration.
+5) For a truly hardened admin password-reset / user provisioning workflow, use a trusted backend (Firebase Admin SDK / Cloud Function). Browser JS cannot securely reset another Firebase Auth user's password.
+-->
+
 </head>
 <body>
 <div class="font-preload" aria-hidden="true">صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد</div>
@@ -611,6 +590,7 @@ function _cleanC(o){
     <div class="sbi" onclick="goPage('reports',this)" data-p="reports"><span class="ic">📊</span><span class="lb">Reports</span></div>
     <div class="sbi" onclick="goPage('tawan',this)" data-p="tawan"><span class="ic">💰</span><span class="lb">Tawan Sheet</span></div>
     <div class="sbi hide" id="nav-users" onclick="goPage('users',this)" data-p="users"><span class="ic">👥</span><span class="lb">Users</span></div>
+    <div class="sbi hide" id="nav-trash" onclick="goPage('trash',this)" data-p="trash"><span class="ic">🗑️</span><span class="lb">Recycle Bin</span></div>
     <div class="sbi" onclick="goPage('clients',this)" data-p="clients" id="nav-clients"><span class="ic">🧑‍💼</span><span class="lb">Clients</span></div>
     <div class="sbi hide" id="nav-set" onclick="goPage('settings',this)" data-p="settings"><span class="ic">⚙️</span><span class="lb">Settings</span></div>
   </div>
@@ -624,7 +604,7 @@ function _cleanC(o){
   <div class="topbar">
     <div class="tbl"><button class="togbtn" onclick="toggleSB()">☰</button><span class="ptitle" id="ptitle">Dashboard</span></div>
     <div class="tbr">
-      <div class="livebdg"><span class="dot" id="ldot"></span>Synced</div>
+      <div class="livebdg"><span class="dot" id="ldot"></span><span id="syncTxt">Ready</span></div>
       <div id="dashYearTabs" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"></div>
     </div>
   </div>
@@ -1503,11 +1483,39 @@ function _cleanC(o){
     <div class="ucards" id="uList"></div>
   </div>
 
+
+  <!-- RECYCLE BIN -->
+  <div id="pg-trash" class="pg">
+    <div class="stitle" style="justify-content:space-between">
+      <div>
+        <h2>🗑️ Recycle Bin</h2>
+        <div style="font-size:.7rem;color:var(--mt);margin-top:3px">Deleted cases 30 din tak restore ho sakte hain. Permanent delete sirf Admin kar sakta hai.</div>
+      </div>
+      <button class="btn bout bsm" onclick="loadTrash()">🔄 Refresh</button>
+    </div>
+    <div class="twrap">
+      <div class="thead"><h3>Deleted Cases</h3><span id="trashCount" style="font-size:.72rem"></span></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Case No</th><th>Person / Subject</th><th>Deleted</th><th>Deleted By</th><th>Actions</th></tr></thead>
+          <tbody id="trashTB"><tr><td colspan="5" style="text-align:center;padding:22px;color:var(--mt)">Recycle Bin kholne par data load hoga.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- SETTINGS -->
   <div id="pg-settings" class="pg">
     <div class="stitle"><h2>⚙️ Settings</h2></div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;grid-auto-rows:auto">
 
+
+    <div style="background:#fff8e1;border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid #ffe082;grid-column:1/-1">
+      <h3 style="color:#8d6e00;margin-bottom:6px;font-size:.87rem">🛡️ Security Status</h3>
+      <p style="font-size:.74rem;color:#6d5a00;margin-bottom:10px">App ab Firebase Auth-first login use karti hai. Firestore aur Storage Security Rules ko Firebase Console mein enforce karna zaroori hai; browser-side permissions sirf UI convenience hain.</p>
+      <div id="securityStatusBox" style="font-size:.75rem;line-height:1.7">Checking current session…</div>
+      <button class="btn bout bsm" style="margin-top:8px" onclick="refreshSecurityStatus()">🔍 Check</button> <button class="btn bpri bsm" style="margin-top:8px" onclick="downloadSecurityRules()">⬇️ Firebase Rules</button> <button id="caseRegBtn" class="btn bout bsm" style="margin-top:8px;border-color:#90caf9;color:var(--blue)" onclick="rebuildCaseNoRegistry()">🔢 Build Case No Registry</button>
+    </div>
     <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);grid-column:1/-1">
       <h3 style="color:var(--bd);margin-bottom:6px;font-size:.87rem">💾 Data Backup</h3>
       <p style="font-size:.74rem;color:var(--mt);margin-bottom:12px">Saara data (cases, clients, users, settings) ek file mein download karein. Hafte mein ek baar backup lena behtar hai — data kabhi kho jaye to wapas laaya ja sake.</p>
@@ -1585,7 +1593,8 @@ function _cleanC(o){
       <h3 style="color:var(--bd);margin-bottom:4px;font-size:.87rem">🏢 Department Manager</h3>
       <p style="font-size:.7rem;color:var(--mt);margin-bottom:6px">Departments add/edit/remove karein</p>
 
-      <div style="font-size:.66rem;color:var(--mt);margin-bottom:8px">☝️ Yeh button existing cases ke purane dept names ko naye format mein convert karega</div>
+      <div style="font-size:.66rem;color:var(--mt);margin-bottom:8px">☝️ Existing cases ke purane/synonym department names ko canonical format mein convert karein, taake HOD/Department access old cases par bhi sahi chale.</div>
+      <button id="fixDeptsBtn" type="button" class="btn bout bsm" onclick="fixCaseDepts()" style="margin-bottom:10px;border-color:#90caf9;color:var(--blue)">🔄 Normalize Existing Case Departments</button>
       <div style="display:flex;gap:5px;margin-bottom:10px">
         <input id="lmDpNew" placeholder="Naya department..." style="flex:1;padding:7px 9px;border:1.5px solid var(--bor);border-radius:6px;font-size:.78rem;outline:none">
         <button class="btn bpri bsm" onclick="lmAddDept()">➕</button>
@@ -1721,27 +1730,43 @@ function _cleanC(o){
 
 <!-- USER MODAL -->
 <div class="mo" id="mUser">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:760px">
     <div class="mh"><h3 id="umTit">New User</h3><button class="mcl" onclick="cmo('mUser')">✕</button></div>
     <div class="mb">
       <div class="fg">
         <div class="fgr"><label>Username *</label><input id="uUN"></div>
         <div class="fgr"><label>Full Name</label><input id="uFN"></div>
-        <div class="fgr"><label>Password *</label>
-  <div style="position:relative">
-    <input type="password" id="uPW" style="padding-right:38px;width:100%;box-sizing:border-box">
-    <button type="button" onclick="var e=document.getElementById('uPW');var show=e.type==='password';e.type=show?'text':'password';this.textContent=show?'🔒':'👁️';" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0;line-height:1">👁️</button>
-  </div>
-</div>
-        <div class="fgr" id="roleWrap" style="display:none"><label>Role</label><select id="uRl"><option value="viewer">Viewer</option><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+        <div class="fgr"><label>Password <span id="uPwReq">*</span></label>
+          <div style="position:relative">
+            <input type="password" id="uPW" autocomplete="new-password" style="padding-right:38px;width:100%;box-sizing:border-box">
+            <button type="button" onclick="var e=document.getElementById('uPW');var show=e.type==='password';e.type=show?'text':'password';this.textContent=show?'🔒':'👁️';" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0;line-height:1">👁️</button>
+          </div>
+        </div>
+        <div class="fgr"><label>Confirm Password <span id="uPcReq">*</span></label><input type="password" id="uPC" autocomplete="new-password"></div>
+        <div class="fgr fw" id="uPwTools" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:-3px">
+          <button type="button" class="btn bout bsm" onclick="generateUserPassword()">🎲 Strong Password Generate</button>
+          <span style="font-size:.68rem;color:var(--mt)">New user: 10+ characters. First login par password change mandatory hoga.</span>
+        </div>
+        <div class="fgr"><label>Designation / Access Preset</label>
+          <select id="uDesig" onchange="applyDesignationPreset()">
+            <option value="">Custom</option><option value="admin">🔑 Admin</option><option value="superadmin">⭐ Super Admin</option>
+            <option value="nazim_ala">🏛️ Nazim e Ala</option><option value="regional_head">🗺️ Regional Head</option><option value="hod">🏢 HOD / Department Head</option>
+            <option value="nazim">📋 Nazim</option><option value="naib_nazim">📋 Naib Nazim</option><option value="muhtamim">🗂️ Muhtamim</option>
+            <option value="naib_muhtamim">🗂️ Naib Muhtamim</option><option value="mufattish">🔍 Mufattish</option><option value="sael_zimmedar">📞 Sael Zimmedar</option>
+            <option value="zimmedar">✅ Zimmedar</option><option value="viewer_basic">👁️ Viewer Basic</option><option value="viewer_report">📊 Viewer + Reports</option><option value="viewer_tawan">💰 Viewer + Tawan</option>
+          </select>
+        </div>
         <div class="fgr"><label>Status</label><select id="uAc"><option value="1">✅ Active</option><option value="0">❌ Inactive</option></select></div>
+        <div class="fgr fw" id="desigPreviewWrap" style="display:none;background:#f5f9ff;border:1px solid #bbdefb;border-radius:8px;padding:8px 10px"><div id="desigPreview" style="font-size:.72rem"></div></div>
+        <div class="fgr" id="roleWrap" style="display:none"><label>Role</label><select id="uRl"><option value="viewer">Viewer</option><option value="staff">Staff</option><option value="admin">Admin</option><option value="superadmin">Super Admin</option></select></div>
         <div class="fgr"><label>Note</label><input id="uNt"></div>
 
         <!-- DATA RESTRICTION - MULTI SELECT -->
         <div class="fgr fw" style="border:1.5px solid #e3f2fd;border-radius:9px;padding:12px;background:#f7fbff;margin-top:4px">
           <label style="font-weight:700;color:var(--blue);font-size:.78rem;display:block;margin-bottom:6px">🔒 Data Restriction (optional)</label>
-          <p style="font-size:.69rem;color:var(--mt);margin-bottom:4px">Multiple select kar sakte ho. Jo khali chhodoge uska koi filter nahi lagega.</p>
-          <p style="font-size:.66rem;color:var(--mt);margin-bottom:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:5px 8px">ℹ️ <b>Region</b> = pakki (server-level) security. <b>State / Division / District / Sael / Department</b> = additional view filter (display narrowing). Consistent values rakhein warna cases chhup sakte hain.</p>
+          <p style="font-size:.69rem;color:var(--mt);margin-bottom:4px">Multiple select kar sakte ho. Access <b>AND logic</b> se lagega: Region + Division + Department select kiya to user ko sirf matching cases milenge.</p>
+          <p style="font-size:.66rem;color:#1b5e20;margin-bottom:8px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:6px 8px">🔐 <b>Hard Security:</b> Region, Division aur Department Firebase Rules se enforce honge. <b>Department-only</b> allowed hai — jaise HOD ko sirf Jamia across all regions.</p>
+          <p style="font-size:.66rem;color:var(--mt);margin-bottom:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:5px 8px">ℹ️ State / District / Referred By optional extra narrowing hain. Division ke liye Region select karein; State optional hai.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
 
             <!-- REGION -->
@@ -1762,7 +1787,7 @@ function _cleanC(o){
             <div>
               <div style="font-size:.7rem;font-weight:700;color:var(--bd);margin-bottom:4px">🏙️ Division</div>
               <div id="uDDivBox" style="border:1.5px solid var(--bor);border-radius:7px;background:#fff;display:flex;flex-direction:column;max-height:140px">
-                <span style="font-size:.69rem;color:var(--mt)">Pehle State select karo</span>
+                <span style="font-size:.69rem;color:var(--mt)">Pehle Region select karo</span>
               </div>
             </div>
 
@@ -1787,8 +1812,9 @@ function _cleanC(o){
             </div>
 
           </div>
-          <div style="margin-top:8px;padding:7px 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;font-size:.69rem;color:#2e7d32;display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <span>💡 <b>Tip:</b> Select multiple. Empty means no restriction — all will show.</span>
+          <div id="uAccessSummary" style="margin-top:8px;padding:8px 10px;background:#eef4ff;border:1px solid #bbdefb;border-radius:7px;font-size:.7rem;color:#263b5e;line-height:1.6">🌐 Full data access (no restriction selected)</div>
+          <div style="margin-top:7px;padding:7px 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;font-size:.69rem;color:#2e7d32;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span>💡 Jamia HOD → sirf Department. One Division → Region + Division. Regional Head → Region + Department(s).</span>
             <button type="button" onclick="drResetAll()" style="padding:4px 10px;background:#f44336;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:700;white-space:nowrap;flex-shrink:0">🗑️ Sab Clear</button>
           </div>
         </div>
@@ -1802,7 +1828,8 @@ function _cleanC(o){
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pd" style="accent-color:var(--blue)"> 🗑️ Delete</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="ps" style="accent-color:var(--blue)"> 🔍 Search</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pr" style="accent-color:var(--blue)"> 📊 Reports</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pu" style="accent-color:var(--blue)"> 👥 Users</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pcl" style="accent-color:var(--blue)"> 🧑‍💼 Clients Master</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:not-allowed;opacity:.7" title="User Management sirf Admin role ke liye"><input type="checkbox" id="pu" disabled style="accent-color:var(--blue)"> 👥 Users (Admin only)</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pst" style="accent-color:var(--blue)"> ⚙️ Settings</label>
           </div>
         </div>
@@ -1815,6 +1842,15 @@ function _cleanC(o){
   </div>
 </div>
 
+<!-- FIRST LOGIN PASSWORD CHANGE -->
+<div class="mo" id="mForcePw" style="z-index:120000;background:rgba(0,0,0,.68)">
+  <div class="modal" style="max-width:460px"><div class="mh"><h3>🔐 Password Change Required</h3></div><div class="mb">
+    <p style="font-size:.8rem;color:var(--mt);margin-bottom:12px;line-height:1.6">Temporary password ko pehle login par change karna mandatory hai.</p>
+    <div class="fgr"><label>Current / Temporary Password *</label><input type="password" id="fpOld" autocomplete="current-password"></div>
+    <div class="fgr" style="margin-top:9px"><label>New Password *</label><input type="password" id="fpNew" autocomplete="new-password"></div>
+    <div class="fgr" style="margin-top:9px"><label>Confirm New Password *</label><input type="password" id="fpConfirm" autocomplete="new-password"></div><div id="fpMsg" style="display:none;margin-top:10px;font-size:.75rem"></div>
+  </div><div class="mf"><button class="btn bout" onclick="doLogout()">🚪 Logout</button><button class="btn bpri" onclick="doForcePwChange()">✅ Set New Password</button></div></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2113,19 +2149,20 @@ function _ckBase(){ return (cu && cu.id) ? cu.id : 'anon'; }
 function _ckData(){ return 'sab_cases_cache_' + _ckBase(); }
 function _ckTs(){ return 'sab_cases_ts_' + _ckBase(); }
 
-// REGION-SCOPED QUERY: restricted user ke liye sirf apne region ki query banao.
-// Admin / no-region-restriction => poori collection. Warna where('region','in',[...]).
-// Isse restricted user ka full .get() rule se block nahi hota.
-function casesQuery(){
-  try{
-    var regs = (cu && cu.dataRestrict && Array.isArray(cu.dataRestrict.regions)) ? cu.dataRestrict.regions : [];
-    if(regs.length > 0){
-      // Firestore 'in' max 30 values — regions hamesha kam hote hain
-      return db.collection('cases').where('region','in', regs.slice(0,30));
-    }
-  }catch(e){}
-  return db.collection('cases');
-}
+// SERVER-SCOPED QUERY: Region + Division + Department hard scopes.
+function _serverDR(){return(cu&&cu.dataRestrict)||{};}
+function _isServerScoped(){var d=_serverDR();return !_isAdmin()&&((d.regions&&d.regions.length)||(d.divisions&&d.divisions.length)||(d.depts&&d.depts.length));}
+function _hasHardScopeObj(d){d=d||{};return !!((d.regions&&d.regions.length)||(d.divisions&&d.divisions.length)||(d.depts&&d.depts.length));}
+function _chunks(a,n){var out=[];for(var i=0;i<(a||[]).length;i+=n)out.push(a.slice(i,i+n));return out;}
+function _divisionInRegion(reg,dv){if(!HIER[reg]||!HIER[reg].states)return false;return Object.keys(HIER[reg].states).some(function(st){return HIER[reg].states[st]&&HIER[reg].states[st].divs&&Object.prototype.hasOwnProperty.call(HIER[reg].states[st].divs,dv);});}
+function _scopeGeoPairs(dr){var regs=(dr.regions||[]).slice(),divs=(dr.divisions||[]).slice(),out=[];if(divs.length){regs.forEach(function(r){divs.forEach(function(d){if(_divisionInRegion(r,d))out.push({region:r,division:d});});});if(!out.length)regs.forEach(function(r){divs.forEach(function(d){out.push({region:r,division:d});});});}else if(regs.length){regs.forEach(function(r){out.push({region:r});});}else out.push({});return out;}
+function _scopedFirestoreQueries(){var coll=db.collection('cases');if(!_isServerScoped())return[coll];var dr=_serverDR(),geos=_scopeGeoPairs(dr),deps=(dr.depts||[]).slice(),queries=[];geos.forEach(function(g){function geo(q){if(g.region)q=q.where('region','==',g.region);if(g.division)q=q.where('division','==',g.division);return q;}if(deps.length){_chunks(deps,10).forEach(function(ch){queries.push(geo(coll).where('depts','array-contains-any',ch));queries.push(geo(coll).where('dept','in',ch));});}else queries.push(geo(coll));});return queries;}
+function _scopedSnap(docs){var map=new Map();(docs||[]).forEach(function(d){if(d&&d.id)map.set(d.id,d);});var a=Array.from(map.values());return{docs:a,size:a.length,empty:a.length===0,forEach:function(fn){a.forEach(fn);}};}
+function _ScopedCasesQuery(of,od,lim){this._of=of||'';this._od=od||'asc';this._lim=lim||0;}
+_ScopedCasesQuery.prototype.orderBy=function(f,d){return new _ScopedCasesQuery(f,d||'asc',this._lim);};
+_ScopedCasesQuery.prototype.limit=function(n){return new _ScopedCasesQuery(this._of,this._od,n);};
+_ScopedCasesQuery.prototype.get=async function(opts){var qs=_scopedFirestoreQueries(),of=this._of,od=this._od,lim=this._lim;var snaps=await Promise.all(qs.map(function(q){var x=q;if(of)x=x.orderBy(of,od);if(lim)x=x.limit(lim);return x.get(opts);}));var docs=[];snaps.forEach(function(sn){sn.docs.forEach(function(d){docs.push(d);});});var out=_scopedSnap(docs);if(of){out.docs.sort(function(a,b){var av=a.data()[of],bv=b.data()[of];if(av&&typeof av.toMillis==='function')av=av.toMillis();if(bv&&typeof bv.toMillis==='function')bv=bv.toMillis();if(av===bv)return 0;var c=av>bv?1:-1;return od==='desc'?-c:c;});}if(lim&&out.docs.length>lim)out=_scopedSnap(out.docs.slice(0,lim));return out;};
+function casesQuery(){return new _ScopedCasesQuery();}
 // Legacy var names (purane code ke liye) — ab functions ki taraf point karte hain
 var _CACHE_KEY = 'sab_cases_cache';   // (use _ckData())
 var _CACHE_TS_KEY = 'sab_cases_ts';   // (use _ckTs())
@@ -2135,11 +2172,11 @@ var _CACHE_TTL = 12 * 60 * 60 * 1000; // 12 ghante — reads bachane ke liye (pe
 
 function cacheLoad(){
   try{
-    var ts = parseInt(localStorage.getItem(_ckTs())||'0');
+    var ts = parseInt(sessionStorage.getItem(_ckTs())||'0');
     if(!ts) return null;
     // TTL check — agar cache purana hai to null return karo (server se fresh lo)
     if((Date.now() - ts) > _CACHE_TTL) return null;
-    var raw = localStorage.getItem(_ckData());
+    var raw = sessionStorage.getItem(_ckData());
     if(!raw) return null;
     return JSON.parse(raw);
   }catch(e){ return null; }
@@ -2149,16 +2186,16 @@ function cacheSave(cases){
   try{
     var data = JSON.stringify(cases);
     try{
-      localStorage.setItem(_ckData(), data);
-      localStorage.setItem(_ckTs(), String(Date.now()));
+      sessionStorage.setItem(_ckData(), data);
+      sessionStorage.setItem(_ckTs(), String(Date.now()));
     }catch(e){
       if(e.name==='QuotaExceededError'||e.code===22){
         // Storage full — purana cache clear karke retry karo
         try{
-          localStorage.removeItem(_ckData());
-          localStorage.removeItem(_ckTs());
-          localStorage.setItem(_ckData(), data);
-          localStorage.setItem(_ckTs(), String(Date.now()));
+          sessionStorage.removeItem(_ckData());
+          sessionStorage.removeItem(_ckTs());
+          sessionStorage.setItem(_ckData(), data);
+          sessionStorage.setItem(_ckTs(), String(Date.now()));
         }catch(e2){ /* silently ignore — cache nahi banega, lekin app chalti rahegi */ }
       }
     }
@@ -2166,36 +2203,28 @@ function cacheSave(cases){
 }
 
 function cacheInvalidate(){
-  localStorage.removeItem(_ckTs()); // force refresh next time
+  sessionStorage.removeItem(_ckTs()); // force refresh next time
 }
 // ===== END LOCAL CACHE =====
 
 async function fbInit(){
+  // SECURITY: login se pehle users/settings collections read nahi karte.
+  // Protected Firestore Rules ke saath bhi login page ab load ho sakta hai.
   try{
-    // Users aur settings parallel fetch karo
-    const [snap, _] = await Promise.all([
-      db.collection('users').limit(1).get(),
-      fbLoadSettings()
-    ]);
-    setFS(true);
-    // Admin check background mein
-    fbGetU().then(function(us){
-      if(!us.find(function(u){return u.username==='admin';})){
-        var _tmpPw = 'Adm-'+Math.random().toString(36).slice(2,10)+'-'+Date.now().toString(36).slice(-4);
-        makePwHash(_tmpPw).then(function(defHash){
-          db.collection('users').doc('admin').set({username:'admin',password:defHash,fullname:'Super Admin',role:'admin',active:true,mustChangePw:true,note:'',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},createdAt:new Date().toISOString()});
-          try{ alert('⚠️ Admin account naya bana.\nTemporary password: '+_tmpPw+'\n\nIsse login karke TURANT apna password set karein!'); }catch(e){ console.warn('Admin temp pw:', _tmpPw); }
-        });
-      }
-    });
-  }catch(e){setFS(false);}
+    setFS(true,'Ready');
+    await restoreS();
+  }catch(e){
+    console.warn('fbInit:',e&&e.code?e.code:e);
+    setFS(false,'Offline');
+  }
 }
-function setFS(ok){
+function setFS(ok,label){
   ['fbDot','ldot'].forEach(id=>{const e=document.getElementById(id);if(e){e.className='dot'+(ok?'':' off');}});
   const t=document.getElementById('fbTxt');if(t)t.textContent=ok?'✅ Firebase Connected':'❌ Connection Error';
+  const st=document.getElementById('syncTxt');if(st)st.textContent=label||(ok?'Synced':'Offline');
 }
 async function fbGetU(){
-  try{const s=await db.collection('users').get();uc=s.docs.map(d=>({id:d.id,...d.data()}));return uc;}catch(e){return[];}
+  try{const snap=await db.collection('users').get();uc=snap.docs.map(function(d){var x=Object.assign({id:d.id},d.data());delete x.password;return x;});return uc;}catch(e){console.warn('users load:',e.code||e.message);return[];}
 }
 let _msReady=false;
 var _casesUnsub=null; // Listener unsubscribe handle
@@ -2224,7 +2253,7 @@ function _applyRestriction(arr){
       if(!list||!list.length) return;
       out=out.filter(function(c){
         var v=(getVal(c)||'').trim().toLowerCase();
-        if(!v) return true;
+        if(!v) return false; // SECURITY: restricted user ko blank/unclassified record na dikhaye
         return list.some(function(x){ return (x||'').trim().toLowerCase()===v; });
       });
     }
@@ -2235,7 +2264,7 @@ function _applyRestriction(arr){
     if(dr.depts&&dr.depts.length){
       out=out.filter(function(c){
         var cd=(c.depts&&c.depts.length)?c.depts:(c.dept?[c.dept]:[]);
-        if(!cd.length) return true;
+        if(!cd.length) return false; // SECURITY: restricted dept user ko unclassified case na dikhaye
         return cd.some(function(d){ var dl=(d||'').trim().toLowerCase(); return dr.depts.some(function(x){ return (x||'').trim().toLowerCase()===dl; }); });
       });
     }
@@ -2258,7 +2287,7 @@ function _sortByCaseNoDesc(arr){
 }
 function _processCasesRaw(rawArr){
   // Direct processing — no fake docs, no double mapping
-  cc = rawArr.slice(); // already plain objects
+  cc = rawArr.filter(function(c){ return !c.deletedAt; }); // Recycle Bin wale active lists se bahar
   _sortByCaseNoDesc(cc);
   cc = _applyRestriction(cc);
   window._ccLoaded=true;
@@ -2288,7 +2317,7 @@ function _processCasesRaw(rawArr){
 }
 
 function _processCases(docs){
-  cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+  cc = docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }).filter(function(c){ return !c.deletedAt; });
   _sortByCaseNoDesc(cc);
   cc = _applyRestriction(cc);
   window._ccLoaded=true;
@@ -2330,8 +2359,10 @@ function startListener(){
   var _cached = cacheLoad();
   if(_cached && _cached.length > 0){
     _processCasesRaw(_cached);
+    var _ageMin=Math.max(0,Math.floor((Date.now()-parseInt(sessionStorage.getItem(_ckTs())||Date.now()))/60000));
+    setFS(true,'Cached'+(_ageMin?' • '+_ageMin+'m':'') );
     // Background refresh sirf tab karo jab cache 4 min se zyada purana ho
-    var _cacheAge = Date.now() - parseInt(localStorage.getItem(_ckTs())||'0');
+    var _cacheAge = Date.now() - parseInt(sessionStorage.getItem(_ckTs())||'0');
     if(_cacheAge > 6 * 60 * 60 * 1000){
       setTimeout(function(){
         casesQuery().get({source:'server'}).then(function(s){
@@ -2349,12 +2380,13 @@ function startListener(){
   // PHASE 1: Dashboard ke liye sirf last 10 turant dikhao
   // Region-restricted user pe orderBy+where ko composite index chahiye, isliye unke
   // liye orderBy skip karke seedha get karte hain (app khud sort kar leta hai).
-  var _isRestricted = !!(cu && cu.dataRestrict && Array.isArray(cu.dataRestrict.regions) && cu.dataRestrict.regions.length > 0);
+  var _isRestricted = _isServerScoped();
   var _phase1 = _isRestricted ? casesQuery().limit(50) : casesQuery().orderBy('openDate','desc').limit(10);
   _phase1
     .get()
     .then(function(snap10){
       var quick = snap10.docs.map(function(d){ return Object.assign({id:d.id},d.data()); });
+      quick = quick.filter(function(c){return !c.deletedAt;});
       quick = _applyRestriction(quick);
       setTH(document.getElementById('dTH'),THS);
       document.getElementById('dTB').innerHTML = quick.length
@@ -2408,6 +2440,7 @@ function refreshOneCase(id){
   return db.collection('cases').doc(id).get().then(function(d){
     if(!d.exists){ removeOneCase(id); return; }
     var obj = Object.assign({id:d.id}, d.data());
+    if(obj.deletedAt){removeOneCase(id);return;}
     var i = cc.findIndex(function(c){return c.id===id;});
     if(i>=0) cc[i]=obj; else cc.push(obj);
     _ccResort();
@@ -2426,7 +2459,7 @@ function removeOneCase(id){
 // Manual refresh — logo pe click se. Cache clear karke server se 1 baar taaza data lao.
 // DATA SAFE: ye sirf server se FRESH cases laata hai (read), kuch delete/modify NAHI karta.
 function forceRefreshCases(el){
-  try{ localStorage.removeItem(_ckTs()); localStorage.removeItem(_ckData()); }catch(e){}
+  try{ sessionStorage.removeItem(_ckTs()); sessionStorage.removeItem(_ckData()); }catch(e){}
   if(typeof toast==='function') toast('🔄 Taaza data laa raha...');
   reloadCases();
 }
@@ -2445,6 +2478,8 @@ async function downloadBackup(btn){
       var cs = await db.collection('cases').get();
       out.cases = cs.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
     }
+    // recycle bin (admin backup)
+    if(_isAdmin()){try{var tr=await db.collection('trashCases').get();out.trashCases=tr.docs.map(function(d){return Object.assign({id:d.id},d.data());});}catch(e){out.trashCases=[];}}
     // clients
     try{ var cl = await db.collection('clients').get(); out.clients = cl.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }); }catch(e){ out.clients=[]; }
     // users (password hash mat daalo — security)
@@ -2493,115 +2528,251 @@ function refreshMSOptions(){
   if(MS['ms-sRg'])msSetOptions('ms-sRg',regions);
 }
 
+// ===== SECURITY / AUTH HELPERS =====
+function _authEmail(username){ return String(username||'').trim().toLowerCase()+'@sab.local'; }
+function _isAdmin(){ return !!(cu && (cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin')); }
+function requirePerm(p){
+  var ok=_isAdmin() || !!(cu&&cu.perms&&cu.perms[p]);
+  if(!ok && typeof toast==='function') toast('⛔ Aap ke paas is action ki permission nahi hai');
+  return ok;
+}
+async function _getUserProfile(username,authUid){
+  // Auth UID sabse reliable link hai; isse legacy/custom document IDs bhi safely milte hain.
+  if(authUid){
+    try{
+      var aq=await db.collection('users').where('authUid','==',authUid).limit(1).get();
+      if(!aq.empty)return{id:aq.docs[0].id,data:aq.docs[0].data()};
+    }catch(_aq){}
+  }
+  var id=String(username||'').trim().toLowerCase();
+  try{
+    var sn=await db.collection('users').doc(id).get();
+    if(sn.exists)return{id:sn.id,data:sn.data()};
+  }catch(_sn){}
+  // Ye fallback mainly Rules publish hone se pehle legacy migration ke liye hai.
+  try{
+    var q=await db.collection('users').where('username','==',String(username||'').trim()).limit(1).get();
+    if(!q.empty)return{id:q.docs[0].id,data:q.docs[0].data()};
+  }catch(_q){}
+  return null;
+}
+async function _legacyMigrateLogin(username,password){
+  // Sirf purane accounts ke one-time migration ke liye. Protected Rules me ye pre-auth query
+  // block ho sakti hai; us surat me account ko Firebase Auth me admin/Firebase Console se link karein.
+  var q=await db.collection('users').where('username','==',username).limit(1).get();
+  if(q.empty) throw new Error('Account not found');
+  var d=q.docs[0], ud=d.data();
+  var ok=await verifyPw(password,ud.password||'');
+  if(!ok) throw new Error('Invalid username or password');
+  if(ud.active===false) throw new Error('Account inactive');
+  var cr=await firebase.auth().createUserWithEmailAndPassword(_authEmail(username),password);
+  await d.ref.update({authUid:cr.user.uid,authMigratedAt:firebase.firestore.FieldValue.serverTimestamp(),password:firebase.firestore.FieldValue.delete()});
+  ud.authUid=cr.user.uid; delete ud.password;
+  return {id:d.id,data:ud};
+}
+async function _createAuthUserSecondary(username,password){
+  if(!firebase.apps.some(function(a){return a.name==='userAdmin';}))firebase.initializeApp(FIREBASE_CONFIG,'userAdmin');
+  var app=firebase.app('userAdmin'),a=app.auth();try{await a.setPersistence(firebase.auth.Auth.Persistence.NONE);}catch(e){}
+  try{var cr=await a.createUserWithEmailAndPassword(_authEmail(username),password);return{uid:cr.user.uid,user:cr.user,auth:a};}catch(e){try{await a.signOut();}catch(_e){}throw e;}
+}
+async function _finishSecondaryAuth(ctx){if(ctx&&ctx.auth)try{await ctx.auth.signOut();}catch(e){}}
+async function _rollbackSecondaryAuth(ctx){if(!ctx)return;try{if(ctx.user)await ctx.user.delete();}catch(e){console.warn('Auth rollback delete failed:',e.code||e.message);}try{if(ctx.auth)await ctx.auth.signOut();}catch(_e){}}
+async function logActivity(action,caseId,meta){
+  if(!cu||!db) return;
+  try{ await db.collection('activityLogs').add({action:action,caseId:caseId||'',userId:cu.id||'',username:cu.username||'',fullname:cu.fullname||'',meta:meta||{},at:firebase.firestore.FieldValue.serverTimestamp()}); }catch(e){ console.warn('activity log:',e.code||e.message); }
+}
+async function syncAuthz(profileId,profile,uid){
+  if(!db||!uid||!profileId||!profile)return;
+  var z={profileId:String(profileId),username:String(profile.username||profileId).toLowerCase(),fullname:profile.fullname||'',role:profile.role||'viewer',active:profile.active!==false,perms:profile.perms||{},dataRestrict:profile.dataRestrict||{},updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{await db.collection('authz').doc(uid).set(z,{merge:false});}catch(e){console.warn('authz sync:',e.code||e.message);}
+}
+function refreshSecurityStatus(){
+  var box=document.getElementById('securityStatusBox'); if(!box)return;
+  var au=(typeof firebase!=='undefined'&&firebase.auth)?firebase.auth().currentUser:null;
+  var parts=[];
+  parts.push(au?'✅ Firebase Auth signed in':'❌ Firebase Auth session missing');
+  parts.push(cu&&cu.authUid?'✅ User profile linked to Auth UID':'⚠️ Legacy profile / authUid not recorded');
+  parts.push('🔒 Firestore/Storage Rules must be enabled in Firebase Console');
+  box.innerHTML=parts.map(function(x){return '<div>'+_e(x)+'</div>';}).join('');
+}
+
+function downloadSecurityRules(){
+  var txt=`FIRESTORE RULES
+================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function hasAuthz() { return signedIn() && exists(/databases/$(database)/documents/authz/$(request.auth.uid)); }
+    function z() { return get(/databases/$(database)/documents/authz/$(request.auth.uid)).data; }
+    function active() { return hasAuthz() && z().get('active', false) == true; }
+    function isAdmin() { return active() && (z().get('role','') == 'admin' || z().get('role','') == 'superadmin'); }
+    function can(p) { return active() && (isAdmin() || z().get('perms', {}).get(p, false) == true); }
+    function dr() { return z().get('dataRestrict', {}); }
+    function fullDataScope() { let d = dr(); return d.get('regions', []).size() == 0 && d.get('divisions', []).size() == 0 && d.get('depts', []).size() == 0; }
+    function allowedScope(data) {
+      let regs = dr().get('regions', []);
+      let divs = dr().get('divisions', []);
+      let deps = dr().get('depts', []);
+      let caseDeps = data.get('depts', []);
+      return isAdmin() || (active()
+        && (regs.size() == 0 || data.get('region','') in regs)
+        && (divs.size() == 0 || data.get('division','') in divs)
+        && (deps.size() == 0 || data.get('dept','') in deps || caseDeps.hasAny(deps)));
+    }
+    function isSelfProfile(userId) { return signedIn() && (resource.data.get('authUid','') == request.auth.uid || request.auth.token.email == userId + '@sab.local'); }
+    match /users/{userId} {
+      allow get: if isAdmin() || isSelfProfile(userId);
+      allow list: if isAdmin() || (signedIn() && resource.data.get('authUid','') == request.auth.uid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isSelfProfile(userId) && request.resource.data.get('authUid','') == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid','password','mustChangePw','updatedAt','authMigratedAt']));
+    }
+    match /authz/{uid} {
+      function profile() { return get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data; }
+      function validSelfMirror() { return signedIn() && uid == request.auth.uid && profile().get('authUid','') == request.auth.uid && request.resource.data.get('role','viewer') == profile().get('role','viewer') && request.resource.data.get('active',true) == profile().get('active',true) && request.resource.data.get('perms',{}) == profile().get('perms',{}) && request.resource.data.get('dataRestrict',{}) == profile().get('dataRestrict',{}); }
+      allow get: if signedIn() && (uid == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() || validSelfMirror();
+      allow delete: if isAdmin();
+    }
+    match /cases/{caseId} {
+      allow read: if can('view') && allowedScope(resource.data);
+      allow create: if can('add') && allowedScope(request.resource.data);
+      allow update: if can('edit') && allowedScope(resource.data) && allowedScope(request.resource.data) && request.resource.data.get('caseNo','') == resource.data.get('caseNo','');
+      allow delete: if can('del') && allowedScope(resource.data);
+    }
+    match /caseNoRegistry/{key} {
+      allow get: if isAdmin() || can('add');
+      allow list: if isAdmin();
+      allow create: if isAdmin() || (can('add')
+        && request.resource.data.get('createdBy','') == z().get('profileId','')
+        && existsAfter(/databases/$(database)/documents/cases/$(request.resource.data.caseId))
+        && getAfter(/databases/$(database)/documents/cases/$(request.resource.data.caseId)).data.get('caseNo','') == request.resource.data.get('caseNo',''));
+      allow update, delete: if isAdmin();
+    }
+    match /caseCounters/{counterId} {
+      allow get: if isAdmin() || can('add');
+      allow list: if isAdmin();
+      allow create: if isAdmin() || (can('add')
+        && request.resource.data.get('last',0) >= 1
+        && existsAfter(/databases/$(database)/documents/caseNoRegistry/$(request.resource.data.registryKey)));
+      allow update: if isAdmin() || (can('add')
+        && request.resource.data.get('prefix','') == resource.data.get('prefix','')
+        && request.resource.data.get('last',0) == resource.data.get('last',0) + 1
+        && existsAfter(/databases/$(database)/documents/caseNoRegistry/$(request.resource.data.registryKey)));
+      allow delete: if isAdmin();
+    }
+    match /trashCases/{caseId} { allow read: if isAdmin(); allow create: if can('del') && allowedScope(request.resource.data); allow update: if false; allow delete: if isAdmin(); }
+    match /clients/{clientId} { allow read: if can('clients') && (isAdmin() || fullDataScope()); allow create: if can('clients') && can('add') && (isAdmin() || fullDataScope()); allow update: if can('clients') && can('edit') && (isAdmin() || fullDataScope()); allow delete: if can('clients') && can('del') && (isAdmin() || fullDataScope()); }
+    match /settings/{docId} { allow read: if active(); allow write: if can('settings'); }
+    match /activityLogs/{logId} { allow create: if active() && request.resource.data.get('userId','') == z().get('profileId',''); allow read: if isAdmin() || can('reports'); allow update, delete: if false; }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
+
+STORAGE RULES
+================
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function z() { return firestore.get(/databases/(default)/documents/authz/$(request.auth.uid)).data; }
+    function active() { return signedIn() && firestore.exists(/databases/(default)/documents/authz/$(request.auth.uid)) && z().get('active',false) == true; }
+    function isAdmin() { return active() && (z().get('role','') == 'admin' || z().get('role','') == 'superadmin'); }
+    function can(p) { return active() && (isAdmin() || z().get('perms',{}).get(p,false) == true); }
+    function dr() { return z().get('dataRestrict', {}); }
+    function caseData(caseId) { return firestore.get(/databases/(default)/documents/cases/$(caseId)).data; }
+    function allowedCase(caseId) { let data = caseData(caseId); let regs = dr().get('regions', []); let divs = dr().get('divisions', []); let deps = dr().get('depts', []); let caseDeps = data.get('depts', []); return isAdmin() || (active() && (regs.size() == 0 || data.get('region','') in regs) && (divs.size() == 0 || data.get('division','') in divs) && (deps.size() == 0 || data.get('dept','') in deps || caseDeps.hasAny(deps))); }
+    match /case-files/{caseId}/{fileName} { allow read: if isAdmin() || (can('view') && allowedCase(caseId)); allow create, update: if (isAdmin() || ((can('add') || can('edit')) && allowedCase(caseId))) && request.resource.size <= 10 * 1024 * 1024 && request.resource.contentType == 'application/pdf'; allow delete: if isAdmin(); }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}
+
+ACCESS EXAMPLES
+================
+HOD Jamia: Department = Jamia; Region/Division empty.
+One Division: Region + one Division (State optional).
+Few Divisions: Region + selected Divisions.
+Regional Head: Region + selected Department(s).
+Region + Division + Department: AND logic.
+`;
+  var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SAB_Firebase_Security_Rules.txt';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);toast('⬇️ Firebase Rules download ho gaye');
+}
+
+// ===== END SECURITY / AUTH HELPERS =====
+
 // Login
 var _loginAttempts = parseInt(localStorage.getItem('sr_la')||'0');
 var _loginLockedUntil = parseInt(localStorage.getItem('sr_ll')||'0');
 async function doLogin(){
-  // Brute-force protection (localStorage persist — page reload se reset nahi hoga)
   if(Date.now() < _loginLockedUntil){
-    const secs = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
-    const err=document.getElementById('lerr');
-    err.style.display='block';
-    err.textContent='⏳ Bahut zyada attempts. ' + secs + ' seconds baad try karein.';
-    return;
+    const secs=Math.ceil((_loginLockedUntil-Date.now())/1000),err=document.getElementById('lerr');
+    err.style.display='block';err.textContent='⏳ Bahut zyada attempts. '+secs+' seconds baad try karein.';return;
   }
-  const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value.trim();
+  const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;
   const err=document.getElementById('lerr'),btn=document.getElementById('lbtn');
   if(!u||!p){err.style.display='block';err.textContent='❌ Enter username and password';return;}
   err.style.display='none';btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
-    // SECURITY FIX: password ko query mein mat bhejo — sirf username se user lao, password locally verify karo
-    let s=await db.collection('users').where('username','==',u).limit(1).get();
-    let ok=false, doc=null;
-    if(!s.empty){
-      doc=s.docs[0];
-      ok=await verifyPw(p, doc.data().password||'');
-    }
-    if(!ok){
-      err.style.display='block';err.textContent='❌ Invalid username or password';
-      _loginAttempts++;
-      localStorage.setItem('sr_la', String(_loginAttempts));
-      if(_loginAttempts >= 5){
-        _loginLockedUntil = Date.now() + 60000; // 60 second lockout
-        _loginAttempts = 0;
-        localStorage.setItem('sr_la','0');
-        localStorage.setItem('sr_ll', String(_loginLockedUntil));
-        err.textContent='❌ Bahut zyada galat attempts. 60 seconds ke liye lock ho gaya.';
+    var prof=null, authUser=null;
+    try{
+      var cred=await firebase.auth().signInWithEmailAndPassword(_authEmail(u),p);
+      authUser=cred.user;
+      prof=await _getUserProfile(u,authUser&&authUser.uid); // Auth ke BAAD UID-bound profile read
+    }catch(ae){
+      if(ae && ae.code==='auth/user-not-found'){
+        // Backward compatibility: purana Firestore-password account one-time Auth me migrate.
+        prof=await _legacyMigrateLogin(u,p);
+        authUser=firebase.auth().currentUser;
+      }else{
+        throw ae;
       }
-      btn.textContent='🔐 Login';btn.disabled=false;return;
     }
-    // Purana hash format tha? PBKDF2 pe migrate karo
-    if(ok==='migrate'){
-      try{ await db.collection('users').doc(doc.id).update({password: await makePwHash(p)}); }catch(_m){}
-    }
-    const ud={id:doc.id,...doc.data()};
-    if(ud.active===false){err.style.display='block';err.textContent='❌ Account inactive';btn.textContent='🔐 Login';btn.disabled=false;return;}
-    _loginAttempts = 0; localStorage.setItem('sr_la','0'); localStorage.removeItem('sr_ll');
-    // AUTH BRIDGE: Firestore login ke baad Firebase Auth mein bhi sign-in/banao
-    await ensureAuthAccount(u, p);
-    // SECURITY FIX: password hash session/memory mein store mat karo
-    delete ud.password;
-    cu=ud;const sess={...ud,loginAt:Date.now()};localStorage.setItem('sr_s',JSON.stringify(sess));launch();
-  }catch(e){console.error('Login error:',e);err.style.display='block';err.textContent='❌ Login failed. Please try again.';btn.textContent='🔐 Login';btn.disabled=false;}
-}
-// ===== FIREBASE AUTH BRIDGE =====
-// App ka primary login Firestore se hota hai. Ye helper uske baad Firebase Auth
-// mein bhi sign-in karta hai — taaki aage Firestore rules (Option B) lag sakein.
-// Account na ho to same username/password se transparently bana deta hai.
-// Firebase email maangta hai, isliye username+'@sab.local' use karte hain.
-async function ensureAuthAccount(username, password){
-  if(typeof firebase==='undefined' || !firebase.auth) return false;
-  var email = (username||'').toLowerCase() + '@sab.local';
-  try{
-    await firebase.auth().signInWithEmailAndPassword(email, password);
-    return true; // account tha, sign-in ho gaya
+    if(!prof) throw new Error('User profile not found');
+    var ud=Object.assign({id:prof.id},prof.data||{}); delete ud.password;
+    if(ud.active===false) throw new Error('Account inactive');
+    if(ud.authUid && authUser && ud.authUid!==authUser.uid) throw new Error('Auth/profile mismatch');
+    if(!ud.authUid && authUser){ try{await db.collection('users').doc(prof.id).update({authUid:authUser.uid});ud.authUid=authUser.uid;}catch(_l){} }
+    _loginAttempts=0;localStorage.setItem('sr_la','0');localStorage.removeItem('sr_ll');
+    await syncAuthz(prof.id,ud,authUser&&authUser.uid);
+    cu=ud;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},ud,{loginAt:Date.now()})));launch();
   }catch(e){
-    if(e.code==='auth/user-not-found' || e.code==='auth/invalid-credential' || e.code==='auth/invalid-login-credentials'){
-      try{
-        await firebase.auth().createUserWithEmailAndPassword(email, password);
-        return true; // pehli baar — account ban gaya
-      }catch(e2){
-        if(e2.code==='auth/email-already-in-use'){
-          console.warn('Auth account hai par password sync nahi. Settings > Change Password karne pe sync ho jayega.');
-          return false;
-        }
-        console.warn('Auth create fail:', e2.code, e2.message);
-        return false;
-      }
-    }
-    if(e.code==='auth/wrong-password'){
-      console.warn('Auth password purana hai — Change Password karne pe sync ho jayega.');
-      return false;
-    }
-    console.warn('Auth sign-in fail:', e.code, e.message);
-    return false;
+    try{if(firebase.auth().currentUser)await firebase.auth().signOut();}catch(_e){}
+    _loginAttempts++;localStorage.setItem('sr_la',String(_loginAttempts));
+    if(_loginAttempts>=5){_loginLockedUntil=Date.now()+60000;_loginAttempts=0;localStorage.setItem('sr_la','0');localStorage.setItem('sr_ll',String(_loginLockedUntil));}
+    err.style.display='block';
+    if(e&&e.code==='auth/wrong-password')err.textContent='❌ Invalid username or password';
+    else if(e&&e.code==='auth/too-many-requests')err.textContent='❌ Too many attempts. Thodi der baad try karein.';
+    else if(e&&e.code==='permission-denied')err.textContent='❌ Legacy account migration blocked by Security Rules. Admin se account link karwayein.';
+    else err.textContent='❌ '+((e&&e.message)||'Login failed');
+    btn.textContent='🔐 Login';btn.disabled=false;
   }
+}
+// Backward-compatible naam: ab account auto-create sirf verified legacy migration ke zariye hota hai.
+async function ensureAuthAccount(username,password){
+  try{await firebase.auth().signInWithEmailAndPassword(_authEmail(username),password);return true;}
+  catch(e){if(e.code==='auth/user-not-found'){await _legacyMigrateLogin(username,password);return true;}return false;}
 }
 // ===== END AUTH BRIDGE =====
 
 // URL se page restore — sirf launch() ke baad hoga, yahan nahi
 async function restoreS(){
-  const s=localStorage.getItem('sr_s');if(!s)return;
+  const raw=localStorage.getItem('sr_s');if(!raw)return;
   try{
-    const ud=JSON.parse(s);
-    // Session expiry: 8 hours
-    const SESSION_TTL = 8 * 60 * 60 * 1000;
-    if(ud.loginAt && (Date.now() - ud.loginAt) > SESSION_TTL){
-      localStorage.removeItem('sr_s');
-      return;
-    }
-    // AUTH: refresh pe Firebase auth async restore hota hai — uska wait karo,
-    // warna cases load karte waqt "insufficient permissions" aata hai.
-    await new Promise(function(res){
-      if(!firebase.auth){ res(); return; }
-      var done=false;
-      var unsub=firebase.auth().onAuthStateChanged(function(){ if(!done){done=true; if(unsub)unsub(); res();} });
-      setTimeout(function(){ if(!done){done=true; if(unsub)unsub(); res();} }, 4000); // safety timeout
+    const saved=JSON.parse(raw),TTL=8*60*60*1000;
+    if(saved.loginAt&&(Date.now()-saved.loginAt)>TTL){localStorage.removeItem('sr_s');return;}
+    var au=await new Promise(function(res){
+      var done=false,unsub=firebase.auth().onAuthStateChanged(function(u){if(done)return;done=true;if(unsub)unsub();res(u||null);});
+      setTimeout(function(){if(!done){done=true;if(unsub)unsub();res(firebase.auth().currentUser||null);}},4000);
     });
-    const sn=await db.collection('users').doc(ud.id).get();
-    if(sn.exists&&(sn.data().active!==false)){cu={id:sn.id,...sn.data()};delete cu.password;launch();}
-    else localStorage.removeItem('sr_s');
-  }catch(e){localStorage.removeItem('sr_s');}
+    if(!au){localStorage.removeItem('sr_s');return;}
+    const sn=await db.collection('users').doc(saved.id).get();
+    if(!sn.exists||sn.data().active===false){localStorage.removeItem('sr_s');await firebase.auth().signOut();return;}
+    cu=Object.assign({id:sn.id},sn.data());delete cu.password;
+    if(cu.authUid&&cu.authUid!==au.uid){localStorage.removeItem('sr_s');await firebase.auth().signOut();cu=null;return;}
+    await syncAuthz(sn.id,cu,au.uid);
+    launch();
+  }catch(e){console.warn('restore session:',e.code||e.message);localStorage.removeItem('sr_s');}
 }
 function launch(){
   document.getElementById('lw').classList.add('hide');
@@ -2617,8 +2788,13 @@ function launch(){
   document.getElementById('nav-nc').style.display=_canAdd?'flex':'none';
   var _dncb=document.getElementById('dashNewCaseBtn');if(_dncb)_dncb.style.display=_canAdd?'':'none';
   var _cncb=document.getElementById('casesNewCaseBtn');if(_cncb)_cncb.style.display=_canAdd?'':'none';
-  document.getElementById('nav-users').classList.toggle('hide',!(isA||(cu.perms&&cu.perms.users)));
+  var _clnav=document.getElementById('nav-clients');if(_clnav)_clnav.style.display=(isA||((cu.perms&&cu.perms.clients)&&!_isServerScoped()))?'flex':'none';
+  var _clNew=document.querySelector('#pg-clients button[onclick="openClientForm()"]');if(_clNew)_clNew.style.display=_canAdd?'':'none';
+  document.getElementById('nav-users').classList.toggle('hide',!isA);
   document.getElementById('nav-set').classList.toggle('hide',!(isA||(cu.perms&&cu.perms.settings)));
+  var _tr=document.getElementById('nav-trash');if(_tr)_tr.classList.toggle('hide',!isA);
+  var _fdb=document.getElementById('fixDeptsBtn');if(_fdb)_fdb.style.display=isA?'inline-flex':'none';
+  var _crb=document.getElementById('caseRegBtn');if(_crb)_crb.style.display=isA?'inline-flex':'none';
   // Show/hide pages based on perms
   var navMap={'cases':'view','search':'search','reports':'reports','tawan':'view'};
   Object.keys(navMap).forEach(function(pg){
@@ -2626,8 +2802,10 @@ function launch(){
     if(navEl) navEl.style.display=(isA||(cu.perms&&cu.perms[navMap[pg]]))?'flex':'none';
   });
   loadAllSettings();initDD();loadLogo();
-  // Clients background mein load karo — autocomplete ke liye
-  loadClients();
+  // SECURITY: Firebase settings ab sirf authenticated login ke BAAD load hoti hain.
+  fbLoadSettings().catch(function(e){console.warn('settings load:',e.code||e.message);});
+  // Clients sirf view permission wale user ke liye background mein load karo.
+  if(isA||(cu.perms&&cu.perms.clients)) loadClients();
   // Page: naya session (app pehli baar khula) → Dashboard. Session ke andar refresh → wahi page (URL se).
   var _urlPg;
   if(!sessionStorage.getItem('sr_session')){
@@ -2638,14 +2816,16 @@ function launch(){
     _urlPg = new URLSearchParams(window.location.search).get('p') || 'dash';
   }
   goPage(_urlPg, null, true);
-  startListener();
+  if(isA||(cu.perms&&cu.perms.view)){startListener();}else{cc=[];window._ccLoaded=true;updStats();setFS(true,'Ready');}
   // Background mein fresh user data + users list
   db.collection('users').doc(cu.id).get().then(function(sn){
     if(sn.exists){ cu={id:sn.id,...sn.data()}; delete cu.password; localStorage.setItem('sr_s',JSON.stringify({...cu,loginAt:Date.now()})); }
   }).catch(function(){});
-  fbGetU().then(rUsers);
-  setTimeout(initSearchableSelects,400);
+  if(isA) fbGetU().then(rUsers);
+  setTimeout(function(){initSearchableSelects();refreshSecurityStatus();},400);
   _watchAuth();
+  _watchAuthz();
+  if(cu&&cu.mustChangePw===true)setTimeout(openForcePwModal,250);
 }
 
 // AUTH WATCHER: token refresh fail / auth drop ko detect karke saaf handle karta hai.
@@ -2653,6 +2833,25 @@ function launch(){
 // hai (silent), aur woh bhi fail ho to saaf "session expire" bata ke login page laata hai.
 var _authWatchOn = false;
 var _reauthTried = false;
+var _authzUnsub = null;
+var _authzSig = '';
+function _authzCoreSig(z){try{return JSON.stringify({active:z.active!==false,role:z.role||'viewer',perms:z.perms||{},dataRestrict:z.dataRestrict||{}});}catch(e){return'';}}
+function _watchAuthz(){
+  try{
+    var au=firebase.auth().currentUser;if(!cu||!au||_authzUnsub)return;
+    _authzUnsub=db.collection('authz').doc(au.uid).onSnapshot(function(sn){
+      if(!cu||!sn.exists)return;
+      var z=sn.data()||{},sig=_authzCoreSig(z);
+      if(!_authzSig){_authzSig=sig;return;}
+      if(sig===_authzSig)return;
+      _authzSig=sig;
+      try{sessionStorage.removeItem(_ckData());sessionStorage.removeItem(_ckTs());cc=[];}catch(e){}
+      if(z.active===false){alert('Aapka account deactivate ho gaya hai. Dobara access ke liye Admin se rabta karein.');doLogout();return;}
+      alert('Aapki access permissions / data scope Admin ne update ki hai. Security ke liye dobara login karein.');
+      doLogout();
+    },function(e){if(e&&e.code!=='permission-denied')console.warn('authz watch:',e.code||e.message);});
+  }catch(e){console.warn('authz watch init:',e.message||e);}
+}
 function _watchAuth(){
   if(_authWatchOn || typeof firebase==='undefined' || !firebase.auth) return;
   _authWatchOn = true;
@@ -2668,14 +2867,14 @@ function _watchAuth(){
   });
 }
 
-function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;
+function doLogout(){_msReady=false;_currentPg='';_rCasesHash='';_pgReady={};if(_casesUnsub){try{_casesUnsub();}catch(e){}}_casesUnsub=null;if(_authzUnsub){try{_authzUnsub();}catch(e){}}_authzUnsub=null;_authzSig='';
   try{ if(typeof firebase!=='undefined' && firebase.auth) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem('sr_s');cu=null;
   // Logout par sensitive cache clear (shared PC / XSS safety)
   try{
-    localStorage.removeItem(_ckData()); localStorage.removeItem(_ckTs());
-    localStorage.removeItem('caseAutoSave');
-    for(var _i=localStorage.length-1;_i>=0;_i--){ var _k=localStorage.key(_i); if(_k && _k.indexOf('sab_cases_')===0) localStorage.removeItem(_k); }
+    sessionStorage.removeItem(_ckData()); sessionStorage.removeItem(_ckTs());
+    sessionStorage.removeItem('caseAutoSave');
+    for(var _i=sessionStorage.length-1;_i>=0;_i--){ var _k=sessionStorage.key(_i); if(_k && _k.indexOf('sab_cases_')===0) sessionStorage.removeItem(_k); }
     cc=[];
   }catch(e){}
   document.getElementById('lw').classList.remove('hide');
@@ -2690,8 +2889,8 @@ document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')
 var _currentPg = '';
 var _pgEls = {};
 var _navEls = {};
-var _ALL_PAGES = ['dash','cases','newcase','search','tawan','reports','users','clients','settings'];
-var _TS = {dash:'Dashboard',cases:'All Cases',newcase:'New Case',search:'Search',reports:'Reports',tawan:'💰 Tawan Sheet',users:'Users',clients:'Clients',settings:'Settings'};
+var _ALL_PAGES = ['dash','cases','newcase','search','tawan','reports','users','clients','trash','settings'];
+var _TS = {dash:'Dashboard',cases:'All Cases',newcase:'New Case',search:'Search',reports:'Reports',tawan:'💰 Tawan Sheet',users:'Users',clients:'Clients',trash:'Recycle Bin',settings:'Settings'};
 var _pgReady = {}; // Track which pages have been rendered at least once
 
 function _initPgCache(){
@@ -2713,9 +2912,9 @@ function goPage(pg,el,skipHistory){
   if(pg==='newcase' && _currentPg && _currentPg!=='newcase') _lastPgBeforeNewCase = _currentPg;
   if(cu && pg!=='dash'){
     var _isAdm=cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin';
-    var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',users:'users',settings:'settings'};
+    var _permMap={cases:'view',newcase:'add',search:'search',reports:'reports',tawan:'view',clients:'clients',users:'__admin__',trash:'__admin__',settings:'settings'};
     var _needed=_permMap[pg];
-    if(_needed && !_isAdm && !(cu&&cu.perms&&cu.perms[_needed])){
+    if(_needed && ((_needed==='__admin__'&&!_isAdm)||(_needed!=='__admin__'&&!_isAdm&&!(cu&&cu.perms&&cu.perms[_needed])))){
       toast('⛔ Aap ke paas is page ka access nahi hai');
       return;
     }
@@ -2759,12 +2958,12 @@ function goPage(pg,el,skipHistory){
     else if(pg==='users')   fbGetU().then(rUsers);
     else if(pg==='clients') { loadClients(); }
     else if(pg==='newcase'){
-      var _draft = (!eId) ? localStorage.getItem('caseAutoSave') : null;
+      var _draft = (!eId) ? sessionStorage.getItem('caseAutoSave') : null;
       if(!eId){ resetF(); }
       setTimeout(function(){
         initSearchableSelects();
         if(!eId){ var s=document.getElementById('fStat'); if(s){ s.value='pending_z'; if(s._ssRefresh)s._ssRefresh(); }}
-        if(_draft){ try{ localStorage.setItem('caseAutoSave', _draft); }catch(e){} checkAutoSave(); }
+        if(_draft){ try{ sessionStorage.setItem('caseAutoSave', _draft); }catch(e){} checkAutoSave(); }
       }, 100);
     }
     else if(pg==='tawan')   renderTawan();
@@ -2778,6 +2977,10 @@ window.addEventListener('popstate',function(e){
   var pg=(e.state&&e.state.pg)||'dash';
   goPage(pg,null,true);
 });
+var _trashGoHook=true;
+var _origGoPageForTrash=goPage;
+goPage=function(pg,el,skipHistory){var r=_origGoPageForTrash(pg,el,skipHistory);if(pg==='trash')setTimeout(loadTrash,0);return r;};
+
 function toggleSB(){
   var sb=document.getElementById('sb');
   if(window.innerWidth<=768){
@@ -2789,13 +2992,13 @@ function toggleSB(){
 // Dropdowns
 function initDD(){
   // Department
-  ['sDp'].forEach(id=>{const s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">Select...</option>';DEPTS.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});});
+  ['sDp'].forEach(id=>{const s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">Select...</option>';var _dd=(cu&&!_isAdmin()&&cu.dataRestrict&&cu.dataRestrict.depts&&cu.dataRestrict.depts.length)?cu.dataRestrict.depts:DEPTS;_dd.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});});
   // Init dept multi-select
   if(document.getElementById('fDeptList')) deptRender('');
   // Sael
   const fMd=document.getElementById('tMd');if(fMd){const cur=fMd.value;fMd.innerHTML='<option value="">Select...</option>';TMADD.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;fMd.appendChild(o);});if(cur)fMd.value=cur;}
   const fMq=document.getElementById('tMq');if(fMq){const cur=fMq.value;fMq.innerHTML='<option value="">Select...</option>';TMAQSAD.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;fMq.appendChild(o);});if(cur)fMq.value=cur;}
-  const fSael=document.getElementById('fSael');if(fSael){fSael.innerHTML='<option value="">Select...</option>';SAEL.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;fSael.appendChild(o);});}
+  const fSael=document.getElementById('fSael');if(fSael){fSael.innerHTML='<option value="">Select...</option>';var _sa=(cu&&!_isAdmin()&&cu.dataRestrict&&cu.dataRestrict.saels&&cu.dataRestrict.saels.length)?cu.dataRestrict.saels:SAEL;_sa.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;fSael.appendChild(o);});}
   // Mufattish select populate
   const fMufSel=document.getElementById('fMuf');
   if(fMufSel&&fMufSel.tagName==='SELECT'){
@@ -2815,7 +3018,7 @@ function initDD(){
   const sGd=document.getElementById('sGd');
   if(sGd){const cur=sGd.value;sGd.innerHTML='<option value="">All</option>';RTYPES.forEach(r=>{const o=document.createElement('option');o.value=r.v;o.textContent=r.l;sGd.appendChild(o);});if(cur)sGd.value=cur;}
   // Region — sRg uses short names (as stored in cases), fReg uses HIER keys
-  const fRegEl=document.getElementById('fReg');if(fRegEl){fRegEl.innerHTML='<option value="">Select...</option>';Object.keys(HIER).forEach(r=>{if(_isHiddenRegion(r)&&!eId)return;const o=document.createElement('option');o.value=r;o.textContent=r;fRegEl.appendChild(o);});}
+  const fRegEl=document.getElementById('fReg');if(fRegEl){fRegEl.innerHTML='<option value="">Select...</option>';var _drF=(cu&&cu.dataRestrict)||{},_allowedR=(!_isAdmin()&&_drF.regions&&_drF.regions.length)?_drF.regions:null;Object.keys(HIER).forEach(r=>{if(_isHiddenRegion(r)&&!eId)return;if(_allowedR&&_allowedR.indexOf(r)<0)return;const o=document.createElement('option');o.value=r;o.textContent=r;fRegEl.appendChild(o);});}
   const sRgEl=document.getElementById('sRg');
   if(sRgEl){
     sRgEl.innerHTML='<option value="">All</option>';
@@ -2830,55 +3033,12 @@ function initDD(){
   ['sSt','sDv','sDi'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='<option value="">All</option>';});
 }
 
-function fFS(){
-  var r=document.getElementById('fReg').value;
-  var s=document.getElementById('fSt');
-  var fDivEl=document.getElementById('fDiv');
-  var fDistEl=document.getElementById('fDist');
-  s.innerHTML='<option value="">Select State...</option>';
-  fDivEl.innerHTML='<option value="">Select Division...</option>';
-  fDistEl.innerHTML='<option value="">Select District...</option>';
-  if(s._ssSilent) s._ssSilent(''); else if(s._ssRefresh) s._ssRefresh();
-  if(fDivEl._ssSilent) fDivEl._ssSilent(''); else if(fDivEl._ssRefresh) fDivEl._ssRefresh();
-  if(fDistEl._ssSilent) fDistEl._ssSilent(''); else if(fDistEl._ssRefresh) fDistEl._ssRefresh();
-  if(!r) return;
-  if(!HIER[r]){
-    var savedSt = s.dataset ? s.dataset.savedVal : '';
-    if(savedSt){ var o=document.createElement('option');o.value=savedSt;o.textContent=savedSt;s.appendChild(o); }
-    if(s._ssRefresh) s._ssRefresh();
-    return;
-  }
-  Object.keys(HIER[r].states).forEach(function(st){
-    var o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);
-  });
-  if(s._ssRefresh) s._ssRefresh();
-}
-function fFD(){
-  var r=document.getElementById('fReg').value;
-  var st=document.getElementById('fSt').value;
-  var s=document.getElementById('fDiv');
-  var fDistEl=document.getElementById('fDist');
-  s.innerHTML='<option value="">Select Division...</option>';
-  fDistEl.innerHTML='<option value="">Select District...</option>';
-  if(s._ssSilent) s._ssSilent(''); else if(s._ssRefresh) s._ssRefresh();
-  if(fDistEl._ssSilent) fDistEl._ssSilent(''); else if(fDistEl._ssRefresh) fDistEl._ssRefresh();
-  if(!r||!st||!HIER[r]||!HIER[r].states[st])return;
-  Object.keys(HIER[r].states[st].divs).forEach(function(d){
-    var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);
-  });
-  if(s._ssRefresh) s._ssRefresh();
-}
-function fFDi(){
-  var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,dv=document.getElementById('fDiv').value,s=document.getElementById('fDist');
-  s.innerHTML='<option value="">Select District...</option>';
-  if(s._ssSilent) s._ssSilent(''); else if(s._ssRefresh) s._ssRefresh();
-  if(!r||!st||!dv||!HIER[r]||!HIER[r].states[st])return;
-  var districts=HIER[r].states[st].divs[dv];
-  if(!districts||districts.length===0){s.innerHTML='<option value="">-- No districts --</option>';if(s._ssRefresh)s._ssRefresh();return;}
-  districts.forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});
-  if(s._ssRefresh) s._ssRefresh();
-}
-
+function _allowedDivForUser(dv){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.divisions||!dr.divisions.length||dr.divisions.indexOf(dv)>-1;}
+function _allowedStateForUser(st){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.states||!dr.states.length||dr.states.indexOf(st)>-1;}
+function _allowedDistrictForUser(di){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.districts||!dr.districts.length||dr.districts.indexOf(di)>-1;}
+function fFS(){var r=document.getElementById('fReg').value,s=document.getElementById('fSt'),dv=document.getElementById('fDiv'),di=document.getElementById('fDist');s.innerHTML='<option value="">Select State...</option>';dv.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(dv._ssSilent)dv._ssSilent('');if(di._ssSilent)di._ssSilent('');if(!r||!HIER[r])return;Object.keys(HIER[r].states).forEach(function(st){var divNames=Object.keys((HIER[r].states[st]||{}).divs||{}),hasAllowed=divNames.some(_allowedDivForUser);if(!_allowedStateForUser(st)||(!hasAllowed&&cu&&cu.dataRestrict&&cu.dataRestrict.divisions&&cu.dataRestrict.divisions.length))return;var o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
+function fFD(){var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,s=document.getElementById('fDiv'),di=document.getElementById('fDist');s.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(di._ssSilent)di._ssSilent('');if(!r||!st||!HIER[r]||!HIER[r].states[st])return;Object.keys(HIER[r].states[st].divs).forEach(function(d){if(!_allowedDivForUser(d))return;var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
+function fFDi(){var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,dv=document.getElementById('fDiv').value,s=document.getElementById('fDist');s.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(!r||!st||!dv||!HIER[r]||!HIER[r].states[st]||!_allowedDivForUser(dv))return;var a=HIER[r].states[st].divs[dv]||[];a.filter(_allowedDistrictForUser).forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
 
 // Form toggles
 function tog(id,show){document.getElementById(id).style.display=show?'block':'none';}
@@ -3692,7 +3852,7 @@ function sBdg(s){
   return '<span class="badge '+cls+'">'+label+'</span>';
 }
 function gBdg(g){const m={tawan:['bo','💰 Tawan'],halfia:['bpu','📜 Halfiya Bayan'],tafhim:['bb','🗣️ Tafhim'],tabadla:['bg','🔄 Transfer'],mazratnama:['bbr','📝 Mazratnama']};if(Array.isArray(g))return g.map(function(v){const r=m[v];return r?'<span class="badge '+r[0]+'">'+r[1]+'</span>':''}).join(' ');const r=m[g];return r?'<span class="badge '+r[0]+'">'+r[1]+'</span>':'';}
-function hp(p){return cu&&(cu.role==='admin'||!!(cu.perms&&cu.perms[p]));}
+function hp(p){return !!(_isAdmin()||!!(cu&&cu.perms&&cu.perms[p]));}
 
 // Tables
 const THS=['Sr.','Case No','Date / Days','Location','Person','Subject','Status'];
@@ -5930,13 +6090,13 @@ function resetF(){
   document.getElementById('fOD').value=_localDate();
   document.getElementById('fYr').value=new Date().getFullYear();
   // Clear autosave on new case
-  localStorage.removeItem('caseAutoSave');
+  sessionStorage.removeItem('caseAutoSave');
   toggleOldLoc(document.getElementById('fYr').value);
   // Reset case no field styling
   var cnoInp = document.getElementById('fCNo');
   var cnoMsg = document.getElementById('cnoMsg');
   var cnoIcon = document.getElementById('cnoStatus');
-  if(cnoInp){ cnoInp.style.borderColor=''; cnoInp.style.background=''; }
+  if(cnoInp){ cnoInp.readOnly=false;cnoInp.style.borderColor=''; cnoInp.style.background=''; }
   if(cnoMsg) cnoMsg.style.display='none';
   if(cnoIcon) cnoIcon.textContent='';
   // Auto fill case no
@@ -6069,19 +6229,88 @@ function _reqFail(elId, msg){
 // XSS guard — RTE HTML se script/onclick/javascript: hatao, formatting rakho (detached div = safe)
 function sanitizeHtml(html){
   if(!html) return '';
-  var tmp=document.createElement('div');
-  tmp.innerHTML=String(html);
-  tmp.querySelectorAll('script,iframe,object,embed,link,meta,style,form,base').forEach(function(n){ n.remove(); });
-  tmp.querySelectorAll('*').forEach(function(n){
-    [].slice.call(n.attributes).forEach(function(a){
-      var name=(a.name||'').toLowerCase(), val=(a.value||'').replace(/\s/g,'').toLowerCase();
-      if(name.indexOf('on')===0) n.removeAttribute(a.name);
-      else if((name==='href'||name==='src'||name==='xlink:href') && (val.indexOf('javascript:')===0||val.indexOf('data:text/html')===0)) n.removeAttribute(a.name);
+  if(window.DOMPurify){
+    return DOMPurify.sanitize(String(html),{
+      USE_PROFILES:{html:true},
+      FORBID_TAGS:['script','iframe','object','embed','link','meta','style','form','base'],
+      FORBID_ATTR:['onerror','onload','onclick','onmouseover','onfocus','onanimationstart']
     });
-  });
+  }
+  // Offline/CDN fallback
+  var tmp=document.createElement('div');tmp.innerHTML=String(html);
+  tmp.querySelectorAll('script,iframe,object,embed,link,meta,style,form,base').forEach(function(n){n.remove();});
+  tmp.querySelectorAll('*').forEach(function(n){[].slice.call(n.attributes).forEach(function(a){var name=(a.name||'').toLowerCase(),val=(a.value||'').replace(/\s/g,'').toLowerCase();if(name.indexOf('on')===0)n.removeAttribute(a.name);else if((name==='href'||name==='src'||name==='xlink:href')&&(val.indexOf('javascript:')===0||val.indexOf('data:text/html')===0))n.removeAttribute(a.name);});});
   return tmp.innerHTML;
 }
+
+function _caseNoKey(caseNo){
+  return encodeURIComponent(String(caseNo||'').trim().toLowerCase()).replace(/\./g,'%2E');
+}
+function _caseNoParts(caseNo){var raw=String(caseNo||'').trim(),m=raw.match(/^(.*?)(\d+)$/);if(!m)return null;return{raw:raw,prefix:m[1],num:parseInt(m[2],10),width:m[2].length,key:_caseNoKey(m[1])};}
+async function _createCaseAtomic(data){
+  // Registry global uniqueness deta hai; counter global sequential suggestion ko sync rakhta hai.
+  var key=_caseNoKey(data.caseNo),caseRef=db.collection('cases').doc('cn_'+key),regRef=db.collection('caseNoRegistry').doc(key),part=_caseNoParts(data.caseNo),counterRef=part?db.collection('caseCounters').doc(part.key):null;
+  await db.runTransaction(async function(tx){
+    var reg=await tx.get(regRef),ctr=counterRef?await tx.get(counterRef):null;
+    if(reg.exists)throw new Error('Case No "'+data.caseNo+'" already exists / reserved hai');
+    tx.set(caseRef,data);
+    tx.set(regRef,{caseNo:data.caseNo,caseId:caseRef.id,createdBy:(cu&&cu.id)||'',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(part&&counterRef){
+      var cur=ctr&&ctr.exists?(parseInt(ctr.data().last,10)||0):0;
+      if(!ctr||!ctr.exists||part.num===cur+1||_isAdmin()){
+        tx.set(counterRef,{prefix:part.prefix,last:Math.max(cur,part.num),width:part.width,registryKey:key,updatedBy:(cu&&cu.id)||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      }
+    }
+  });
+  return caseRef;
+}
+async function _nextFreeCaseNo(caseNo){
+  var raw=String(caseNo||'').trim(),part=_caseNoParts(raw);if(!part)return raw;
+  var startNum=part.num;
+  try{
+    var ctr=await db.collection('caseCounters').doc(part.key).get();
+    if(ctr.exists)startNum=Math.max(startNum,(parseInt(ctr.data().last,10)||0)+1);
+  }catch(e){console.warn('Case counter check:',e.code||e.message);}
+  // Counter ke baad usually pehla hi free hoga; registry exact-check race/stale counter cover karta hai.
+  for(var i=0;i<40;i++){
+    var cand=part.prefix+String(startNum+i).padStart(part.width,'0');
+    try{var sn=await db.collection('caseNoRegistry').doc(_caseNoKey(cand)).get();if(!sn.exists)return cand;}catch(e){console.warn('Case registry check:',e.code||e.message);return raw;}
+  }
+  throw new Error('Case sequence mein 40 reserved numbers mile; Admin “Build Case No Registry” chalaye');
+}
+async function rebuildCaseNoRegistry(silent){
+  if(!_isAdmin()){if(!silent)toast('⛔ Case No Registry sirf Admin build kar sakta hai');return false;}
+  var btn=document.getElementById('caseRegBtn');if(btn){btn.disabled=true;btn.textContent='⏳ Building Registry...';}
+  try{
+    var snaps=await Promise.all([db.collection('cases').get(),db.collection('trashCases').get()]),map={},counters={},dups=[];
+    snaps.forEach(function(sn){sn.docs.forEach(function(d){var x=d.data()||{},cn=String(x.caseNo||'').trim();if(!cn)return;var k=_caseNoKey(cn);if(map[k]){map[k].ids.push(d.id);if(dups.indexOf(cn)<0)dups.push(cn);}else map[k]={caseNo:cn,caseId:d.id,ids:[d.id]};var pt=_caseNoParts(cn);if(pt){var c=counters[pt.key];if(!c||pt.num>c.last)counters[pt.key]={prefix:pt.prefix,last:pt.num,width:pt.width,registryKey:k};}});});
+    var entries=Object.entries(map),batch=db.batch(),ops=0;
+    for(var i=0;i<entries.length;i++){
+      var k=entries[i][0],v=entries[i][1];batch.set(db.collection('caseNoRegistry').doc(k),{caseNo:v.caseNo,caseId:v.caseId,caseIds:v.ids,rebuiltAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});ops++;
+      if(ops>=400){await batch.commit();batch=db.batch();ops=0;}
+    }
+    if(ops)await batch.commit();
+    var cent=Object.entries(counters),cb=db.batch(),cops=0;
+    for(var ci=0;ci<cent.length;ci++){var ck=cent[ci][0],cv=cent[ci][1];cb.set(db.collection('caseCounters').doc(ck),{prefix:cv.prefix,last:cv.last,width:cv.width,registryKey:cv.registryKey,updatedBy:(cu&&cu.id)||'',rebuiltAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});cops++;if(cops>=400){await cb.commit();cb=db.batch();cops=0;}}
+    if(cops)await cb.commit();
+    await db.collection('settings').doc('security').set({caseRegistryBuilt:true,caseRegistryBuiltAt:firebase.firestore.FieldValue.serverTimestamp(),caseRegistryCount:entries.length,caseCounterCount:cent.length},{merge:true});
+    await logActivity('case_registry_rebuild','',{count:entries.length,duplicates:dups.slice(0,25)});
+    if(!silent){if(dups.length)alert('Registry build ho gaya, lekin '+dups.length+' duplicate Case No pehle se database mein mile.\n\nExamples:\n'+dups.slice(0,15).join('\n'));else toast('✅ '+entries.length+' Case No registry entries build ho gayi');}
+    return true;
+  }catch(e){if(!silent)toast('❌ Registry build fail: '+e.message);return false;}
+  finally{if(btn){btn.disabled=false;btn.textContent='🔢 Build Case No Registry';}}
+}
+async function ensureCaseNoRegistry(){
+  if(!_isAdmin())return true;
+  try{var sn=await db.collection('settings').doc('security').get();if(sn.exists&&sn.data().caseRegistryBuilt===true)return true;}catch(e){}
+  toast('🔢 Scoped users se pehle Case No Registry initialize ho rahi hai...');
+  return await rebuildCaseNoRegistry(true);
+}
+
+function _caseAllowedByCurrentScope(c){if(_isAdmin())return true;var dr=(cu&&cu.dataRestrict)||{};if(dr.regions&&dr.regions.length&&dr.regions.indexOf(c.region||'')<0)return false;if(dr.divisions&&dr.divisions.length&&dr.divisions.indexOf(c.division||'')<0)return false;if(dr.depts&&dr.depts.length){var ds=(c.depts&&c.depts.length)?c.depts:(c.dept?[c.dept]:[]);if(!ds.some(function(d){return dr.depts.indexOf(d)>-1;}))return false;}return true;}
+
 async function saveCase(){
+  if(eId){if(!requirePerm('edit'))return;}else{if(!requirePerm('add'))return;}
   // Double-click guard — ek save chal raha to dobara na chale (duplicate rokega)
   if(window._savingCase){ return; }
   window._savingCase = true;
@@ -6095,7 +6324,7 @@ async function saveCase(){
   }
 }
 async function _saveCaseInner(){
-  const cn=document.getElementById('fCNo').value.trim();
+  let cn=document.getElementById('fCNo').value.trim();
   const persons=getPersons();
   const nm=(persons[0]||{}).name||'';
   const mb=(persons[0]||{}).mobile||'';
@@ -6116,16 +6345,22 @@ async function _saveCaseInner(){
       _reqFail('fCNo','Case No "'+cn+'" already exists ('+(dupCase.openDate||'')+') — dusra number daalein');
       return;
     }
-    // Server pe bhi fresh check — do users same waqt wala race window kam karo (local cc stale ho sakta)
-    try{
-      var _srvDup = await db.collection('cases').where('caseNo','==',cn).limit(1).get();
-      if(_srvDup && !_srvDup.empty){
-        _reqFail('fCNo','Case No "'+cn+'" already exists (server) — dusra number daalein');
-        return;
-      }
-    }catch(_se){ /* server check block/fail hua to local check pe rely — save aage badhega */ }
+    if(_isServerScoped()){
+      try{var _freeCn=await _nextFreeCaseNo(cn);if(_freeCn!==cn){cn=_freeCn;document.getElementById('fCNo').value=cn;toast('🔢 Global sequence ke hisab se Case No '+cn+' assign hua');}}catch(_nce){toast('❌ '+_nce.message);return;}
+    }
+    // Admin/unrestricted user broad server check bhi kare. Scoped users ke liye broad query Rules se deny hoti hai;
+    // unki global uniqueness deterministic Case No Registry transaction enforce karti hai.
+    if(!_isServerScoped()){
+      try{
+        var _srvDup=await db.collection('cases').where('caseNo','==',cn).limit(1).get();
+        if(_srvDup&&!_srvDup.empty){_reqFail('fCNo','Case No "'+cn+'" already exists (server) — dusra number daalein');return;}
+        var _trashDup=await db.collection('trashCases').where('caseNo','==',cn).limit(1).get();
+        if(_trashDup&&!_trashDup.empty){_reqFail('fCNo','Case No "'+cn+'" Recycle Bin mein maujood hai — pehle restore/purge karein');return;}
+      }catch(_se){console.warn('duplicate server check:',_se.code||_se.message);}
+    }
   }
-  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:getDeptValues()[0]||'',depts:getDeptValues(),idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:sanitizeHtml(document.getElementById('fSub').value).trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:sanitizeHtml(document.getElementById('fRem').value).trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:sanitizeHtml(document.getElementById('fRah').value).trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
+  var _deptPayload=getDeptPayloadForSave();
+  const data={caseNo:document.getElementById('fCNo').value.trim(),openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:_deptPayload.dept,depts:_deptPayload.depts,idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,subject:sanitizeHtml(document.getElementById('fSub').value).trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:sanitizeHtml(document.getElementById('fRem').value).trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:sanitizeHtml(document.getElementById('fRah').value).trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
       tTypeAshiya:document.getElementById('tTypeAshiya')?document.getElementById('tTypeAshiya').checked:false,
       tCollMethod:(function(){var methods=[];['tCollHR','tCollInst','tCollDirect'].forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)methods.push(el.value);});return methods.join(',');}()),
@@ -6185,15 +6420,23 @@ async function _saveCaseInner(){
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
       tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}var _ms=document.getElementById('mazSt')?document.getElementById('mazSt').value:'';return _ms==='yes'?'closed':'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+  if(!_caseAllowedByCurrentScope(data)){toast('⛔ Ye case aapke assigned Region / Division / Department scope ke bahar hai');return;}
   // Save se pehle preview (sirf naya case) — Edit ya Save
   if(!eId){ var _go=await confirmSavePreview(data); if(!_go) return; }
   try{
-    if(eId){await db.collection('cases').doc(eId).set(data,{merge:true});cacheInvalidate();refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);}
+    if(eId){
+      await db.collection('cases').doc(eId).set(data,{merge:true});
+      try{await uploadCasePdf(eId);}catch(pe){toast('⚠️ Case update hua, PDF upload fail: '+pe.message);}
+      await logActivity('case_update',eId,{caseNo:data.caseNo});
+      cacheInvalidate();await refreshOneCase(eId);toast('✅ Case updated!');setTimeout(function(){window.scrollTo(0,window._savedScrollY||0);},50);
+    }
     else{
-    data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-      var _newRef=await db.collection('cases').add(data);cacheInvalidate();await refreshOneCase(_newRef.id);
-      window._lastSavedId=_newRef.id;
-      try{ localStorage.removeItem('caseAutoSave'); }catch(e){}
+      data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      var _newRef=await _createCaseAtomic(data);
+      try{await uploadCasePdf(_newRef.id);}catch(pe){toast('⚠️ Case save hua, PDF upload fail: '+pe.message);}
+      await logActivity('case_create',_newRef.id,{caseNo:data.caseNo});
+      cacheInvalidate();await refreshOneCase(_newRef.id);window._lastSavedId=_newRef.id;
+      try{ sessionStorage.removeItem('caseAutoSave'); }catch(e){}
     }
     eId=null;
     document.getElementById('formTit').textContent='➕ New Case';
@@ -6205,11 +6448,26 @@ async function _saveCaseInner(){
     goPage(_prevPg);
   }catch(e){console.error('SAVE ERROR:',e&&e.stack?e.stack:e);toast('❌ '+e.message);}
 }
-async function delC(id){if(!confirm('Delete this case?'))return;try{await db.collection('cases').doc(id).delete();cacheInvalidate();removeOneCase(id);toast('🗑️ Deleted');}catch(e){toast('❌ '+e.message);}}
+async function _moveCaseToTrash(id){
+  var caseRef=db.collection('cases').doc(id),trashRef=db.collection('trashCases').doc(id);
+  var moved={};
+  await db.runTransaction(async function(tx){
+    var cs=await tx.get(caseRef);if(!cs.exists)throw new Error('Case not found');
+    var tr=await tx.get(trashRef);if(tr.exists)throw new Error('Case already Recycle Bin mein hai');
+    moved=Object.assign({},cs.data(),{originalId:id,deletedAt:firebase.firestore.FieldValue.serverTimestamp(),deletedBy:(cu&&cu.id)||'',deletedByName:(cu&&cu.fullname)||''});
+    tx.set(trashRef,moved);tx.delete(caseRef);
+  });
+  return moved;
+}
+async function delC(id){
+  if(!requirePerm('del'))return;if(!confirm('Is case ko Recycle Bin mein bhejein? 30 din tak restore ho sakta hai.'))return;
+  try{var c=cc.find(function(x){return x.id===id;})||{};await _moveCaseToTrash(id);await logActivity('case_delete',id,{caseNo:c.caseNo||''});cacheInvalidate();removeOneCase(id);toast('🗑️ Recycle Bin mein chala gaya');}catch(e){toast('❌ '+e.message);}
+}
 function editC(id){
+  if(!requirePerm('edit'))return;
   window._savedScrollY = window.scrollY || 0;
   const c=cc.find(x=>x.id===id);if(!c)return;
-  eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';
+  eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';var _cnoEdit=document.getElementById('fCNo');if(_cnoEdit){_cnoEdit.readOnly=true;_cnoEdit.title='Case No create hone ke baad change nahi hota';}
   // Pehle sab tawan fields reset karo — purana data saaf ho jaye
   resetTawnFields();
   setTimeout(()=>{
@@ -6405,7 +6663,9 @@ function editC(id){
 function viewC(id, readOnly){
   resetHideRows();
   var c=cc.find(x=>x.id===id);if(!c)return;
-  c=_cleanC(c); // XSS FIX: detail modal mein bhi sab escape
+  var _rawRich={subject:c.subject||'',rahnumai:c.rahnumai||'',remarks:c.remarks||''};
+  c=_cleanC(c); // baaki fields safe text
+  c.subject=sanitizeHtml(_rawRich.subject);c.rahnumai=sanitizeHtml(_rawRich.rahnumai);c.remarks=sanitizeHtml(_rawRich.remarks);
   // Case No header mein dikhao (scroll pe upar tika rahe — chhupe nahi)
   var _dmt=document.getElementById('detModalTitle');
   if(_dmt) _dmt.textContent='📄 '+(c.caseNo||'Case Details');
@@ -6441,6 +6701,7 @@ function viewC(id, readOnly){
   document.getElementById('detF').innerHTML=`
     <button class="btn bsm" style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7" onclick="detPDF()">🖨️ PDF</button>
     <button class="btn bsm" style="background:#e3f2fd;color:var(--blue);border:1px solid #90caf9" onclick="shareCase('${c.id}')">🔗 Share</button>
+    ${c.pdfPath?`<button class="btn bsm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80" onclick="openCasePdf('${c.pdfPath}')">📎 PDF</button>`:''}
     ${!readOnly && hp('edit')?`<button class="btn bpri bsm" onclick="editC('${c.id}');cmo('mDet')">✏️ Edit</button>`:''}
     ${!readOnly && hp('del')?`<button class="btn bred bsm" onclick="delC('${c.id}');cmo('mDet')">🗑️ Delete</button>`:''}
     <button class="btn bout bsm" onclick="cmo('mDet')">✕ Close</button>
@@ -6480,7 +6741,7 @@ function rUsers(){
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn bpri bsm" onclick="openUM('${u.id}')">✏️ Edit</button>
-          <button class="btn bsm" style="background:#fff8e1;border:1px solid #ffe082;color:#e65100" onclick="openResetPw('${u.id}')">🔑 Reset PW</button>
+          ${u.authUid?`<button class="btn bsm" style="background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32" onclick="forceUserPwChange('${u.id}')" title="Next login par current password verify karke naya password set karna hoga">🔄 Force PW Change</button>`:`<button class="btn bsm" style="background:#fff8e1;border:1px solid #ffe082;color:#e65100" onclick="openResetPw('${u.id}')">🔑 Legacy Reset</button>`}
           ${u.username!=='admin'?`<button class="btn bred bsm" onclick="dUser('${u.id}')">🗑️</button>`:''}
         </div>
       </div>
@@ -6492,25 +6753,19 @@ function rUsers(){
   }).join('')||'<p style="color:var(--mt);padding:18px">No users</p>';
 }
 function openUM(id){
+  if(!_isAdmin()){toast('⛔ Add/Edit User sirf Admin kar sakta hai');return;}
   eUId=id||null;document.getElementById('umTit').textContent=id?'Edit User':'New User';
-  if(id){const u=uc.find(x=>x.id===id);if(!u)return;document.getElementById('uUN').value=u.username;document.getElementById('uUN').readOnly=true;document.getElementById('uFN').value=u.fullname;document.getElementById('uPW').value='';document.getElementById('uRl').value=u.role||'viewer';document.getElementById('uAc').value=u.active!==false?'1':'0';document.getElementById('uNt').value=u.note||'';
-    var de=document.getElementById('uDesig');if(de)de.value=u.designation||'';
-    sPm(u.perms||{});
-    if(u.designation){setTimeout(applyDesignationPreset,50);}else{var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';}
-    var dr=u.dataRestrict||{};
-    initUDRestrict(dr);
-  }
-  else{['uUN','uFN','uPW','uNt'].forEach(id=>document.getElementById(id).value='');document.getElementById('uUN').readOnly=false;document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';var de=document.getElementById('uDesig');if(de)de.value='';var pw=document.getElementById('desigPreviewWrap');if(pw)pw.style.display='none';sPm({view:true,search:true});initUDRestrict({});}
-  document.getElementById('mUser').classList.add('open');
+  var pw=document.getElementById('uPW'),pc=document.getElementById('uPC'),pwReq=document.getElementById('uPwReq'),pcReq=document.getElementById('uPcReq'),tools=document.getElementById('uPwTools');
+  if(id){var u=uc.find(function(x){return x.id===id;});if(!u)return;document.getElementById('uUN').value=u.username;document.getElementById('uUN').readOnly=true;document.getElementById('uFN').value=u.fullname||'';pw.value='';pc.value='';pw.disabled=true;pc.disabled=true;if(pwReq)pwReq.style.display='none';if(pcReq)pcReq.style.display='none';if(tools)tools.style.display='none';document.getElementById('uRl').value=u.role||'viewer';document.getElementById('uAc').value=u.active!==false?'1':'0';document.getElementById('uNt').value=u.note||'';var de=document.getElementById('uDesig');if(de)de.value=u.designation||((u.role==='admin'||u.role==='superadmin')?u.role:'');sPm(u.perms||{});_setUserAdminPermUI(u.role==='admin'||u.role==='superadmin');initUDRestrict(u.dataRestrict||{});renderDesignationPreviewOnly();}
+  else{['uUN','uFN','uPW','uPC','uNt'].forEach(function(x){var e=document.getElementById(x);if(e)e.value='';});document.getElementById('uUN').readOnly=false;pw.disabled=false;pc.disabled=false;if(pwReq)pwReq.style.display='';if(pcReq)pcReq.style.display='';if(tools)tools.style.display='flex';document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';var de=document.getElementById('uDesig');if(de)de.value='';sPm({view:true,search:true});_setUserAdminPermUI(false);initUDRestrict({});var dp=document.getElementById('desigPreviewWrap');if(dp)dp.style.display='none';}
+  updateAccessSummary();document.getElementById('mUser').classList.add('open');
 }
-function sPm(p){document.getElementById('pv').checked=!!p.view;document.getElementById('pa').checked=!!p.add;document.getElementById('pe').checked=!!p.edit;document.getElementById('pd').checked=!!(p.del||p.delete);document.getElementById('ps').checked=!!p.search;document.getElementById('pr').checked=!!p.reports;document.getElementById('pu').checked=!!p.users;document.getElementById('pst').checked=!!p.settings;}
-function gPm(){return{view:document.getElementById('pv').checked,add:document.getElementById('pa').checked,edit:document.getElementById('pe').checked,del:document.getElementById('pd').checked,search:document.getElementById('ps').checked,reports:document.getElementById('pr').checked,users:document.getElementById('pu').checked,settings:document.getElementById('pst').checked};}
-
-
-
-
-
-
+function _setUserAdminPermUI(isAdminRole){var e=document.getElementById('pu');if(e){e.disabled=!isAdminRole;if(!isAdminRole)e.checked=false;}}
+function sPm(p){var map={pv:'view',pa:'add',pe:'edit',pd:'del',ps:'search',pr:'reports',pcl:'clients',pu:'users',pst:'settings'};Object.keys(map).forEach(function(id){var e=document.getElementById(id);if(e)e.checked=!!(p&&p[map[id]]);});}
+function gPm(){function c(id){var e=document.getElementById(id);return!!(e&&e.checked);}return{view:c('pv'),add:c('pa'),edit:c('pe'),del:c('pd'),search:c('ps'),reports:c('pr'),clients:c('pcl'),users:c('pu'),settings:c('pst')};}
+function generateUserPassword(){var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';var a=new Uint32Array(14);crypto.getRandomValues(a);var pw='';for(var i=0;i<a.length;i++)pw+=chars[a[i]%chars.length];document.getElementById('uPW').value=pw;document.getElementById('uPC').value=pw;toast('✅ Strong temporary password generate ho gaya');}
+function updateAccessSummary(){var el=document.getElementById('uAccessSummary');if(!el)return;var r=drGetChecked('uDRegBox'),v=drGetChecked('uDDivBox'),d=drGetChecked('uDDeptBox'),st=drGetChecked('uDStBox'),di=drGetChecked('uDDistBox'),sa=drGetChecked('uDSaelBox');var hard=[];if(r.length)hard.push('📍 Region: <b>'+_e(r.join(', '))+'</b>');if(v.length)hard.push('🏙️ Division: <b>'+_e(v.join(', '))+'</b>');if(d.length)hard.push('🏢 Department: <b>'+_e(d.join(', '))+'</b>');var soft=[];if(st.length)soft.push('State: '+_e(st.join(', ')));if(di.length)soft.push('District: '+_e(di.join(', ')));if(sa.length)soft.push('Referred By: '+_e(sa.join(', ')));if(!hard.length&&!soft.length){el.innerHTML='🌐 <b>Full data access</b> (no restriction selected)';return;}el.innerHTML=(hard.length?'🔐 '+hard.join(' &nbsp; + &nbsp; '):'')+(soft.length?'<div style="margin-top:4px;color:var(--mt)">Additional narrowing: '+soft.join(' • ')+'</div>':'');}
+function renderDesignationPreviewOnly(){var d=document.getElementById('uDesig'),w=document.getElementById('desigPreviewWrap'),p=document.getElementById('desigPreview');if(!d||!w||!p||!d.value||!DESIG_PRESETS[d.value]){if(w)w.style.display='none';return;}var x=DESIG_PRESETS[d.value];w.style.display='block';p.innerHTML='<b>'+_e(d.options[d.selectedIndex].text)+'</b><div style="margin-top:4px;color:var(--mt)">'+_e(x.label||'')+'</div>';}
 
 // ===== USER DATA RESTRICTION - MULTI SELECT =====
 
@@ -6548,6 +6803,7 @@ function drRenderBox(boxId, items, selectedArr, onChangeFn){
     var listEl = document.getElementById(boxId + '_list');
     if(listEl) listEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = true; });
     if(box2._onChange) _runCb(box2._onChange);
+    if(typeof updateAccessSummary==='function')updateAccessSummary();
   });
   // Clear All button
   var clrAll = document.createElement('button');
@@ -6562,6 +6818,7 @@ function drRenderBox(boxId, items, selectedArr, onChangeFn){
     var listEl = document.getElementById(boxId + '_list');
     if(listEl) listEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = false; });
     if(box2._onChange) _runCb(box2._onChange);
+    if(typeof updateAccessSummary==='function')updateAccessSummary();
   });
   topBar.appendChild(srch);
   topBar.appendChild(selAll);
@@ -6612,18 +6869,19 @@ function drFillList(boxId, items, selectedArr, onChangeFn){
     list.appendChild(lbl);
   });
 }
+function _accessSearchNorm(v){return String(v||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\u0600-\u06ff]+/g,'');}
 function drFilterBox(boxId){
   var searchEl = document.getElementById(boxId + '_srch');
   var listEl   = document.getElementById(boxId + '_list');
   var box      = document.getElementById(boxId);
   if(!searchEl || !listEl || !box) return;
-  var q = searchEl.value.toLowerCase();
+  var q = _accessSearchNorm(searchEl.value);
   var items = box._items || [];
   var onChangeFn = box._onChange || '';
   var checked = drGetChecked(boxId);
   listEl.innerHTML = '';
   items.filter(function(item){
-    return !q || item.toLowerCase().indexOf(q) > -1;
+    return !q || _accessSearchNorm(item).indexOf(q) > -1;
   }).forEach(function(item){
     var lbl = document.createElement('label');
     var _sel = checked.indexOf(item) > -1;
@@ -6662,6 +6920,7 @@ function drCheckChanged(boxId, onChangeFn){
     }
   }
   if(onChangeFn) _runCb(onChangeFn);
+  if(typeof updateAccessSummary==='function')updateAccessSummary();
 }
 
 // Get checked values from a box
@@ -6672,234 +6931,53 @@ function drGetChecked(boxId){
   return (box._sel || []).slice();
 }
 
-// Region changed — update States
-function drRegionChanged(){
-  var selRegs = drGetChecked('uDRegBox');
-  // Collect all states from selected regions
-  var states = [];
-  selRegs.forEach(function(reg){
-    if(HIER[reg]) Object.keys(HIER[reg].states).forEach(function(st){ if(states.indexOf(st)<0) states.push(st); });
-  });
-  var curSt = drGetChecked('uDStBox');
-  drRenderBox('uDStBox', states, curSt.filter(function(s){return states.indexOf(s)>-1;}), 'drStateChanged()');
-  drRenderBox('uDDivBox', [], [], '');
-  document.getElementById('uDDivBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle State select karo</span>';
-  drRenderBox('uDDistBox', [], [], '');
-  document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
-}
-
-// State changed — update Divisions
-function drStateChanged(){
-  var selRegs = drGetChecked('uDRegBox');
-  var selSts  = drGetChecked('uDStBox');
-  var divs = [];
-  selRegs.forEach(function(reg){
-    if(!HIER[reg]) return;
-    selSts.forEach(function(st){
-      if(HIER[reg].states[st]) Object.keys(HIER[reg].states[st].divs).forEach(function(dv){ if(divs.indexOf(dv)<0) divs.push(dv); });
-    });
-  });
-  var curDv = drGetChecked('uDDivBox');
-  drRenderBox('uDDivBox', divs, curDv.filter(function(d){return divs.indexOf(d)>-1;}), 'drDivChanged()');
-  drRenderBox('uDDistBox', [], [], '');
-  document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
-}
-
-// Division changed — update Districts
-function drDivChanged(){
-  var selRegs = drGetChecked('uDRegBox');
-  var selSts  = drGetChecked('uDStBox');
-  var selDvs  = drGetChecked('uDDivBox');
-  var dists = [];
-  selRegs.forEach(function(reg){
-    if(!HIER[reg]) return;
-    selSts.forEach(function(st){
-      if(!HIER[reg].states[st]) return;
-      selDvs.forEach(function(dv){
-        (HIER[reg].states[st].divs[dv]||[]).forEach(function(d){ if(dists.indexOf(d)<0) dists.push(d); });
-      });
-    });
-  });
-  var curDi = drGetChecked('uDDistBox');
-  drRenderBox('uDDistBox', dists, curDi.filter(function(d){return dists.indexOf(d)>-1;}), '');
-}
-
-function initUDRestrict(savedDR){
-  var dr = savedDR || {};
-  // Convert old single-value format to arrays (backward compat)
-  if(dr.region && !dr.regions) dr.regions = [dr.region];
-  if(dr.state && !dr.states) dr.states = [dr.state];
-  if(dr.division && !dr.divisions) dr.divisions = [dr.division];
-  if(dr.district && !dr.districts) dr.districts = [dr.district];
-  if(dr.sael && !dr.saels) dr.saels = [dr.sael];
-  if(dr.dept && !dr.depts) dr.depts = [dr.dept];
-  var regions = Object.keys(HIER);
-
-  // REGION
-  drRenderBox('uDRegBox', regions, dr.regions||[], 'drRegionChanged()');
-
-  // STATE — from saved regions
-  var savedRegs = dr.regions||[];
-  var states = [];
-  savedRegs.forEach(function(reg){ if(HIER[reg]) Object.keys(HIER[reg].states).forEach(function(st){ if(states.indexOf(st)<0) states.push(st); }); });
-  if(states.length > 0){
-    drRenderBox('uDStBox', states, dr.states||[], 'drStateChanged()');
-  } else {
-    document.getElementById('uDStBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Region select karo</span>';
-  }
-
-  // DIVISION — from saved regions+states
-  var savedSts = dr.states||[];
-  var divs = [];
-  savedRegs.forEach(function(reg){
-    if(!HIER[reg]) return;
-    savedSts.forEach(function(st){
-      if(HIER[reg].states[st]) Object.keys(HIER[reg].states[st].divs).forEach(function(dv){ if(divs.indexOf(dv)<0) divs.push(dv); });
-    });
-  });
-  if(divs.length > 0){
-    drRenderBox('uDDivBox', divs, dr.divisions||[], 'drDivChanged()');
-  } else {
-    document.getElementById('uDDivBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle State select karo</span>';
-  }
-
-  // DISTRICT — from saved regions+states+divisions
-  var savedDvs = dr.divisions||[];
-  var dists = [];
-  savedRegs.forEach(function(reg){
-    if(!HIER[reg]) return;
-    savedSts.forEach(function(st){
-      if(!HIER[reg].states[st]) return;
-      savedDvs.forEach(function(dv){
-        (HIER[reg].states[st].divs[dv]||[]).forEach(function(d){ if(dists.indexOf(d)<0) dists.push(d); });
-      });
-    });
-  });
-  if(dists.length > 0){
-    drRenderBox('uDDistBox', dists, dr.districts||[], '');
-  } else {
-    document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
-  }
-
-  // SAEL
-  drRenderBox('uDSaelBox', SAEL, dr.saels||[], '');
-
-  // DEPT
-  drRenderBox('uDDeptBox', DEPTS, dr.depts||[], '');
-}
+function _drStates(regs){var out=[];(regs||[]).forEach(function(reg){if(HIER[reg])Object.keys(HIER[reg].states||{}).forEach(function(st){if(out.indexOf(st)<0)out.push(st);});});return out;}
+function _drDivs(regs,states){var out=[],useSt=states&&states.length;(regs||[]).forEach(function(reg){if(!HIER[reg])return;Object.keys(HIER[reg].states||{}).forEach(function(st){if(useSt&&states.indexOf(st)<0)return;Object.keys((HIER[reg].states[st]||{}).divs||{}).forEach(function(dv){if(out.indexOf(dv)<0)out.push(dv);});});});return out;}
+function _drDistricts(regs,states,divs){var out=[],useSt=states&&states.length;(regs||[]).forEach(function(reg){if(!HIER[reg])return;Object.keys(HIER[reg].states||{}).forEach(function(st){if(useSt&&states.indexOf(st)<0)return;(divs||[]).forEach(function(dv){((HIER[reg].states[st].divs||{})[dv]||[]).forEach(function(di){if(out.indexOf(di)<0)out.push(di);});});});});return out;}
+function drRegionChanged(){var regs=drGetChecked('uDRegBox'),states=_drStates(regs),curSt=drGetChecked('uDStBox');drRenderBox('uDStBox',states,curSt.filter(function(x){return states.indexOf(x)>-1;}),'drStateChanged()');var sts=drGetChecked('uDStBox'),divs=_drDivs(regs,sts),curDv=drGetChecked('uDDivBox');drRenderBox('uDDivBox',divs,curDv.filter(function(x){return divs.indexOf(x)>-1;}),'drDivChanged()');drDivChanged();updateAccessSummary();}
+function drStateChanged(){var regs=drGetChecked('uDRegBox'),sts=drGetChecked('uDStBox'),divs=_drDivs(regs,sts),curDv=drGetChecked('uDDivBox');drRenderBox('uDDivBox',divs,curDv.filter(function(x){return divs.indexOf(x)>-1;}),'drDivChanged()');drDivChanged();updateAccessSummary();}
+function drDivChanged(){var regs=drGetChecked('uDRegBox'),sts=drGetChecked('uDStBox'),dvs=drGetChecked('uDDivBox'),dists=_drDistricts(regs,sts,dvs),cur=drGetChecked('uDDistBox');if(dvs.length)drRenderBox('uDDistBox',dists,cur.filter(function(x){return dists.indexOf(x)>-1;}),'');else{var b=document.getElementById('uDDistBox');if(b){b._sel=[];b.innerHTML='<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';}}updateAccessSummary();}
+function initUDRestrict(savedDR){var dr=Object.assign({},savedDR||{});if(dr.region&&!dr.regions)dr.regions=[dr.region];if(dr.state&&!dr.states)dr.states=[dr.state];if(dr.division&&!dr.divisions)dr.divisions=[dr.division];if(dr.district&&!dr.districts)dr.districts=[dr.district];if(dr.sael&&!dr.saels)dr.saels=[dr.sael];if(dr.dept&&!dr.depts)dr.depts=[dr.dept];var regs=Object.keys(HIER);drRenderBox('uDRegBox',regs,dr.regions||[],'drRegionChanged()');var st=_drStates(dr.regions||[]);if(st.length)drRenderBox('uDStBox',st,dr.states||[],'drStateChanged()');else{var sb=document.getElementById('uDStBox');sb._sel=[];sb.innerHTML='<span style="font-size:.69rem;color:var(--mt)">Pehle Region select karo</span>';}var dvs=_drDivs(dr.regions||[],dr.states||[]);if(dvs.length)drRenderBox('uDDivBox',dvs,dr.divisions||[],'drDivChanged()');else{var dbx=document.getElementById('uDDivBox');dbx._sel=[];dbx.innerHTML='<span style="font-size:.69rem;color:var(--mt)">Pehle Region select karo</span>';}var dis=_drDistricts(dr.regions||[],dr.states||[],dr.divisions||[]);if(dis.length)drRenderBox('uDDistBox',dis,dr.districts||[],'');else{var dib=document.getElementById('uDDistBox');dib._sel=[];dib.innerHTML='<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';}drRenderBox('uDSaelBox',SAEL,dr.saels||[],'');drRenderBox('uDDeptBox',DEPTS,dr.depts||[],'');updateAccessSummary();}
 // ===== END USER DATA RESTRICTION =====
 // ===== DESIGNATION PRESET SYSTEM =====
 var DESIG_PRESETS = {
-  'admin':         {role:'admin',  perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},  pages:['dash','cases','newcase','search','reports','tawan','users','settings'], label:'Full access — sab kuch'},
-  'superadmin':    {role:'superadmin', perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true}, pages:['dash','cases','newcase','search','reports','tawan','users','settings'], label:'Full access + Super privileges'},
-  'nazim_ala':     {role:'admin',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:true,settings:false}, pages:['dash','cases','search','reports','tawan','users'],                          label:'Dashboard, Cases, Reports, Tawan, Users'},
-  'nazim':         {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false}, pages:['dash','cases','newcase','search','reports','tawan'],                        label:'Dashboard, Cases, New Case, Reports, Tawan'},
-  'naib_nazim':    {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','newcase','search'],                                           label:'Dashboard, Cases, New Case, Search'},
-  'muhtamim':      {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false}, pages:['dash','cases','newcase','search','reports','tawan'],                        label:'Dashboard, Cases, New Case, Reports, Tawan'},
-  'naib_muhtamim': {role:'staff',  perms:{view:true,add:true,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','newcase','search'],                                          label:'Dashboard, Cases, New Case, Search'},
-  'mufattish':     {role:'staff',  perms:{view:true,add:true,edit:true,del:false,search:true,reports:false,users:false,settings:false}, pages:['dash','cases','newcase','search'],                                          label:'Dashboard, Cases, New Case, Search'},
-  'sael_zimmedar': {role:'staff',  perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','search'],                                                   label:'Dashboard, Cases, Search (View only)'},
-  'zimmedar':      {role:'staff',  perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','search'],                                                   label:'Dashboard, Cases, Search (View only)'},
-  'viewer_basic':  {role:'viewer', perms:{view:true,add:false,edit:false,del:false,search:false,reports:false,users:false,settings:false},pages:['dash'],                                                                   label:'Sirf Dashboard'},
-  'viewer_report': {role:'viewer', perms:{view:true,add:false,edit:false,del:false,search:true,reports:true,users:false,settings:false}, pages:['dash','cases','search','reports'],                                         label:'Dashboard, Cases, Search, Reports'},
-  'viewer_tawan':  {role:'viewer', perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,users:false,settings:false},pages:['dash','cases','search','tawan'],                                           label:'Dashboard, Cases, Search, Tawan'},
+  'admin':{role:'admin',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,clients:true,users:true,settings:true},label:'Full access — sab kuch'},
+  'superadmin':{role:'superadmin',perms:{view:true,add:true,edit:true,del:true,search:true,reports:true,clients:true,users:true,settings:true},label:'Full access + Super privileges'},
+  'nazim_ala':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,clients:false,users:false,settings:false},label:'Cases, Search, Reports, Tawan'},
+  'regional_head':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,clients:false,users:false,settings:false},label:'Apne Region + selected Department(s)'},
+  'hod':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,clients:false,users:false,settings:false},label:'Selected Department; Region optional'},
+  'nazim':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,clients:false,users:false,settings:false},label:'Cases, New Case, Search, Reports'},
+  'naib_nazim':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:false,clients:false,users:false,settings:false},label:'Cases, New Case, Search'},
+  'muhtamim':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:true,clients:false,users:false,settings:false},label:'Cases, New Case, Search, Reports'},
+  'naib_muhtamim':{role:'staff',perms:{view:true,add:true,edit:false,del:false,search:true,reports:false,clients:false,users:false,settings:false},label:'Cases, New Case, Search'},
+  'mufattish':{role:'staff',perms:{view:true,add:true,edit:true,del:false,search:true,reports:false,clients:false,users:false,settings:false},label:'Cases, New Case, Search'},
+  'sael_zimmedar':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,clients:false,users:false,settings:false},label:'View + Search'},
+  'zimmedar':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,clients:false,users:false,settings:false},label:'View + Search'},
+  'viewer_basic':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:false,reports:false,clients:false,users:false,settings:false},label:'Sirf Dashboard/Cases view'},
+  'viewer_report':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:true,reports:true,clients:false,users:false,settings:false},label:'View + Search + Reports'},
+  'viewer_tawan':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,clients:false,users:false,settings:false},label:'View + Search + Tawan'}
 };
-
-function applyDesignationPreset(){
-  var _dEl=document.getElementById('uDesig'); if(!_dEl) return;
-  var desig = _dEl.value;
-  var preview = document.getElementById('desigPreview');
-  var previewWrap = document.getElementById('desigPreviewWrap');
-  var roleEl = document.getElementById('uRl');
-  if(!previewWrap || !preview){ return; }
-  if(!desig){ previewWrap.style.display='none'; return; }
-  var preset = DESIG_PRESETS[desig];
-  if(!preset){ previewWrap.style.display='none'; return; }
-  // Set hidden role
-  roleEl.value = preset.role;
-  // Set permissions
-  sPm(preset.perms);
-  // Show preview
-  previewWrap.style.display='block';
-  preview.innerHTML = '<b>📋 '+document.getElementById('uDesig').options[document.getElementById('uDesig').selectedIndex].text+'</b>'
-    +'<div style="margin-top:5px;color:var(--mt)">📱 Pages: <b style="color:var(--bd)">'+preset.label+'</b></div>'
-    +'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">'
-    +Object.entries(preset.perms).filter(function(e){return e[1];}).map(function(e){return '<span style="background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7;padding:1px 7px;border-radius:8px;font-size:.65rem">✓ '+e[0]+'</span>';}).join('')
-    +'</div>';
-}
-// ===== END DESIGNATION PRESET SYSTEM =====
-
-function autoPm(){const r=document.getElementById('uRl').value;sPm({admin:{view:true,add:true,edit:true,del:true,search:true,reports:true,users:true,settings:true},staff:{view:true,add:true,edit:true,del:false,search:true,reports:true,users:false,settings:false},viewer:{view:true,add:false,edit:false,del:false,search:true,reports:true,users:false,settings:false}}[r]||{});}
+function applyDesignationPreset(){var d=document.getElementById('uDesig'),desig=d?d.value:'',preset=DESIG_PRESETS[desig],roleEl=document.getElementById('uRl');if(!desig||!preset){if(roleEl)roleEl.value='viewer';_setUserAdminPermUI(false);renderDesignationPreviewOnly();return;}if((desig==='admin'||desig==='superadmin')&&!_isAdmin()){toast('⛔ Admin role sirf Admin assign kar sakta hai');d.value='';return;}sPm(preset.perms||{});var ar=(desig==='admin'||desig==='superadmin');_setUserAdminPermUI(ar);if(ar){document.getElementById('pu').checked=true;roleEl.value=desig;}else roleEl.value=preset.role==='viewer'?'viewer':'staff';renderDesignationPreviewOnly();}
+function autoPm(){var r=document.getElementById('uRl').value;sPm((r==='admin'||r==='superadmin')?DESIG_PRESETS.admin.perms:r==='staff'?DESIG_PRESETS.nazim.perms:DESIG_PRESETS.viewer_report.perms);_setUserAdminPermUI(r==='admin'||r==='superadmin');}
+function _deriveRole(perms,desig){if(desig==='admin'||desig==='superadmin')return desig;return(perms.add||perms.edit||perms.del||perms.settings)?'staff':'viewer';}
+function _validUserName(un){return/^[A-Za-z0-9_-]{3,32}$/.test(un||'');}
+function _validateUserScope(dr){if((dr.divisions&&dr.divisions.length)&&(!dr.regions||!dr.regions.length))return'Division restriction ke liye Region select karna zaroori hai';if(((dr.states&&dr.states.length)||(dr.districts&&dr.districts.length))&&(!dr.regions||!dr.regions.length))return'State/District restriction ke liye Region select karein';if(dr.divisions&&dr.divisions.length&&!dr.divisions.every(function(d){return(dr.regions||[]).some(function(r){return _divisionInRegion(r,d);});}))return'Selected Division selected Region ke andar nahi mil rahi';return'';}
+function _activeAdminCount(exceptId){return uc.filter(function(u){return u.id!==exceptId&&u.active!==false&&(u.role==='admin'||u.role==='superadmin'||String(u.username||'').toLowerCase()==='admin');}).length;}
 async function saveUser(){
-  const un=document.getElementById('uUN').value.trim(),pw=document.getElementById('uPW').value.trim();
-  let fn=document.getElementById('uFN').value.trim();
-  if(!un){toast('❌ Username required');return;}
-  if(/[\/.]/.test(un)){toast('❌ Username mein / ya . nahi ho sakta');return;}
-  if(!fn) fn=un;
-  if(!eUId&&!pw){toast('❌ Password required for new user');return;}
-  if(uc.find(x=>(x.username||'').toLowerCase()===un.toLowerCase()&&x.id!==eUId)){toast('❌ Username exists (case ka farak nahi)');return;}
-  // Multi-select dataRestrict — save as arrays
-  const dr={
-    regions: drGetChecked('uDRegBox'),
-    states:  drGetChecked('uDStBox'),
-    divisions: drGetChecked('uDDivBox'),
-    districts: drGetChecked('uDDistBox'),
-    saels:   drGetChecked('uDSaelBox'),
-    depts:   drGetChecked('uDDeptBox')
-  };
-  // Remove empty arrays
-  Object.keys(dr).forEach(function(k){if(!dr[k]||dr[k].length===0)delete dr[k];});
-  // Clean dataRestrict — remove old single-value fields completely
-  const cleanDR = {
-    regions: dr.regions, states: dr.states, divisions: dr.divisions,
-    districts: dr.districts, saels: dr.saels, depts: dr.depts
-  };
-  Object.keys(cleanDR).forEach(function(k){if(!cleanDR[k])delete cleanDR[k];});
-  var finalPw;
-  if(pw){
-    finalPw = await makePwHash(pw);
-  } else if(eUId){
-    // Keep existing password
-    var existingUser = uc.find(function(x){return x.id===eUId;});
-    finalPw = existingUser ? existingUser.password : '';
-  }
-  // Auto-set role from permissions
-  var _perms2=gPm();var _autoRole=_perms2.users||_perms2.settings?'admin':(_perms2.add||_perms2.edit||_perms2.del?'staff':'viewer');document.getElementById('uRl').value=_autoRole;
-  var desigVal='';const d={username:un,fullname:fn,password:finalPw,role:_autoRole,designation:desigVal,active:document.getElementById('uAc').value==='1',note:document.getElementById('uNt').value.trim(),perms:gPm(),dataRestrict:cleanDR,updatedAt:new Date().toISOString()};
-  // Use set without merge to completely overwrite (removes old fields like region/sael/division/state)
-  try{
-    if(eUId){
-      var _old=uc.find(function(x){return x.id===eUId;});
-      if(_old){
-        // Purane flat restriction fields hatao (ab dataRestrict me hain), baaki sab (metadata/designation) preserve
-        var _merged=Object.assign({}, _old);
-        ['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){ delete _merged[k]; });
-        Object.assign(_merged, d);
-        if(_old.createdAt) _merged.createdAt=_old.createdAt;
-        if(_old.mustChangePw!==undefined) _merged.mustChangePw=_old.mustChangePw;
-        if((!d.designation||d.designation==='') && _old.designation) _merged.designation=_old.designation;
-        d=_merged;
-      }
-      await db.collection('users').doc(eUId).set(d);
-    }
-    else await db.collection('users').doc(un.toLowerCase()).set(d);
-    toast('✅ User saved!');
-    cmo('mUser');
-    fbGetU().then(rUsers);
-    // Refresh active session if editing another user who is currently logged in
-    // Force their next Firestore fetch to get new restrictions (they need to re-login)
-    // If admin edits self, refresh cu immediately
-    if(eUId && cu && cu.id === eUId){
-      cu = {...cu, ...d, id:eUId};
-      delete cu.password; // SECURITY: hash session mein nahi jaana chahiye
-      localStorage.setItem('sr_s', JSON.stringify({...cu, loginAt:Date.now()}));
-      cacheInvalidate(); // restriction change — fresh data zaroori
-      startListener();
-    }
-  }
-  catch(e){toast('❌ '+e.message);}
+  if(!_isAdmin()){toast('⛔ Add/Edit User sirf Admin kar sakta hai');return;}
+  var un=document.getElementById('uUN').value.trim(),pw=document.getElementById('uPW').value,pc=document.getElementById('uPC').value,fn=document.getElementById('uFN').value.trim();if(!_validUserName(un)){toast('❌ Username 3-32 chars: sirf letters, numbers, _ ya -');return;}if(!fn)fn=un;if(!eUId){if(!pw||pw.length<10){toast('❌ Password 10+ characters ka ho');return;}if(pw!==pc){toast('❌ Password aur Confirm Password match nahi karte');return;}}if(uc.find(function(x){return(x.username||'').toLowerCase()===un.toLowerCase()&&x.id!==eUId;})){toast('❌ Username exists');return;}
+  var dr={regions:drGetChecked('uDRegBox'),states:drGetChecked('uDStBox'),divisions:drGetChecked('uDDivBox'),districts:drGetChecked('uDDistBox'),saels:drGetChecked('uDSaelBox'),depts:drGetChecked('uDDeptBox')};Object.keys(dr).forEach(function(k){if(!dr[k]||!dr[k].length)delete dr[k];});var se=_validateUserScope(dr);if(se){toast('❌ '+se);return;}
+  var perms=gPm(),desig=(document.getElementById('uDesig')||{}).value||'',role=_deriveRole(perms,desig),active=document.getElementById('uAc').value==='1';
+  if(desig==='hod'&&(!dr.depts||!dr.depts.length)){toast('❌ HOD / Department Head ke liye kam az kam ek Department select karein');return;}
+  if(desig==='regional_head'&&(!dr.regions||!dr.regions.length)){toast('❌ Regional Head ke liye kam az kam ek Region select karein');return;}
+  if((dr.regions&&dr.regions.length)||(dr.divisions&&dr.divisions.length)||(dr.depts&&dr.depts.length)){if(!(await ensureCaseNoRegistry())){toast('❌ Scoped user save se pehle Case No Registry initialize nahi ho saki');return;}}
+  // Case actions/search/reports meaningful hone ke liye case View permission required hai.
+  if(perms.add||perms.edit||perms.del||perms.search||perms.reports)perms.view=true;
+  if(_hasHardScopeObj(dr)&&perms.clients){toast('❌ Region/Division/Department scoped user ko global Clients Master permission nahi de sakte. Clients Master uncheck karein.');return;}
+  if(role==='admin'||role==='superadmin'){perms.users=true;dr={};_setUserAdminPermUI(true);}else perms.users=false;var oldUser=eUId?uc.find(function(x){return x.id===eUId;}):null;if(oldUser&&String(oldUser.username||'').toLowerCase()==='admin'){if(!active||role!=='admin'){toast('❌ Primary admin ko deactivate/demote nahi kar sakte');return;}role='admin';desig='admin';perms.users=true;}if(eUId===cu.id&&!active){toast('❌ Apna account deactivate nahi kar sakte');return;}if(oldUser&&oldUser.active!==false&&(oldUser.role==='admin'||oldUser.role==='superadmin')&&!active&&_activeAdminCount(oldUser.id)===0){toast('❌ Last active Admin ko deactivate nahi kar sakte');return;}
+  var authCtx=null,authUid='';try{if(!eUId){authCtx=await _createAuthUserSecondary(un,pw);authUid=authCtx.uid;}var d={username:un,fullname:fn,role:role,designation:desig,active:active,note:document.getElementById('uNt').value.trim(),perms:perms,dataRestrict:dr,updatedAt:new Date().toISOString()};if(authUid)d.authUid=authUid;if(eUId){var os=await db.collection('users').doc(eUId).get(),old=os.exists?os.data():{},merged=Object.assign({},old,d);['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){delete merged[k];});await db.collection('users').doc(eUId).set(merged);if(merged.authUid)await syncAuthz(eUId,merged,merged.authUid);await logActivity('user_update','',{target:eUId,username:un,scope:dr});}else{d.createdAt=new Date().toISOString();d.mustChangePw=true;await db.collection('users').doc(un.toLowerCase()).set(d);await syncAuthz(un.toLowerCase(),d,authUid);await logActivity('user_create','',{target:un.toLowerCase(),username:un,scope:dr});await _finishSecondaryAuth(authCtx);authCtx=null;setTimeout(function(){alert('✅ User create ho gaya.\n\nUsername: '+un+'\nTemporary Password: '+pw+'\n\nFirst login par password change mandatory hoga.');},50);}toast('✅ User saved!');cmo('mUser');fbGetU().then(rUsers);if(eUId&&cu&&cu.id===eUId){cu=Object.assign({},cu,d,{id:eUId});delete cu.password;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));cacheInvalidate();startListener();}}catch(e){if(authCtx)await _rollbackSecondaryAuth(authCtx);if(e&&e.code==='auth/email-already-in-use')toast('❌ Firebase Auth mein ye username pehle se maujood hai');else toast('❌ '+e.message);}
 }
-async function dUser(id){if(!confirm('Delete?'))return;try{await db.collection('users').doc(id).delete();toast('🗑️ Deleted');fbGetU().then(rUsers);}catch(e){toast('❌ '+e.message);}}
+async function dUser(id){if(!_isAdmin()){toast('⛔ User deactivate sirf Admin kar sakta hai');return;}var u=uc.find(function(x){return x.id===id;});if(!u)return;if(id===cu.id){toast('❌ Apna account deactivate nahi kar sakte');return;}if(String(u.username||'').toLowerCase()==='admin'){toast('❌ Primary admin ko deactivate nahi kar sakte');return;}if((u.role==='admin'||u.role==='superadmin')&&_activeAdminCount(id)===0){toast('❌ Last active Admin ko deactivate nahi kar sakte');return;}if(!confirm('User ko deactivate karein? Firebase Auth account delete nahi hoga.'))return;try{var sn=await db.collection('users').doc(id).get(),old=sn.exists?sn.data():{};await db.collection('users').doc(id).update({active:false,updatedAt:new Date().toISOString()});old.active=false;if(old.authUid)await syncAuthz(id,old,old.authUid);await logActivity('user_deactivate','',{target:id});toast('✅ User deactivated');fbGetU().then(rUsers);}catch(e){toast('❌ '+e.message);}}
 
 // Settings
 function upLogo(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const d=e.target.result;localStorage.setItem('sr_logo',d);apLogo(d);toast('✅ Logo saved!');};r.readAsDataURL(f);}
@@ -6915,35 +6993,20 @@ function loadLogo(){
 }
 async function chPass(){
   const op=document.getElementById('oP').value,np=document.getElementById('nP').value,cp=document.getElementById('cP').value;
-  if(!op||!np){toast('❌ All fields required');return;}
-  if(np!==cp){toast('❌ Mismatch');return;}
-  if(np.length<8){toast('❌ Password 8+ characters ka hona chahiye');return;}
-  // SECURITY FIX: cu.password ab session mein store nahi hota — fresh Firestore se verify karo
+  if(!op||!np||!cp){toast('❌ All fields required');return;}if(np!==cp){toast('❌ Mismatch');return;}if(np.length<10){toast('❌ Password 10+ characters ka hona chahiye');return;}
   try{
-    const usn=await db.collection('users').doc(cu.id).get();
-    if(!usn.exists){toast('❌ User not found');return;}
-    const ok=await verifyPw(op, usn.data().password||'');
-    if(!ok){toast('❌ Wrong password');return;}
-    const nph=await makePwHash(np);
-    await db.collection('users').doc(cu.id).update({password:nph,mustChangePw:false,updatedAt:new Date().toISOString()});
-    // AUTH BRIDGE: Firebase Auth ka password bhi update karo (verify ke baad current user signed-in hai)
-    try{
-      var au=firebase.auth().currentUser;
-      if(au){ await au.updatePassword(np); }
-      else { await ensureAuthAccount(cu.username, np); }
-    }catch(ae){
-      // Agar recent-login chahiye to re-auth karke retry
-      try{
-        var em=(cu.username||'').toLowerCase()+'@sab.local';
-        await firebase.auth().signInWithEmailAndPassword(em, op);
-        await firebase.auth().currentUser.updatePassword(np);
-      }catch(ae2){ console.warn('Auth pw sync fail:', ae2.code||ae2.message); }
-    }
-    cu.mustChangePw=false;
-    const s=JSON.parse(localStorage.getItem('sr_s')||'{}');delete s.password;s.mustChangePw=false;localStorage.setItem('sr_s',JSON.stringify(s));
-    toast('✅ Changed!');['oP','nP','cP'].forEach(id=>document.getElementById(id).value='');
-  }catch(e){toast('❌ '+e.message);}
+    var au=firebase.auth().currentUser;
+    if(!au){await ensureAuthAccount(cu.username,op);au=firebase.auth().currentUser;}
+    if(!au)throw new Error('Firebase Auth session missing');
+    var cred=firebase.auth.EmailAuthProvider.credential(_authEmail(cu.username),op);await au.reauthenticateWithCredential(cred);await au.updatePassword(np);
+    await db.collection('users').doc(cu.id).update({authUid:au.uid,password:firebase.firestore.FieldValue.delete(),mustChangePw:false,updatedAt:new Date().toISOString()});
+    cu.authUid=au.uid;cu.mustChangePw=false;var sess=Object.assign({},cu,{loginAt:Date.now()});delete sess.password;localStorage.setItem('sr_s',JSON.stringify(sess));
+    await logActivity('password_change','',{});toast('✅ Password changed');['oP','nP','cP'].forEach(function(id){document.getElementById(id).value='';});refreshSecurityStatus();
+  }catch(e){toast('❌ '+((e&&e.code==='auth/wrong-password')?'Wrong password':e.message));}
 }
+
+function openForcePwModal(){var m=document.getElementById('mForcePw');if(!m||!cu||cu.mustChangePw!==true)return;['fpOld','fpNew','fpConfirm'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var msg=document.getElementById('fpMsg');if(msg)msg.style.display='none';m.classList.add('open');setTimeout(function(){var e=document.getElementById('fpOld');if(e)e.focus();},100);}
+async function doForcePwChange(){var op=document.getElementById('fpOld').value,np=document.getElementById('fpNew').value,cp=document.getElementById('fpConfirm').value,msg=document.getElementById('fpMsg');function fail(t){if(msg){msg.style.display='block';msg.style.color='var(--red)';msg.textContent='❌ '+t;}}if(!op||!np||!cp){fail('Sab fields required hain');return;}if(np.length<10){fail('Naya password 10+ characters ka ho');return;}if(np!==cp){fail('New passwords match nahi karte');return;}if(op===np){fail('Naya password temporary password se alag rakhein');return;}try{var au=firebase.auth().currentUser;if(!au)throw new Error('Auth session missing');var cred=firebase.auth.EmailAuthProvider.credential(_authEmail(cu.username),op);await au.reauthenticateWithCredential(cred);await au.updatePassword(np);await db.collection('users').doc(cu.id).update({mustChangePw:false,authUid:au.uid,password:firebase.firestore.FieldValue.delete(),updatedAt:new Date().toISOString()});cu.mustChangePw=false;cu.authUid=au.uid;await syncAuthz(cu.id,cu,au.uid);localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));document.getElementById('mForcePw').classList.remove('open');await logActivity('first_password_change','',{});toast('✅ Naya password set ho gaya');}catch(e){fail((e&&e.code==='auth/wrong-password')?'Current password galat hai':e.message);}}
 
 // Utils
 function cmo(id){document.getElementById(id).classList.remove('open');}
@@ -7063,7 +7126,7 @@ function triggerAutoSave(){
       persons: (typeof getPersons==='function'?getPersons():[]),
       savedAt: new Date().toLocaleTimeString()
     };
-    localStorage.setItem('caseAutoSave', JSON.stringify(snap));
+    sessionStorage.setItem('caseAutoSave', JSON.stringify(snap));
     // Show save indicator
     var ind = document.getElementById('autoSaveInd');
     if(ind){ ind.textContent='💾 Auto-saved at '+snap.savedAt; ind.style.opacity='1'; setTimeout(function(){ ind.style.opacity='0'; },2000); }
@@ -7071,10 +7134,10 @@ function triggerAutoSave(){
 }
 
 function checkAutoSave(){
-  var saved = localStorage.getItem('caseAutoSave');
+  var saved = sessionStorage.getItem('caseAutoSave');
   if(!saved) return;
   var snap;
-  try{ snap = JSON.parse(saved); }catch(_e){ localStorage.removeItem('caseAutoSave'); return; }
+  try{ snap = JSON.parse(saved); }catch(_e){ sessionStorage.removeItem('caseAutoSave'); return; }
   if(!snap || !snap.caseNo) return;
   if(confirm('💾 Auto-saved draft mila:\nCase No: '+snap.caseNo+'\nSaved at: '+snap.savedAt+'\n\nRestore karein?')){
     var el;
@@ -7091,11 +7154,11 @@ function checkAutoSave(){
     if((el=document.getElementById('fSub'))) el.value=snap.subject||'';
     if((el=document.getElementById('fDet'))) el.value=snap.detail||'';
     if(snap.persons && snap.persons.length && typeof setPersons==='function'){ setPersons(snap.persons); if(typeof fillGuidePersons==='function') fillGuidePersons(); }
-    localStorage.removeItem('caseAutoSave');
+    sessionStorage.removeItem('caseAutoSave');
     toast('✅ Draft restored!');
   } else {
     clearTimeout(autoSaveTimer);
-    localStorage.removeItem('caseAutoSave');
+    sessionStorage.removeItem('caseAutoSave');
   }
 }
 // ===== END AUTO SAVE =====
@@ -7527,6 +7590,7 @@ function updateBulkBar(){
   var cnt=document.getElementById('bulkCount');if(cnt)cnt.textContent=selectedCases.size+' cases selected';
 }
 async function bulkChangeStatus(status){
+  if(!requirePerm('edit'))return;
   if(status==='closed'){ toast('❌ Bulk se Closed nahi — case kholke Closing Date + Rahnumai bharo'); return; }
   if(selectedCases.size===0){toast('Koi case select nahi!');return;}
   if(!confirm(selectedCases.size+' cases ka status "'+status+'" karein?'))return;
@@ -7539,21 +7603,40 @@ async function bulkChangeStatus(status){
   toast(fail>0 ? ('⚠️ '+ok+' updated, '+fail+' fail (permission?)') : ('✅ '+ok+' cases updated!'));
 }
 async function bulkDelete(){
-  if(selectedCases.size===0){toast('Koi case select nahi!');return;}
-  var cnt=selectedCases.size;
-  if(!confirm(cnt+' cases DELETE karein? Undo nahi hoga!'))return;
-  var _ids=Array.from(selectedCases);
-  var results=await Promise.allSettled(_ids.map(function(id){return db.collection('cases').doc(id).delete();}));
-  cacheInvalidate();
-  var okIds=[];
-  results.forEach(function(r,i){ if(r.status==='fulfilled') okIds.push(_ids[i]); });
-  okIds.forEach(function(id){ cc = cc.filter(function(c){return c.id!==id;}); });
-  try{ cacheSave(cc.slice()); }catch(e){}
-  _rerenderCurrent();
-  selectedCases.clear();updateBulkBar();
-  var fail=_ids.length-okIds.length;
-  toast(fail>0 ? ('⚠️ '+okIds.length+' deleted, '+fail+' fail (permission?)') : ('🗑️ '+okIds.length+' cases deleted!'));
+  if(!requirePerm('del'))return;if(selectedCases.size===0){toast('Koi case select nahi!');return;}
+  var cnt=selectedCases.size;if(!confirm(cnt+' cases Recycle Bin mein bhejein?'))return;
+  var ids=Array.from(selectedCases),results=await Promise.allSettled(ids.map(function(id){return _moveCaseToTrash(id);}));
+  var okIds=[];results.forEach(function(r,i){if(r.status==='fulfilled')okIds.push(ids[i]);});await Promise.all(okIds.map(function(id){return logActivity('case_delete',id,{bulk:true});}));
+  okIds.forEach(removeOneCase);cacheInvalidate();selectedCases.clear();updateBulkBar();var fail=ids.length-okIds.length;toast(fail?('⚠️ '+okIds.length+' recycle bin, '+fail+' fail'):('🗑️ '+okIds.length+' cases Recycle Bin mein'));
 }
+
+// ===== RECYCLE BIN =====
+function _trashDate(v){try{if(v&&typeof v.toDate==='function')return v.toDate();if(v)return new Date(v);}catch(e){}return null;}
+async function loadTrash(){
+  if(!_isAdmin()){toast('⛔ Recycle Bin sirf Admin ke liye hai');return;}
+  var tb=document.getElementById('trashTB');if(!tb)return;tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px">⏳ Loading...</td></tr>';
+  try{
+    var snap=await db.collection('trashCases').orderBy('deletedAt','desc').limit(300).get();
+    var arr=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var cutoff=Date.now()-30*86400000,expired=arr.filter(function(c){var dt=_trashDate(c.deletedAt);return dt&&dt.getTime()<cutoff;});
+    if(expired.length){await Promise.allSettled(expired.map(function(c){return purgeCase(c.id,true);}));arr=arr.filter(function(c){return expired.indexOf(c)<0;});}
+    var cnt=document.getElementById('trashCount');if(cnt)cnt.textContent=arr.length+' item(s)';
+    tb.innerHTML=arr.length?arr.map(function(c){var dt=_trashDate(c.deletedAt),sub=_eplain(c.subject||'');return '<tr><td><b>'+_e(c.caseNo||'—')+'</b></td><td>'+_e(c.name||'')+(sub?'<div style="font-size:.7rem;color:var(--mt);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div>':'')+'</td><td>'+(dt?dt.toLocaleString():'—')+'</td><td>'+_e(c.deletedByName||c.deletedBy||'—')+'</td><td><button class="btn bgrn bsm" onclick="restoreCase(\''+c.id+'\')">↩ Restore</button> <button class="btn bred bsm" onclick="purgeCase(\''+c.id+'\')">✕ Permanent</button></td></tr>';}).join(''):'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--mt)">Recycle Bin empty hai.</td></tr>';
+  }catch(e){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--red);padding:20px">❌ '+_e(e.message)+'</td></tr>';}
+}
+async function restoreCase(id){
+  if(!_isAdmin())return;try{
+    var trashRef=db.collection('trashCases').doc(id),caseRef=db.collection('cases').doc(id),restored={};
+    await db.runTransaction(async function(tx){var tr=await tx.get(trashRef);if(!tr.exists)throw new Error('Trash item not found');var cs=await tx.get(caseRef);if(cs.exists)throw new Error('Active case ID already exists');restored=Object.assign({},tr.data());delete restored.deletedAt;delete restored.deletedBy;delete restored.deletedByName;delete restored.originalId;restored.updatedAt=new Date().toISOString();tx.set(caseRef,restored);tx.delete(trashRef);});
+    await logActivity('case_restore',id,{caseNo:restored.caseNo||''});cacheInvalidate();toast('✅ Case restore ho gaya');loadTrash();
+  }catch(e){toast('❌ '+e.message);}
+}
+async function purgeCase(id,silent){
+  if(!_isAdmin()){if(!silent)toast('⛔ Permanent delete sirf Admin');return;}
+  if(!silent&&!confirm('Permanent delete? Iske baad restore nahi hoga.'))return;
+  try{var sn=await db.collection('trashCases').doc(id).get(),d=sn.exists?sn.data():{};if(d.pdfPath)await deleteCasePdf(d.pdfPath);await db.collection('trashCases').doc(id).delete();await logActivity('case_purge',id,{caseNo:d.caseNo||''});if(!silent){toast('🗑️ Permanently deleted');loadTrash();}}catch(e){if(!silent)toast('❌ '+e.message);throw e;}
+}
+// ===== END RECYCLE BIN =====
 
 // ===== CASE SHARE LINK =====
 function shareCase(id){
@@ -8203,32 +8286,30 @@ function lmSaveHier(){
 }
 // Bulk fix dept names in all cases
 async function fixCaseDepts(){
-  if(!confirm('Sab cases ke department names naye format mein update honge. Confirm?')) return;
-  const btn = document.getElementById('fixDeptsBtn');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Updating...'; }
+  if(!_isAdmin()){toast('⛔ Existing case department migration sirf Admin kar sakta hai');return;}
+  if(!confirm('Sab existing cases ke dept/depts names canonical format mein normalize honge. Continue?')) return;
+  const btn=document.getElementById('fixDeptsBtn');if(btn){btn.disabled=true;btn.textContent='⏳ Normalizing...';}
   try{
-    const snap = await casesQuery().get();
-    let batch = db.batch();
-    let count = 0, ops = 0;
+    const snap=await db.collection('cases').get();
+    let batch=db.batch(),count=0,ops=0;
     for(let i=0;i<snap.docs.length;i++){
-      const doc = snap.docs[i];
-      const d = doc.data();
-      const oldDept = d.dept || '';
-      const newDept = normalizeDept(oldDept);
-      if(newDept && newDept !== oldDept){
-        batch.update(doc.ref, {dept: newDept});
-        count++; ops++;
-        if(ops >= 400){ await batch.commit(); batch = db.batch(); ops = 0; }
-      }
+      const doc=snap.docs[i],d=doc.data(),oldDept=d.dept||'';
+      const oldArr=(d.depts&&Array.isArray(d.depts))?d.depts.slice():(oldDept?[oldDept]:[]);
+      const newArr=[];
+      oldArr.forEach(function(x){var n=normalizeDept(x)||x;if(n&&newArr.indexOf(n)<0)newArr.push(n);});
+      var newDept=normalizeDept(oldDept)||oldDept||(newArr[0]||'');
+      if(newDept&&newArr.indexOf(newDept)<0)newArr.unshift(newDept);
+      var changed=(newDept!==oldDept)||JSON.stringify(newArr)!==JSON.stringify(oldArr);
+      if(changed){batch.update(doc.ref,{dept:newDept,depts:newArr,updatedAt:new Date().toISOString()});count++;ops++;}
+      if(ops>=400){await batch.commit();batch=db.batch();ops=0;}
     }
-    if(count > 0){
-      if(ops > 0) await batch.commit();
-      toast('✅ ' + count + ' cases ke dept names update ho gaye!');
-    } else {
-      toast('ℹ️ Sab cases pehle se correct hain!');
-    }
-  } catch(e){ toast('❌ Error: '+e.message); }
-  if(btn){ btn.disabled=false; btn.textContent='🔄 Fix Case Departments'; }
+    if(ops>0)await batch.commit();
+    cacheInvalidate();
+    await logActivity('normalize_case_departments','',{count:count});
+    toast(count?'✅ '+count+' cases ke department names normalize ho gaye':'ℹ️ Sab cases already canonical hain');
+    if(count)reloadCases();
+  }catch(e){toast('❌ Error: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='🔄 Normalize Existing Case Departments';}
 }
 
 
@@ -8479,7 +8560,7 @@ var _resetUId = null;
 function validatePdfUpload(inp){
   var info=document.getElementById('fPdfInfo');
   function setInfo(txt,color){ if(info){ info.textContent=txt; info.style.color=color||'var(--mt)'; } }
-  if(!inp.files||!inp.files[0]){ setInfo(''); return; }
+  if(!inp.files||!inp.files[0]){ delete inp.dataset.validPdf; setInfo(''); return; }
   var f = inp.files[0];
   var MAX = 10 * 1024 * 1024; // 10MB
   var mb = (f.size/1048576).toFixed(2);
@@ -8498,22 +8579,52 @@ function validatePdfUpload(inp){
     if(header !== '25504446'){ // %PDF magic bytes
       toast('❌ Ye asli PDF nahi hai');
       setInfo('❌ Invalid PDF', '#c0392b');
-      inp.value = '';
+      inp.value = ''; delete inp.dataset.validPdf;
     } else {
-      toast('✅ PDF lag gayi');
+      inp.dataset.validPdf='1';
+      toast('✅ PDF validated');
       setInfo('📎 '+f.name+' ('+mb+' MB) ✅', 'var(--green)');
     }
   };
   reader.readAsArrayBuffer(f.slice(0,4));
 }
+
+async function uploadCasePdf(caseId){
+  var inp=document.getElementById('fPdf');
+  if(!inp||!inp.files||!inp.files[0]) return null;
+  if(inp.dataset.validPdf!=='1') throw new Error('PDF validation complete nahi hui');
+  if(!firebase.storage) throw new Error('Firebase Storage SDK load nahi hua');
+  var f=inp.files[0];
+  var safe=(f.name||'case.pdf').replace(/[^A-Za-z0-9._-]+/g,'_').slice(-120);
+  var path='case-files/'+caseId+'/'+Date.now()+'-'+safe;
+  var ref=firebase.storage().ref().child(path);
+  await ref.put(f,{contentType:'application/pdf',customMetadata:{caseId:caseId,uploadedBy:(cu&&cu.id)||''}});
+  var meta={pdfPath:path,pdfName:f.name,pdfSize:f.size,pdfUploadedAt:new Date().toISOString(),pdfUploadedBy:(cu&&cu.id)||''};
+  await db.collection('cases').doc(caseId).update(meta);
+  inp.value='';delete inp.dataset.validPdf;
+  var info=document.getElementById('fPdfInfo');if(info)info.textContent='✅ PDF uploaded: '+f.name;
+  await logActivity('pdf_upload',caseId,{name:f.name,size:f.size});
+  return meta;
+}
+async function openCasePdf(path){
+  if(!path)return;
+  try{var url=await firebase.storage().ref().child(path).getDownloadURL();window.open(url,'_blank','noopener');}
+  catch(e){toast('❌ PDF open nahi hui: '+e.message);}
+}
+async function deleteCasePdf(path){
+  if(!path||!firebase.storage)return;
+  try{await firebase.storage().ref().child(path).delete();}catch(e){if(e.code!=='storage/object-not-found')console.warn('PDF delete:',e.code||e.message);}
+}
+
 // ===== END FILE UPLOAD VALIDATION =====
 
 function openResetPw(uid){
+  if(!_isAdmin()){toast('⛔ Sirf Admin password reset manage kar sakta hai');return;}
   var u = uc.find(function(x){return x.id===uid;});
   if(!u) return;
   _resetUId = uid;
   var info = document.getElementById('resetUserInfo');
-  if(info) info.innerHTML = '👤 <b>'+u.fullname+'</b> &nbsp;|&nbsp; @'+u.username+'&nbsp;|&nbsp;<span class="badge bb">'+u.role+'</span>';
+  if(info) info.textContent = '👤 '+(u.fullname||'')+' | @'+(u.username||'')+' | '+(u.role||'');
   var inp = document.getElementById('resetNewPw');
   if(inp){ inp.value=''; inp.type='password'; }
   var msg = document.getElementById('resetMsg');
@@ -8522,52 +8633,52 @@ function openResetPw(uid){
 }
 
 function resetGenPw(){
-  // Generate a random 8-char password: 4 letters + 4 digits
-  var chars='abcdefghjkmnpqrstuvwxyz';
-  var nums='23456789';
-  var pw='';
-  for(var i=0;i<4;i++) pw+=chars[Math.floor(Math.random()*chars.length)];
-  for(var i=0;i<4;i++) pw+=nums[Math.floor(Math.random()*nums.length)];
-  // shuffle
-  pw=pw.split('').sort(function(){return Math.random()-.5;}).join('');
-  var inp=document.getElementById('resetNewPw');
-  if(inp){ inp.value=pw; }
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  var a=new Uint32Array(14);crypto.getRandomValues(a);var pw='';for(var i=0;i<a.length;i++)pw+=chars[a[i]%chars.length];
+  var inp=document.getElementById('resetNewPw');if(inp)inp.value=pw;
 }
 
 async function doResetPw(){
-  var np = (document.getElementById('resetNewPw').value||'').trim();
-  var msg = document.getElementById('resetMsg');
-  if(!np || np.length < 4){
-    msg.style.display='block';
-    msg.style.background='#ffebee'; msg.style.color='#c62828'; msg.style.border='1px solid #ffcdd2';
-    msg.textContent='❌ Password kam az kam 4 characters ka hona chahiye';
-    return;
-  }
-  if(!_resetUId){ cmo('mResetPw'); return; }
+  if(!_isAdmin()){toast('⛔ Sirf Admin legacy password reset/migrate kar sakta hai');return;}
+  var u=uc.find(function(x){return x.id===_resetUId;});
+  if(!u)return;
+  if(u.authUid){toast('🔒 Ye user Firebase Auth par already hai. “Force PW Change” use karein. Forgotten password ke liye Firebase Console Authentication ki zarurat hogi.');return;}
+  var np=(document.getElementById('resetNewPw').value||'').trim(),msg=document.getElementById('resetMsg');
+  if(!np||np.length<10){msg.style.display='block';msg.style.color='var(--red)';msg.textContent='❌ Temporary password kam az kam 10 characters ka ho';return;}
+  var ctx=null;
   try{
-    const nph3=await makePwHash(np);await db.collection('users').doc(_resetUId).update({password: nph3, mustChangePw: true, updatedAt: new Date().toISOString()});
-    // Update local cache
-    var u = uc.find(function(x){return x.id===_resetUId;});
-    if(u) u.password = nph3;
-    var u2 = uc.find(function(x){return x.id===_resetUId;});
-    var uname = u2 ? u2.username : '';
-    msg.style.display='block';
-    msg.style.background='#e8f5e9'; msg.style.color='#2e7d32'; msg.style.border='1px solid #a5d6a7';
-    msg.innerHTML='✅ Password reset ho gaya!<br>'
-      +'<div style="margin-top:8px;background:#fff;border:1.5px solid #a5d6a7;border-radius:7px;padding:8px 12px;font-family:monospace;font-size:.85rem;letter-spacing:.3px">'
-      +'👤 Username: <b>'+uname+'</b><br>'
-      +'🔑 Password: <b>'+np+'</b>'
-      +'</div>'
-      +'<button id="resetCopyBtn" style="margin-top:8px;width:100%;padding:7px;background:linear-gradient(135deg,#0d47a1,#1976d2);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:.78rem;font-weight:700">📋 Username + Password Copy Karein</button>';
-    document.getElementById('resetCopyBtn') && document.getElementById('resetCopyBtn').addEventListener('click', function(){ copyCredentials(uname, np); });
-    toast('✅ Password reset ho gaya!');
-    fbGetU().then(rUsers);
-  } catch(e){
-    msg.style.display='block';
-    msg.style.background='#ffebee'; msg.style.color='#c62828'; msg.style.border='1px solid #ffcdd2';
-    msg.textContent='❌ Error: '+e.message;
+    ctx=await _createAuthUserSecondary(u.username,np);
+    var patch={authUid:ctx.uid,mustChangePw:true,password:firebase.firestore.FieldValue.delete(),authMigratedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:new Date().toISOString()};
+    await db.collection('users').doc(_resetUId).update(patch);
+    var fresh=Object.assign({},u,{authUid:ctx.uid,mustChangePw:true});delete fresh.password;
+    await syncAuthz(_resetUId,fresh,ctx.uid);
+    await logActivity('legacy_auth_migrate','',{target:_resetUId,username:u.username||''});
+    await _finishSecondaryAuth(ctx);ctx=null;
+    u.authUid=fresh.authUid;u.mustChangePw=true;delete u.password;
+    msg.style.display='block';msg.style.background='#e8f5e9';msg.style.color='#2e7d32';msg.style.border='1px solid #a5d6a7';
+    msg.innerHTML='✅ Legacy account Firebase Auth par migrate ho gaya.<br><b>Username:</b> '+_e(u.username||'')+'<br><b>Temporary Password:</b> '+_e(np)+'<br><small>First login par password change mandatory hoga.</small>';
+    toast('✅ User Auth par migrate ho gaya');
+    rUsers();
+  }catch(e){
+    if(ctx)await _rollbackSecondaryAuth(ctx);
+    msg.style.display='block';msg.style.color='var(--red)';msg.textContent='❌ '+((e&&e.code==='auth/email-already-in-use')?'Firebase Auth account pehle se maujood hai; is profile ko manually link karna hoga.':(e.message||e));
   }
 }
+
+async function forceUserPwChange(uid){
+  if(!_isAdmin()){toast('⛔ Sirf Admin force password change kar sakta hai');return;}
+  var u=uc.find(function(x){return x.id===uid;});if(!u)return;
+  if(!u.authUid){openResetPw(uid);return;}
+  if(!confirm((u.fullname||u.username)+' ko next login par password change karna mandatory karein?'))return;
+  try{
+    await db.collection('users').doc(uid).update({mustChangePw:true,updatedAt:new Date().toISOString()});
+    u.mustChangePw=true;
+    await logActivity('force_password_change','',{target:uid,username:u.username||''});
+    toast('✅ Next login par password change mandatory hoga');
+    rUsers();
+  }catch(e){toast('❌ '+e.message);}
+}
+
 // ===== END PASSWORD RESET =====
 
 
@@ -8601,8 +8712,9 @@ function drResetAll(){
   });
   // Re-render state/div/dist as empty with message
   document.getElementById('uDStBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Region select karo</span>';
-  document.getElementById('uDDivBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle State select karo</span>';
+  document.getElementById('uDDivBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Region select karo</span>';
   document.getElementById('uDDistBox').innerHTML = '<span style="font-size:.69rem;color:var(--mt)">Pehle Division select karo</span>';
+  if(typeof updateAccessSummary==='function')updateAccessSummary();
   toast('✅ Sab restrictions clear ho gayi!');
 }
 
@@ -9987,9 +10099,10 @@ function deptRender(filter){
   var list = document.getElementById('fDeptList');
   if(!list) return;
   list.innerHTML = '';
-  var q = (filter||'').toLowerCase();
-  DEPTS.forEach(function(d){
-    if(q && d.toLowerCase().indexOf(q)<0) return;
+  var q = _accessSearchNorm(filter||'');
+  var _allowedDepts=(cu&&!_isAdmin()&&cu.dataRestrict&&cu.dataRestrict.depts&&cu.dataRestrict.depts.length)?cu.dataRestrict.depts:DEPTS;
+  _allowedDepts.forEach(function(d){
+    if(q && _accessSearchNorm(d).indexOf(q)<0) return;
     var lbl = document.createElement('label');
     lbl.style.cssText = 'display:flex;align-items:center;gap:5px;padding:2px 0;cursor:pointer;font-size:.74rem';
     var cb = document.createElement('input');
@@ -10033,7 +10146,8 @@ function deptUpdateChips(){
   });
 }
 function deptSelectAll(){
-  DEPTS.forEach(function(d){ _deptSel.add(d); });
+  var _allowedDepts=(cu&&!_isAdmin()&&cu.dataRestrict&&cu.dataRestrict.depts&&cu.dataRestrict.depts.length)?cu.dataRestrict.depts:DEPTS;
+  _allowedDepts.forEach(function(d){ _deptSel.add(d); });
   deptRender(document.getElementById('fDeptSrch').value);
 }
 function deptClearAll(){
@@ -10042,9 +10156,25 @@ function deptClearAll(){
   deptRender('');
 }
 function getDeptValues(){ return [..._deptSel]; }
+// Restricted editor ke hidden/original departments ko preserve karo. Isse Jamia HOD
+// multi-department case edit kare to doosre assigned departments accidentally remove nahi honge.
+function getDeptPayloadForSave(){
+  var selected=getDeptValues(),primary=selected[0]||'',merged=selected.slice();
+  var dr=(cu&&cu.dataRestrict)||{},allowed=(!_isAdmin()&&dr.depts&&dr.depts.length)?dr.depts:null;
+  if(eId&&allowed){
+    var orig=(cc||[]).find(function(x){return x.id===eId;});
+    if(orig){
+      var origDs=(orig.depts&&orig.depts.length)?orig.depts.slice():(orig.dept?[orig.dept]:[]);
+      origDs.forEach(function(d){if(allowed.indexOf(d)<0&&merged.indexOf(d)<0)merged.push(d);});
+      if(orig.dept&&allowed.indexOf(orig.dept)<0)primary=orig.dept;
+    }
+  }
+  return{dept:primary,depts:merged};
+}
 function setDeptValues(arr){
   _deptSel.clear();
-  (arr||[]).forEach(function(d){ _deptSel.add(d); });
+  var _allow=(cu&&!_isAdmin()&&cu.dataRestrict&&cu.dataRestrict.depts&&cu.dataRestrict.depts.length)?cu.dataRestrict.depts:null;
+  (arr||[]).forEach(function(d){if(!_allow||_allow.indexOf(d)>-1)_deptSel.add(d);});
   deptRender(document.getElementById('fDeptSrch')?document.getElementById('fDeptSrch').value:'');
 }
 function initDeptMS(){
@@ -10548,6 +10678,8 @@ var _editClientId = null;
 function isClosedCase(c){ return (c.status||'').toLowerCase() === 'closed'; }
 
 function loadClients(){
+  if(!requirePerm('clients'))return;
+  if(_isServerScoped()){toast('⛔ Scoped user ko global Clients Master access nahi diya ja sakta');return;}
   // Agar already loaded hai to dobara Firebase read mat karo
   if(_clients && _clients.length > 0){ renderClients(); return; }
   db.collection('clients').orderBy('naam').get().then(function(snap){
@@ -10608,7 +10740,7 @@ function renderClients(){
         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
         + '<div style="font-size:.88rem;font-weight:700;color:var(--bd)">👤 '+escHtml(c.naam||'')+'</div>'
         + '<div style="display:flex;gap:6px" onclick="event.stopPropagation()">'
-        + '<button onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">✏️</button>'
+        + (hp('edit')?'<button onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer">✏️</button>':'')
         + '</div></div>'
         + (c.phone ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">📱 '+escHtml(c.phone)+'</div>' : '')
         + (c.desig ? '<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">💼 '+escHtml(c.desig)+'</div>' : '')
@@ -10633,10 +10765,10 @@ function showClientCases(clientId){
   var pending = total - closed;
 
   document.getElementById('ccmName').textContent = '👤 '+c.naam;
-  document.getElementById('ccmMeta').innerHTML =
-    '📁 '+total+' Total Cases &nbsp;|&nbsp; ✅ '+closed+' Closed &nbsp;|&nbsp; ⏳ '+pending+' Pending'
-    +(c.phone ? ' &nbsp;|&nbsp; 📱 '+c.phone : '')
-    +(c.desig ? ' &nbsp;|&nbsp; 💼 '+c.desig : '');
+  document.getElementById('ccmMeta').textContent =
+    '📁 '+total+' Total Cases | ✅ '+closed+' Closed | ⏳ '+pending+' Pending'
+    +(c.phone ? ' | 📱 '+c.phone : '')
+    +(c.desig ? ' | 💼 '+c.desig : '');
 
   var body = document.getElementById('ccmBody');
   if(!clientCases.length){
@@ -10674,6 +10806,7 @@ document.addEventListener('click', function(e){
 });
 
 function openClientForm(){
+  if(!requirePerm('clients')||!requirePerm('add'))return;
   _editClientId = null;
   document.getElementById('cNaam').value = '';
   document.getElementById('cPhone').value = '';
@@ -10684,6 +10817,7 @@ function openClientForm(){
 }
 
 function editClient(id){
+  if(!requirePerm('clients')||!requirePerm('edit'))return;
   var c = _clients.find(function(x){ return x.id===id; });
   if(!c) return;
   _editClientId = id;
@@ -10701,6 +10835,8 @@ function closeClientForm(){
 }
 
 async function saveClient(){
+  if(!requirePerm('clients'))return;
+  if(_editClientId){if(!requirePerm('edit'))return;}else{if(!requirePerm('add'))return;}
   var naam = document.getElementById('cNaam').value.trim();
   if(!naam){ toast('⚠️ Naam zaroori hai!'); return; }
   var data = {
@@ -10730,6 +10866,7 @@ async function saveClient(){
 }
 
 async function deleteClient(id, naam){
+  if(!requirePerm('clients')||!requirePerm('del'))return;
   if(!confirm(naam+' ko delete karna chahte ho?')) return;
   try{
     await db.collection('clients').doc(id).delete();
@@ -10739,6 +10876,7 @@ async function deleteClient(id, naam){
   } catch(e){ toast('❌ '+e.message); }
 }
 async function importClientsFromCases(){
+  if(!requirePerm('clients')||!requirePerm('add'))return;
   if(!confirm('Saare cases ke persons ko Clients mein import karna chahte ho?\nDuplicate names skip ho jayenge!')) return;
 
   // Existing clients ka naam set banao
@@ -11412,17 +11550,17 @@ function deptClose(){
 <div class="mo" id="mResetPw">
   <div class="modal" style="max-width:420px">
     <div class="mh">
-      <span>🔑 Password Reset</span>
+      <span>🔑 Legacy User → Firebase Auth</span>
       <button class="btn bout bsm" onclick="cmo('mResetPw')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
     </div>
     <div class="mb" style="padding:20px">
       <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:9px;padding:12px;margin-bottom:16px;font-size:.78rem;color:#e65100">
-        ⚠️ Only <b>Admin</b> can use this. User's password will be reset.
+        ⚠️ <b>Legacy user only:</b> yahan temporary password set karke account ko Firebase Auth par migrate kiya jayega. First login par password change mandatory hoga.
       </div>
       <div id="resetUserInfo" style="background:#e3f2fd;border:1px solid #90caf9;border-radius:9px;padding:10px;margin-bottom:14px;font-size:.8rem;color:var(--bd)"></div>
       <div class="fgr" style="margin-bottom:12px">
         <label style="font-size:.7rem;color:var(--mt);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px">Naya Password</label>
-        <input type="password" id="resetNewPw" placeholder="Naya password likhein..." style="width:100%;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.88rem;outline:none">
+        <input type="password" id="resetNewPw" placeholder="Temporary password (10+ chars)..." style="width:100%;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-size:.88rem;outline:none">
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
         <button class="btn bout bsm" onclick="resetGenPw()" style="font-size:.72rem">🎲 Auto Generate</button>
@@ -11431,7 +11569,7 @@ function deptClose(){
       <div id="resetMsg" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:7px;font-size:.78rem"></div>
     </div>
     <div class="mf" style="padding:14px 20px;display:flex;gap:8px;border-top:1px solid var(--bor)">
-      <button class="btn bpri" onclick="doResetPw()">💾 Reset Password</button>
+      <button class="btn bpri" onclick="doResetPw()">🔐 Migrate + Set Temp Password</button>
       <button class="btn bout" onclick="cmo('mResetPw')">Cancel</button>
     </div>
   </div>
