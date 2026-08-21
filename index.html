@@ -2348,6 +2348,10 @@ function _processCasesRaw(rawArr){
     rRep();
   } else if(_currentPg==='newcase'){
     if(!eId) autoFillCaseNo();
+  } else if(_currentPg==='clients'){
+    // Client cards may have rendered before full case data arrived.
+    // Case index was invalidated above; now rebuild counts with fresh cc.
+    renderClients();
   } else {
     updStats();
   }
@@ -2382,6 +2386,9 @@ function _processCases(docs){
     rRep();
   } else if(_currentPg==='newcase'){
     if(!eId) autoFillCaseNo();
+  } else if(_currentPg==='clients'){
+    // Full cases load hone ke baad Client counts turant refresh.
+    renderClients();
   } else {
     // Default: sirf stats update karo
     updStats();
@@ -2470,6 +2477,10 @@ function _rerenderCurrent(){
   else if(_currentPg==='tawan'){ renderTawan(); }
   else if(_currentPg==='search'){ doSrch(); }
   else if(_currentPg==='reports'){ rRep(); }
+  else if(_currentPg==='clients'){
+    if(typeof _clientIndexInvalidate==='function')_clientIndexInvalidate();
+    renderClients();
+  }
   else { updStats(); }
 }
 function _ccResort(){ _sortByCaseNoDesc(cc); }
@@ -10707,7 +10718,7 @@ function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/
 // ===== END MULTI-PERSON =====
 
 // ===== CLIENT MANAGEMENT =====
-window.__clientUrduNameLinkFix=true;window.__clientCountRecoveryFix=true;
+window.__clientUrduNameLinkFix=true;window.__clientCountRecoveryFix=true;window.__clientCaseCountFixV4=true;
 var _clients=[];
 var _editClientId=null;
 var _clientRenderTimer=null;
@@ -10725,7 +10736,17 @@ function _uniquePush(map,key,id){if(!key||!id)return;if(!(key in map))map[key]=i
 function _clientNameKeys(c){
   var out=[];
   function add(v){v=_normName(v);if(v&&out.indexOf(v)<0)out.push(v);}
-  add(c&&c.naam);(c&&Array.isArray(c.nameAliases)?c.nameAliases:[]).forEach(add);
+  add(c&&c.naam);
+  (c&&Array.isArray(c.nameAliases)?c.nameAliases:[]).forEach(add);
+
+  // Urdu display name ke liye known Roman/English purane naam ko bhi matching key banao.
+  // Isse case purane Roman naam par saved ho aur Client ab Urdu me ho, tab bhi count nahi tootega.
+  if(typeof _CLIENT_URDU_NAME_MAP==='object' && c){
+    var current=_normName(c.naam||'');
+    Object.keys(_CLIENT_URDU_NAME_MAP).forEach(function(oldRoman){
+      if(_normName(_CLIENT_URDU_NAME_MAP[oldRoman])===current) add(oldRoman);
+    });
+  }
   return out;
 }
 
@@ -11030,14 +11051,15 @@ function renderClients(){
   var sum=document.getElementById('clientSummary');if(sum)sum.textContent=(_clients||[]).length+' Client(s) • stable Client ID linking';
   if(!filtered.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--mt);font-size:.85rem">Koi client nahi mila</div>';return;}
   list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'+filtered.map(function(c){
-    var clientCases=_clientCases(c),total=clientCases.length,closed=clientCases.filter(isClosedCase).length,pending=total-closed;
+    var caseReady=(window._ccLoaded===true);
+    var clientCases=caseReady?_clientCases(c):[],total=clientCases.length,closed=clientCases.filter(isClosedCase).length,pending=total-closed;
     return '<div onclick="showClientCases(\''+c.id+'\')" style="background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--sh);border:1px solid var(--bor);cursor:pointer;transition:box-shadow .2s" onmouseover="this.style.boxShadow=\'0 4px 20px rgba(21,101,192,0.18)\'" onmouseout="this.style.boxShadow=\'var(--sh)\'">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px"><div style="font-size:.88rem;font-weight:700;color:var(--bd)">👤 '+escHtml(c.naam||'')+'</div><div style="display:flex;gap:5px" onclick="event.stopPropagation()">'
       +(hp('edit')?'<button title="Edit client" onclick="editClient(\''+c.id+'\')" style="background:#e3f2fd;color:var(--blue);border:none;border-radius:6px;padding:4px 8px;font-size:.7rem;cursor:pointer">✏️</button>':'')
       +(hp('del')?'<button title="Move to Recycle Bin" onclick="deleteClient(\''+c.id+'\')" style="background:#ffebee;color:#c62828;border:none;border-radius:6px;padding:4px 8px;font-size:.7rem;cursor:pointer">🗑️</button>':'')
       +'</div></div>'
       +(c.phone?'<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">📱 '+escHtml(c.phone)+'</div>':'')+(c.desig||c.designation?'<div style="font-size:.78rem;color:var(--mt);margin-bottom:4px">💼 '+escHtml(c.desig||c.designation)+'</div>':'')+(c.empCode?'<div style="font-size:.78rem;color:var(--mt);margin-bottom:6px">🪪 '+escHtml(c.empCode)+'</div>':'')
-      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:8px;border-top:1px solid var(--bor)"><span style="font-size:.72rem;background:#e3f2fd;color:var(--blue);padding:2px 8px;border-radius:10px;font-weight:700">📁 '+total+' Cases</span>'+(closed?'<span style="font-size:.72rem;background:#e8f5e9;color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700">✅ '+closed+' Closed</span>':'')+(pending?'<span style="font-size:.72rem;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:10px;font-weight:700">⏳ '+pending+' Pending</span>':'')+'</div></div>';
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:8px;border-top:1px solid var(--bor)"><span style="font-size:.72rem;background:#e3f2fd;color:var(--blue);padding:2px 8px;border-radius:10px;font-weight:700">📁 '+(caseReady?total:'…')+' Cases</span>'+(closed?'<span style="font-size:.72rem;background:#e8f5e9;color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700">✅ '+closed+' Closed</span>':'')+(pending?'<span style="font-size:.72rem;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:10px;font-weight:700">⏳ '+pending+' Pending</span>':'')+'</div></div>';
   }).join('')+'</div>';
 }
 
