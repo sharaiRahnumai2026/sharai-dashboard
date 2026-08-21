@@ -10674,6 +10674,7 @@ function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/
 // ===== END MULTI-PERSON =====
 
 // ===== CLIENT MANAGEMENT =====
+window.__clientUrduNameLinkFix=true;
 var _clients=[];
 var _editClientId=null;
 var _clientRenderTimer=null;
@@ -10688,9 +10689,20 @@ function scheduleClientRender(){clearTimeout(_clientRenderTimer);_clientRenderTi
 function clientPhoneDigits(inp){inp.value=(inp.value||'').replace(/\D/g,'').slice(0,10);var w=document.getElementById('cPhoneWarn');if(!w)return;var n=inp.value.length;w.textContent=n>0&&n<10?'⚠️ '+(10-n)+' aur digit — 10 pura karo':'';}
 function _uniquePush(map,key,id){if(!key||!id)return;if(!(key in map))map[key]=id;else if(map[key]!==id)map[key]=null;}
 
+function _clientNameKeys(c){
+  var out=[];
+  function add(v){v=_normName(v);if(v&&out.indexOf(v)<0)out.push(v);}
+  add(c&&c.naam);(c&&Array.isArray(c.nameAliases)?c.nameAliases:[]).forEach(add);
+  return out;
+}
 function _buildClientCaseIndex(){
   var idx={},byId={},byEmp={},byPhone={},byName={};
-  (_clients||[]).forEach(function(c){idx[c.id]=[];byId[c.id]=c;_uniquePush(byEmp,_normEmp(c.empCode),c.id);_uniquePush(byPhone,_normPhone(c.phone),c.id);_uniquePush(byName,_normName(c.naam),c.id);});
+  (_clients||[]).forEach(function(c){
+    idx[c.id]=[];byId[c.id]=c;
+    _uniquePush(byEmp,_normEmp(c.empCode),c.id);
+    _uniquePush(byPhone,_normPhone(c.phone),c.id);
+    _clientNameKeys(c).forEach(function(n){_uniquePush(byName,n,c.id);});
+  });
   (cc||[]).forEach(function(cs){
     var ids={};
     function addId(id){if(id&&byId[id])ids[id]=true;}
@@ -10728,7 +10740,7 @@ function _caseMatchesClient(cs,c){return _clientCases(c).some(function(x){return
 function renderClients(){
   var list=document.getElementById('clientList');if(!list)return;
   var qNaam=_normName((document.getElementById('cSNaam')||{value:''}).value),qPhone=_normPhone((document.getElementById('cSPhone')||{value:''}).value),qEmp=_normEmp((document.getElementById('cSEmpCode')||{value:''}).value),qDesig=String((document.getElementById('cSDesig')||{value:''}).value||'').trim().toLowerCase();
-  var filtered=(_clients||[]).filter(function(c){if(qNaam&&_normName(c.naam).indexOf(qNaam)<0)return false;if(qPhone&&_normPhone(c.phone).indexOf(qPhone)<0)return false;if(qEmp&&_normEmp(c.empCode).indexOf(qEmp)<0)return false;if(qDesig&&String(c.desig||c.designation||'').toLowerCase().indexOf(qDesig)<0)return false;return true;});
+  var filtered=(_clients||[]).filter(function(c){if(qNaam&&!_clientNameKeys(c).some(function(n){return n.indexOf(qNaam)>=0;}))return false;if(qPhone&&_normPhone(c.phone).indexOf(qPhone)<0)return false;if(qEmp&&_normEmp(c.empCode).indexOf(qEmp)<0)return false;if(qDesig&&String(c.desig||c.designation||'').toLowerCase().indexOf(qDesig)<0)return false;return true;});
   var fc=document.getElementById('clientFilterCount');if(fc)fc.textContent=filtered.length+' / '+(_clients||[]).length+' clients';
   var sum=document.getElementById('clientSummary');if(sum)sum.textContent=(_clients||[]).length+' Client(s) • stable Client ID linking';
   if(!filtered.length){list.innerHTML='<div style="text-align:center;padding:40px;color:var(--mt);font-size:.85rem">Koi client nahi mila</div>';return;}
@@ -10779,7 +10791,17 @@ async function saveClient(){
   var dup=await _clientDuplicateCheck(data,_editClientId);if(dup&&dup.hard){toast('❌ '+dup.msg);return;}if(dup&&!dup.hard&&!confirm(dup.msg+'\n\nSame naam ho sakta hai. Phir bhi save karein?'))return;
   var btn=document.getElementById('clientSaveBtn');if(btn){btn.disabled=true;btn.textContent='⏳ Saving...';}
   try{
-    if(_editClientId){await db.collection('clients').doc(_editClientId).update(data);var i=_clients.findIndex(function(x){return x.id===_editClientId;});if(i>-1)_clients[i]=Object.assign({},_clients[i],data);await logActivity('client_update','',{clientId:_editClientId,name:naam});toast('✅ Client update ho gaya!');}
+    if(_editClientId){
+      var oldClient=(_clients||[]).find(function(x){return x.id===_editClientId;})||{};
+      var oldName=String(oldClient.naam||'').trim(),aliases=Array.isArray(oldClient.nameAliases)?oldClient.nameAliases.slice():[];
+      if(oldName&&_normName(oldName)!==_normName(naam)&&!aliases.some(function(a){return _normName(a)===_normName(oldName);}))aliases.push(oldName);
+      data.nameAliases=aliases;
+      var locked=0;try{locked=await _lockClientLinks(_editClientId,oldClient);}catch(le){console.warn('client link lock:',le.code||le.message);}
+      await db.collection('clients').doc(_editClientId).update(data);
+      var i=_clients.findIndex(function(x){return x.id===_editClientId;});if(i>-1)_clients[i]=Object.assign({},_clients[i],data);
+      await logActivity('client_update','',{clientId:_editClientId,name:naam,oldName:oldName,lockedLinks:locked});
+      toast('✅ Client update ho gaya!'+(locked?' '+locked+' case link(s) permanent ho gaye.':''));
+    }
     else{data.createdAt=new Date().toISOString();var ref=await db.collection('clients').add(data);_clients.push(Object.assign({id:ref.id},data));await logActivity('client_create','',{clientId:ref.id,name:naam});toast('✅ Client save ho gaya!');}
     _clients.sort(function(a,b){return String(a.naam||'').localeCompare(String(b.naam||''));});_clientIndexInvalidate();closeClientForm();renderClients();
   }catch(e){toast('❌ Error: '+e.message);}finally{if(btn){btn.disabled=false;btn.textContent='💾 Save';}}
@@ -10807,7 +10829,40 @@ async function restoreClient(id){if(!_isAdmin())return;try{var tr=db.collection(
 async function purgeClient(id,silent){if(!_isAdmin()){if(!silent)toast('⛔ Permanent delete sirf Admin');return;}if(!silent&&!confirm('Client permanently delete karein? Iske baad restore nahi hoga.'))return;try{var sn=await db.collection('trashClients').doc(id).get(),d=sn.exists?sn.data():{};await db.collection('trashClients').doc(id).delete();await logActivity('client_purge','',{clientId:id,name:d.naam||''});if(!silent){await loadClientTrash();toast('🗑️ Client permanently deleted');}}catch(e){if(!silent)toast('❌ '+e.message);throw e;}}
 
 function _clientMatchMaps(){
-  var byEmp={},byPhone={},byName={};(_clients||[]).forEach(function(c){_uniquePush(byEmp,_normEmp(c.empCode),c.id);_uniquePush(byPhone,_normPhone(c.phone),c.id);_uniquePush(byName,_normName(c.naam),c.id);});return {emp:byEmp,phone:byPhone,name:byName};
+  var byEmp={},byPhone={},byName={};(_clients||[]).forEach(function(c){
+    _uniquePush(byEmp,_normEmp(c.empCode),c.id);
+    _uniquePush(byPhone,_normPhone(c.phone),c.id);
+    _clientNameKeys(c).forEach(function(n){_uniquePush(byName,n,c.id);});
+  });return {emp:byEmp,phone:byPhone,name:byName};
+}
+
+async function _lockClientLinks(clientId,oldClient){
+  if(!clientId||!oldClient)return 0;
+  var oldNames=_clientNameKeys(oldClient),oldEmp=_normEmp(oldClient.empCode),oldPhone=_normPhone(oldClient.phone),writes=[],linked=0;
+  (cc||[]).forEach(function(cs){
+    var persons=cs.persons&&cs.persons.length?JSON.parse(JSON.stringify(cs.persons)):(cs.name?[{name:cs.name,mobile:cs.mobile||'',empCode:cs.empCode||'',mansab:cs.mansab||'',clientId:cs.clientId||''}]:[]);
+    if(!persons.length)return;
+    var changed=false;
+    persons.forEach(function(p){
+      if(p.clientId===clientId)return;
+      if(p.clientId)return;
+      var emp=_normEmp(p.empCode||p.empcode),ph=_normPhone(p.mobile||p.phone),nm=_normName(p.name),ok=false;
+      if(oldEmp&&emp&&emp===oldEmp)ok=true;
+      else if(oldPhone&&ph&&ph===oldPhone)ok=true;
+      else if(!emp&&!ph&&nm&&oldNames.indexOf(nm)>-1)ok=true;
+      if(ok){p.clientId=clientId;changed=true;linked++;}
+    });
+    if(changed){
+      var ids=[];persons.forEach(function(p){if(p.clientId&&ids.indexOf(p.clientId)<0)ids.push(p.clientId);});
+      writes.push({ref:db.collection('cases').doc(cs.id),data:{persons:persons,clientId:(persons[0]||{}).clientId||'',clientIds:ids,updatedAt:new Date().toISOString()}});
+    }
+  });
+  for(var i=0;i<writes.length;i+=450){var b=db.batch();writes.slice(i,i+450).forEach(function(w){b.set(w.ref,w.data,{merge:true});});await b.commit();}
+  if(writes.length){
+    writes.forEach(function(w){var id=w.ref.id,c=cc.find(function(x){return x.id===id;});if(c)Object.assign(c,w.data);});
+    try{cacheSave(cc.slice());}catch(e){}
+  }
+  return linked;
 }
 async function migrateClientLinks(silent){
   if(!_isAdmin()){if(!silent)toast('⛔ Existing Case linking sirf Admin');return;}if(!silent&&!confirm('Existing cases ko Client IDs se link karein?\n\nEmployee Code pehle, phir Phone; sirf unique name ko last fallback use kiya jayega.'))return;
