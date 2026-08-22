@@ -417,12 +417,13 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- ===== END URDU AUTO-DETECT ===== -->
 
 <!-- Export Libraries -->
-<script defer src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.4.14/dist/purify.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -640,7 +641,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div class="sbi hide" id="nav-users" onclick="goPage('users',this)" data-p="users"><span class="ic">👥</span><span class="lb">Users</span></div>
     <div class="sbi hide" id="nav-trash" onclick="goPage('trash',this)" data-p="trash"><span class="ic">🗑️</span><span class="lb">Recycle Bin</span></div>
     <div class="sbi" onclick="goPage('clients',this)" data-p="clients" id="nav-clients"><span class="ic">🧑‍💼</span><span class="lb">Clients</span></div>
-    <div class="sbi hide" id="nav-set" onclick="goPage('settings',this)" data-p="settings"><span class="ic">⚙️</span><span class="lb">Settings</span></div>
+    <div class="sbi hide" id="nav-set" onclick="openSettingsV26(this)" data-p="settings"><span class="ic">⚙️</span><span class="lb">Settings</span></div>
   </div>
   <div class="sbu">
     <div class="sbuinfo"><div class="sbav" id="sbAv">A</div><div><div class="sbuname" id="sbName">Admin</div><div class="sburole" id="sbRole">Administrator</div></div></div>
@@ -715,7 +716,10 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
         </div>
       </div>
     </div>
-    <div class="stitle"><h2>🗺️ Region Overview</h2></div>
+    <div class="stitle" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <h2>🗺️ Region Overview</h2>
+      <button id="hidRegBtn" type="button" onclick="toggleHiddenRegions()" class="btn bout bsm">🙈 Hide Bareilly/Nagpur</button>
+    </div>
     <div class="rcards" id="regCards"></div>
     <div class="stitle"><h2>📝 Recent Cases</h2><span id='dashNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="eId=null;goPage('newcase')">➕ New Case</button></span></div>
     <div class="twrap">
@@ -2011,6 +2015,28 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
 
 <script>
 const HIER={"Ajmer Region": {"states": {"Gujarat": {"divs": {"101 Ahmedabad": ["Ahmedabad", "Gandhi Nagar"], "102 North Gujarat Modasa": ["Mehsana", "Patan", "Banaskantha", "Sabarkantha", "Aravalli"], "106 Central Gujarat": ["Anand", "Kheda", "Vadodara", "Dahod", "Panchmahal"], "107 Kutchh": ["Kutch"], "110 Saurashtra": ["Rajkot", "Jamnagar", "Junagadh", "Amreli", "Bhavnagar", "Porbandar", "Gir Somnath", "Morbi", "Devbhoomi Dwarka", "Botad"], "112 South Gujarat Surat": ["Surat", "Navsari", "Valsad", "Tapi", "Narmada", "Bharuch"]}}, "Rajasthan": {"divs": {"103 Jaipur": ["Jaipur", "Alwar", "Dausa", "Sikar", "Jhunjhunu"], "105 Kota": ["Kota", "Bundi", "Baran", "Jhalawar"], "108 Jodhpur": ["Jodhpur", "Barmer", "Jaisalmer", "Jalore", "Sirohi", "Pali"], "111 Ajmer": ["Ajmer", "Nagaur", "Tonk", "Bhilwara"], "117 Bharatpur": ["Bharatpur", "Dholpur", "Karauli", "Sawai Madhopur"], "118 Bikaner": ["Bikaner", "Churu", "Sri Ganganagar", "Hanumangarh"], "120 Udaipur": ["Udaipur", "Rajsamand", "Chittorgarh", "Dungarpur", "Banswara", "Pratapgarh"]}}, "Punjab": {"divs": {"119 Punjab": ["Amritsar", "Ludhiana", "Jalandhar", "Patiala", "Bathinda", "Gurdaspur", "Hoshiarpur", "Faridkot", "Ferozepur", "Moga", "Muktsar", "Kapurthala", "Fatehgarh Sahib", "Rupnagar", "SAS Nagar (Mohali)", "Sangrur", "Barnala", "Mansa", "Pathankot", "Tarn Taran", "Shahid Bhagat Singh Nagar"]}}, "M.P": {"divs": {"104 Indore": ["Indore", "Dhar", "Khargone", "Barwani", "Alirajpur", "Jhabua"], "109 Jabalpur": ["Jabalpur", "Chhindwara", "Seoni", "Narsinghpur", "Mandla", "Dindori", "Balaghat"], "113 Bhopal": ["Bhopal", "Sehore", "Raisen", "Vidisha", "Rajgarh"], "114 Gwalior": ["Gwalior", "Datia", "Guna", "Ashoknagar", "Shivpuri"], "115 Sagar": ["Sagar", "Damoh", "Chhatarpur", "Panna", "Tikamgarh", "Niwari"], "116 Ujjain": ["Ujjain", "Dewas", "Shajapur", "Agar Malwa", "Mandsaur", "Neemuch", "Ratlam"]}}}}, "Mumbai Region": {"states": {"Maharashtra": {"divs": {"201 Mumbai Western": ["Mumbai City", "Mumbai Suburban", "Thane", "Raigad", "Palghar"], "205 Amravati": ["Amravati", "Akola", "Washim", "Buldhana", "Yavatmal"], "207 Pune": ["Pune", "Satara", "Sangli", "Solapur", "Kolhapur"], "206 Thane": ["Thane", "Raigad", "Palghar"], "208 Nagpur": ["Nagpur", "Wardha", "Bhandara", "Gondiya", "Chandrapur", "Gadchiroli"], "211 Mumbai City": ["Mumbai City", "Mumbai Suburban"], "212 Nashik": ["Nashik", "Ahmednagar", "Dhule", "Nandurbar", "Jalgaon"], "213 Aurangabad": ["Aurangabad", "Jalna", "Beed", "Latur", "Osmanabad", "Nanded", "Hingoli", "Parbhani"], "203 Ratnagiri": ["Ratnagiri", "Sindhudurg"], "209 Palghar": ["Palghar"], "Mumbai Suburbun 1": ["Andheri", "Borivali", "Kandivali", "Malad", "Goregaon"], "Mumbai Suburbun 2": ["Bandra", "Kurla", "Chembur", "Ghatkopar", "Vikhroli"]}}, "Chhattisgarh": {"divs": {"210 Bilaspur": ["Bilaspur", "Korba", "Janjgir-Champa", "Raigarh", "Mungeli"], "Raipur & Chhattisgarh": ["Raipur", "Durg", "Baloda Bazar", "Gariaband", "Mahasamund"], "Durg": ["Durg", "Rajnandgaon", "Kabirdham", "Bemetara"], "Surguja": ["Surguja", "Surajpur", "Balrampur", "Korea", "Jashpur"], "Bastar": ["Bastar", "Kondagaon", "Kanker", "Narayanpur", "Bijapur", "Sukma", "Dantewada"]}}}}, "Bengaluru Region": {"states": {"Karnataka": {"divs": {"401 Belgaum": ["Belagavi", "Dharwad", "Gadag", "Haveri", "Uttara Kannada"], "402 Bengaluru": ["Bengaluru Urban", "Bengaluru Rural", "Ramanagara", "Tumkur", "Chikkaballapura", "Kolar"], "403 Gulbarga": ["Kalaburagi", "Bidar", "Raichur", "Koppal", "Yadgir", "Vijayapura", "Bagalkot"]}}, "Kerala": {"divs": {"404 Goa & Kerala": ["North Goa", "South Goa"]}}, "Goa": {"divs": {"404 Goa & Kerala": ["North Goa", "South Goa"]}}}}, "Delhi Region": {"states": {"Jammu & Kashmir": {"divs": {"307 Jammu": ["Jammu", "Samba", "Kathua", "Udhampur", "Reasi", "Rajouri", "Poonch", "Doda", "Kishtwar", "Ramban"], "308 South Kashmir": ["Anantnag", "Kulgam", "Pulwama", "Shopian"], "309 North Kashmir": ["Srinagar", "Budgam", "Ganderbal", "Bandipora", "Baramulla", "Kupwara"]}}, "Himachal Pradesh": {"divs": {"Himachal Pradesh": ["Shimla", "Mandi", "Kangra", "Kullu", "Solan", "Sirmaur", "Bilaspur", "Hamirpur", "Una", "Chamba", "Kinnaur", "Lahaul & Spiti"]}}, "Uttar Pradesh": {"divs": {"311 Bareilly": ["Bareilly", "Pilibhit", "Shahjahanpur", "Badaun"], "313 Kanpur": ["Kanpur Nagar", "Kanpur Dehat", "Etawah", "Farrukhabad", "Kannauj", "Auraiya"], "316 Banaras": ["Varanasi", "Chandauli", "Ghazipur", "Jaunpur", "Sant Ravidas Nagar"], "303 Moradabad": ["Moradabad", "Rampur", "Amroha", "Sambhal", "Bijnor"], "304 Aligarh": ["Aligarh", "Hathras", "Kasganj", "Etah", "Mainpuri", "Firozabad", "Mathura", "Agra"], "314 Lucknow": ["Lucknow", "Unnao", "Rae Bareli", "Sitapur", "Hardoi", "Lakhimpur Kheri"], "315 Gorakhpur": ["Gorakhpur", "Deoria", "Kushinagar", "Maharajganj", "Sant Kabir Nagar"], "306 Agra": ["Agra", "Mathura", "Firozabad", "Mainpuri"], "312 Jhansi": ["Jhansi", "Lalitpur", "Hamirpur", "Mahoba", "Banda", "Chitrakoot"], "302 Meerut": ["Meerut", "Ghaziabad", "Gautam Buddha Nagar (Noida)", "Bulandshahr", "Hapur", "Baghpat"], "317 Ayodhya": ["Ayodhya", "Ambedkar Nagar", "Sultanpur", "Amethi", "Barabanki"], "319 Allahbad (Prayagraj)": ["Prayagraj", "Fatehpur", "Kaushambi", "Pratapgarh"], "322 Gonda": ["Gonda", "Balrampur", "Shravasti", "Bahraich", "Siddharth Nagar", "Basti", "Sant Kabir Nagar"], "320 Mirzapur": ["Mirzapur", "Sonbhadra", "Bhadohi"], "321 Azamgarh": ["Azamgarh", "Mau", "Ballia"], "Moradabad (FKI)": ["Moradabad", "Amroha", "Rampur", "Sambhal"]}}, "Haryana": {"divs": {"Haryana": ["Gurugram", "Faridabad", "Sonipat", "Rohtak", "Hisar", "Ambala", "Karnal", "Panipat", "Yamunanagar", "Kurukshetra", "Kaithal", "Jind", "Bhiwani", "Charkhi Dadri", "Mahendragarh", "Rewari", "Jhajjar", "Nuh", "Palwal", "Fatehabad", "Sirsa"]}}, "Uttarakhand": {"divs": {"310 Uttarakhand": ["Dehradun", "Haridwar", "Rishikesh", "Roorkee", "Nainital", "Almora", "Pithoragarh", "Chamoli", "Rudraprayag", "Tehri", "Pauri", "Uttarkashi", "Bageshwar", "Champawat"]}}, "Delhi": {"divs": {"301 Delhi": ["Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi", "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"]}}, "Bihar": {"divs": {"318 Bihar": ["Patna", "Nalanda", "Gaya", "Nawada", "Aurangabad", "Arwal", "Jehanabad", "Bhojpur", "Buxar", "Rohtas", "Kaimur", "Muzaffarpur", "Sitamarhi", "Sheohar", "Vaishali", "Saran", "Siwan", "Gopalganj", "Darbhanga", "Madhubani", "Samastipur", "Begusarai", "Bhagalpur", "Banka", "Munger", "Lakhisarai", "Sheikhpura", "Jamui", "Purnia", "Katihar", "Araria", "Kishanganj", "Supaul", "Madhepura", "Saharsa", "Khagaria", "Motihari (East Champaran)", "Bettiah (West Champaran)"]}}}}, "Hyderabad Region": {"states": {"Telangana": {"divs": {"602 Hyderabad": ["Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad"], "603 Mahbub Nagar": ["Mahabubnagar", "Nagarkurnool", "Wanaparthy", "Gadwal", "Narayanpet"]}}, "Andhra Pradesh": {"divs": {"604 Andhra (Vijaywada)": ["Krishna", "Guntur", "West Godavari", "East Godavari", "Visakhapatnam", "Vizianagaram", "Srikakulam", "Kurnool", "Kadapa", "Nellore", "Chittoor", "Prakasam", "Alluri Sitharama Raju", "Anakapalli", "Kakinada", "Konaseema", "Eluru", "NTR", "Palnadu", "Sri Sathya Sai", "Annamayya", "Tirupati"]}}, "Tamil Nadu": {"divs": {"601 Chennai": ["Chennai", "Thiruvallur", "Kancheepuram", "Chengalpattu", "Coimbatore", "Tirupur", "Erode", "Salem", "Namakkal", "Dharmapuri", "Krishnagiri", "Vellore", "Ranipet", "Tirupattur", "Villupuram", "Cuddalore", "Madurai", "Dindigul", "Theni", "Virudhunagar", "Ramanathapuram", "Sivaganga", "Thoothukudi", "Tirunelveli", "Tenkasi", "Kanyakumari", "Thanjavur", "Tiruvarur", "Nagapattinam", "Mayiladuthurai", "Ariyalur", "Perambalur", "Tiruchirappalli", "Karur", "Pudukkottai", "Tiruvannamalai", "Kallakurichi", "The Nilgiris"]}}}}, "Kolkata Region": {"states": {"Jharkhand": {"divs": {"502 Tata Nagar (Kolhan)": ["East Singhbhum", "West Singhbhum", "Seraikela-Kharsawan"], "507 Dhanbad (North Chotanagpur)": ["Dhanbad", "Bokaro", "Hazaribagh", "Chatra", "Koderma", "Giridih", "Ramgarh"], "510 Palamu": ["Palamu", "Latehar", "Garhwa"], "511 South Chotanagpur": ["Ranchi", "Khunti", "Gumla", "Simdega", "Lohardaga"]}}, "West Bengal": {"divs": {"501 Kolkata (Presidency)": ["Kolkata", "North 24 Parganas", "South 24 Parganas", "Howrah", "Hooghly"], "503 Asansol (Malda)": ["Paschim Bardhaman", "Purba Bardhaman", "Birbhum", "Murshidabad", "Malda"], "506 Howrah (Burdwan)": ["Howrah", "Hooghly", "Nadia", "Purba Bardhaman"], "512 Jalpaiguri": ["Jalpaiguri", "Cooch Behar", "Alipurduar", "Darjeeling", "Kalimpong"], "513 Medinipur": ["Paschim Medinipur", "Purba Medinipur", "Jhargram", "Bankura", "Purulia"]}}, "Odisha": {"divs": {"504 Cuttack": ["Cuttack", "Kendrapara", "Jagatsinghpur", "Puri", "Khordha", "Nayagarh", "Boudh", "Angul", "Dhenkanal", "Jajpur", "Bhadrak", "Balasore", "Mayurbhanj", "Keonjhar", "Sundargarh", "Sambalpur", "Bargarh", "Jharsuguda", "Deogarh", "Sonepur", "Balangir", "Nuapada", "Kalahandi", "Rayagada", "Koraput", "Malkangiri", "Nabarangpur", "Gajapati", "Kandhamal"]}}, "Assam": {"divs": {"305 Assam": ["Kamrup Metro", "Kamrup", "Nalbari", "Barpeta", "Bongaigaon", "Chirang", "Baksa", "Morigaon", "Nagaon", "Hojai", "Cachar", "Hailakandi", "Karimganj", "Dibrugarh", "Sivasagar", "Jorhat", "Golaghat", "Majuli", "Sonitpur", "Biswanath", "Lakhimpur", "Dhemaji", "Tinsukia", "Charaideo", "Darrang", "Udalguri", "Karbi Anglong", "West Karbi Anglong", "Dima Hasao", "Dhubri", "South Salmara", "Goalpara", "Kokrajhar"]}}, "Meghalaya": {"divs": {"Meghalaya": ["East Khasi Hills", "West Khasi Hills", "South West Khasi Hills", "Ri Bhoi", "East Jaintia Hills", "West Jaintia Hills", "East Garo Hills", "West Garo Hills", "South Garo Hills", "North Garo Hills", "Eastern West Khasi Hills"]}}, "Manipur": {"divs": {"Manipur": ["Imphal East", "Imphal West", "Thoubal", "Bishnupur", "Churachandpur", "Senapati", "Ukhrul", "Tamenglong", "Jiribam", "Kangpokpi", "Kakching", "Noney", "Pherzawl", "Tengnoupal", "Kamjong", "Chandel"]}}, "Arunachal Pradesh": {"divs": {"Arunachal Pradesh": ["Itanagar (Papum Pare)", "East Kameng", "West Kameng", "Tawang", "Upper Subansiri", "Lower Subansiri", "East Siang", "West Siang", "Upper Siang", "Dibang Valley", "Lower Dibang Valley", "Lohit", "Anjaw", "Changlang", "Tirap", "Longding", "Namsai", "Lepa Rada", "Pakke-Kessang", "Shi Yomi", "Siang", "Kamle", "Kra Daadi", "Kurung Kumey"]}}}}};
+function _ensureHierarchyAliasesV26(){
+  try{
+    if(!HIER['Bareilly Region'] && HIER['Delhi Region'] && HIER['Delhi Region'].states && HIER['Delhi Region'].states['Uttar Pradesh']){
+      HIER['Bareilly Region']={
+        states:{
+          'Uttar Pradesh':JSON.parse(JSON.stringify(HIER['Delhi Region'].states['Uttar Pradesh']))
+        }
+      };
+    }
+    if(!HIER['Nagpur Region'] && HIER['Mumbai Region'] && HIER['Mumbai Region'].states && HIER['Mumbai Region'].states['Maharashtra']){
+      var mh=HIER['Mumbai Region'].states['Maharashtra'],ng=(mh.divs||{})['208 Nagpur'];
+      HIER['Nagpur Region']={
+        states:{
+          'Maharashtra':{
+            divs:{'208 Nagpur':JSON.parse(JSON.stringify(ng||[]))}
+          }
+        }
+      };
+    }
+  }catch(e){console.warn('Hierarchy alias V26:',e);}
+}
+_ensureHierarchyAliasesV26();
 // HIER_KEY_MAP: "Mumbai Region" => "Mumbai" (jo cases mein store hota hai)
 const HIER_KEY_MAP={};
 (function(){
@@ -2120,7 +2146,7 @@ function normalizeDept(raw){
 const DEF_TMADD=["Makaan","Zameen","Saman / Asbab","Nuqsaan e Maal","Tijarat","Wirasat","Mehnat / Ujrat","Zakhm / Chot","Dukaan","Gaadi / Sawari","Other"];
 const DEF_TMAQSAD=["Shar'i Tawan","Islahi Tawan","Raazi Naama","Court Order","Mufahimat","Other"];
 const DEF_SAEL=["Division Finance Zimmedar","Audit Majlis","MAB Majlis","GSB Majlis","Nazim MTM","Nazim e Jamia","Majlis Maktaba tul Madina","FGN Channel","Ruhani Ilaj Office","GNO Majlis","Majlis Muawinat","Majlis 12 Mah","Majlis HR","Waqf Muballig","Ushr Majlis","Tajiran Majlis","Course Majlis","Qafila","Ijtima Majlis","Other"];
-const DEF_MUFATTISH=["Imran Misbahi","Afroz Madani","Hafin Madani","Muhammad Bilal Raza","Saqlain Raza Madani"];
+const DEF_MUFATTISH=["Imran Misbahi","Afroz Madani","Hafin Madani","Muhammad Bilal Raza","Saqlain Raza Madani","Abdullah"];
 
 // ===== MUFATTISH RESPONSIBILITY MAP =====
 // User-confirmed responsibility:
@@ -2132,6 +2158,8 @@ const DEFAULT_MUFATTISH_RESPONSIBILITY={
   "Kolkata Region":    {default:"Muhammad Bilal Raza"},
   "Bengaluru Region":  {default:"Saqlain Raza Madani"},
   "Hyderabad Region":  {default:"Saqlain Raza Madani"},
+  "Bareilly Region":   {default:"Saqlain Raza Madani"},
+  "Nagpur Region":     {default:"Afroz Madani"},
   "Delhi Region":      {
     default:"Imran Misbahi",
     states:{
@@ -2235,7 +2263,7 @@ function _populateRegionsForMufV17(preserve){
 
   all.forEach(function(reg){
     var o=document.createElement('option');o.value=reg;
-    o.textContent=(assigned.indexOf(reg)>-1?'✓ ':'')+reg;
+    o.textContent=reg;
     r.appendChild(o);
   });
 
@@ -2249,10 +2277,11 @@ function _populateRegionsForMufV17(preserve){
 }
 function mufattishChangedV17(){
   _mufMode='manual';
-  _populateRegionsForMufV17('');
   ['fSt','fDiv','fDist'].forEach(function(id){
-    var e=document.getElementById(id);if(e){e.innerHTML='<option value="">Select...</option>';if(e._ssRefresh)e._ssRefresh();}
+    var e=document.getElementById(id);
+    if(e){e.innerHTML='<option value="">Select...</option>';if(e._ssRefresh)e._ssRefresh();}
   });
+  _populateRegionsForMufV17('');
 }
 function _stateAssignedToSelectedMufV17(region,state){
   var muf=String((document.getElementById('fMuf')||{}).value||'').trim();
@@ -2320,6 +2349,22 @@ let TMADD=[...DEF_TMADD];
 let TMAQSAD=[...DEF_TMAQSAD];
 let SAEL=[...DEF_SAEL];
 let MUFATTISH=[...DEF_MUFATTISH];
+function _mergeInvestigatorsV26(){
+  var seen={},out=[];
+  Array.prototype.slice.call(arguments).forEach(function(arr){
+    (Array.isArray(arr)?arr:[]).forEach(function(v){
+      v=String(v||'').trim();if(!v)return;
+      var k=v.toLowerCase();
+      if(!seen[k]){seen[k]=true;out.push(v);}
+    });
+  });
+  return out;
+}
+function _ensureMufResponsibilityV26(){
+  if(!MUFATTISH_RESPONSIBILITY['Bareilly Region'])MUFATTISH_RESPONSIBILITY['Bareilly Region']={default:'Saqlain Raza Madani'};
+  if(!MUFATTISH_RESPONSIBILITY['Nagpur Region'])MUFATTISH_RESPONSIBILITY['Nagpur Region']={default:'Afroz Madani'};
+}
+
 let STATUSES=[...DEF_STATUS];
 let RTYPES=[...DEF_RTYPES];
 var SCHEMA_MIGRATION_V13={updatedAtMsComplete:false,deptsArrayComplete:false,cursor:'',processed:0,completedAt:''};
@@ -2337,7 +2382,7 @@ function loadAllSettings(){
   const tm=localStorage.getItem('sr_tmadd');if(tm)try{TMADD=JSON.parse(tm);}catch(e){}
   const tmq=localStorage.getItem('sr_tmaqsad');if(tmq)try{TMAQSAD=JSON.parse(tmq);}catch(e){}
   const sl=localStorage.getItem('sr_sael');if(sl)try{SAEL=JSON.parse(sl);}catch(e){}
-  const mf=localStorage.getItem('sr_mufattish');if(mf)try{MUFATTISH=JSON.parse(mf);}catch(e){}
+  const mf=localStorage.getItem('sr_mufattish');if(mf)try{MUFATTISH=_mergeInvestigatorsV26(DEF_MUFATTISH,JSON.parse(mf),MUFATTISH);}catch(e){};MUFATTISH=_mergeInvestigatorsV26(DEF_MUFATTISH,MUFATTISH);
   const st=localStorage.getItem('sr_statuses');if(st)try{STATUSES=JSON.parse(st);}catch(e){}
   const rt=localStorage.getItem('sr_rtypes');if(rt)try{RTYPES=JSON.parse(rt);}catch(e){}
   // Depts: use localStorage only as temporary — Firebase will override on load
@@ -2352,7 +2397,7 @@ async function fbLoadSettings(){
       if(d.tmadd&&Array.isArray(d.tmadd))TMADD=d.tmadd;
       if(d.tmaqsad&&Array.isArray(d.tmaqsad))TMAQSAD=d.tmaqsad;
       if(d.sael&&Array.isArray(d.sael))SAEL=d.sael;
-      if(d.mufattish&&Array.isArray(d.mufattish))MUFATTISH=d.mufattish;
+      if(d.mufattish&&Array.isArray(d.mufattish))MUFATTISH=_mergeInvestigatorsV26(DEF_MUFATTISH,d.mufattish,MUFATTISH);else MUFATTISH=_mergeInvestigatorsV26(DEF_MUFATTISH,MUFATTISH);
       if(d.mufResponsibility&&typeof d.mufResponsibility==='object'){
         MUFATTISH_RESPONSIBILITY=_cloneMufResp(d.mufResponsibility);
         _saveMufRespLocal();
@@ -2372,7 +2417,9 @@ async function fbLoadSettings(){
         // Always replace HIER completely from Firebase
         Object.keys(HIER).forEach(function(k){ delete HIER[k]; });
         Object.assign(HIER, d.hier);
+        _ensureHierarchyAliasesV26();
       }
+      _ensureMufResponsibilityV26();
       if(d.customFonts&&Array.isArray(d.customFonts)) fmMergeFonts(d.customFonts);
       if(d.schemaMigrationV13&&typeof d.schemaMigrationV13==='object'){
         SCHEMA_MIGRATION_V13=Object.assign({},SCHEMA_MIGRATION_V13,d.schemaMigrationV13);
@@ -2727,6 +2774,16 @@ window.__orphanAuthResetBlockedV24=true;
 window.__dashboardTopExactFastV25=true;
 window.__noPartial250AsTotalV25=true;
 window.__recoverySnapshotUiRemovedV25=true;
+window.__regressionRepairV26=true;
+window.__fullHistoryOnDemandV26=true;
+window.__dashboardControlsRestoredV26=true;
+window.__tawanEditFallbackV26=true;
+window.__investigatorHierarchyRepairV26=true;
+window.__searchFullHistoryV26=true;
+window.__reportsFullHistoryV26=true;
+window.__settingsSafeOpenV26=true;
+window.__ocrReliabilityGateV26=true;
+
 
 
 
@@ -5078,6 +5135,125 @@ function _newCaseGoTop(){
     if(pg){pg.scrollTop=0;pg.scrollLeft=0;}
   }catch(e){}
 }
+
+var _historyLoadingV26=null;
+var _historyLastRawReadsV26=0;
+
+function _historyLoadingUiV26(page,msg){
+  msg=msg||'Poora historical data load ho raha hai...';
+  if(page==='search'){
+    var tb=document.getElementById('srTB');
+    if(tb)tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:26px;color:var(--mt)"><div class="loading"><div class="spin"></div>'+_e(msg)+'</div></td></tr>';
+    var c=document.getElementById('srCnt');if(c)c.textContent='Loading full history...';
+  }else if(page==='reports'){
+    var box=document.getElementById('rpC');
+    if(box)box.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--mt)"><div class="loading"><div class="spin"></div>'+_e(msg)+'</div></div>';
+  }
+}
+
+function _historyLedgerAddV26(n){
+  try{
+    var x=_rgLedger(),used=Math.max(0,parseInt(x.caseReads)||0);
+    x.caseReads=used+Math.max(0,parseInt(n)||0);
+    x.lastLabel='explicit-full-history-v26';
+    x.lastActual=Math.max(0,parseInt(n)||0);
+    x.lastAt=Date.now();
+    _rgSaveLedger(x);
+  }catch(e){}
+}
+
+async function _historyQueryAllV26(q,map,rawState,label){
+  var cursor=null,page=0;
+  while(true){
+    if(rawState.raw>=6000)throw new Error('History safety cap reached');
+    var qq=q.orderBy(firebase.firestore.FieldPath.documentId()).limit(500);
+    if(cursor)qq=qq.startAfter(cursor);
+    var sn=await qq.get({source:'server'});
+    rawState.raw+=sn.size||0;
+    sn.docs.forEach(function(d){
+      var c=Object.assign({id:d.id},d.data());
+      if(!c.deletedAt)map[d.id]=c;
+    });
+    page++;
+    if(sn.empty||sn.size<500)break;
+    cursor=sn.docs[sn.docs.length-1];
+  }
+}
+
+async function ensureFullHistoryV26(reason){
+  if(!window._ccPartial && (cc||[]).length)return cc;
+  if(_historyLoadingV26)return _historyLoadingV26;
+
+  _historyLoadingV26=(async function(){
+    var map={},rawState={raw:0};
+    try{
+      var qs=_isServerScoped()?_caseQueryFamiliesV13():[db.collection('cases')];
+      for(var i=0;i<qs.length;i++){
+        await _historyQueryAllV26(qs[i],map,rawState,'history-'+i);
+      }
+
+      var arr=Object.keys(map).map(function(id){return map[id];});
+      arr=_applyRestriction(arr);
+      try{
+        var feed=await _syncDeletedCaseFeedV13(false);
+        if(feed&&feed.length)arr=_applyDeletedCaseFeedV13(arr,feed);
+      }catch(e){}
+
+      if(!arr.length)throw new Error('Historical cases nahi mile');
+      if(arr.length>=5000)throw new Error('History safety cap ke kareeb hai; full load verify nahi hua');
+
+      _historyLastRawReadsV26=rawState.raw;
+      _historyLedgerAddV26(rawState.raw);
+
+      cacheSave(arr,true);
+      await _caseMetaPut({
+        partial:false,
+        lastServerAt:Date.now(),
+        lastDeltaAt:Date.now(),
+        bootstrapCount:arr.length,
+        version:26,
+        fullHistoryReason:String(reason||'user')
+      });
+
+      window._ccPartial=false;
+      _processCasesRaw(arr);
+
+      // Full case cache mil gaya to Tawan bhi isi se exact local source bana sakta hai.
+      _tawanServerCasesV23=arr.filter(function(c){return _tawanIsCaseV23(c);});
+      _tawanServerReadyV23=true;
+      _tawanCacheSaveV23(_tawanServerCasesV23);
+
+      toast('✅ Poora historical data load ho gaya — '+arr.length+' cases');
+      return arr;
+    }catch(e){
+      console.error('Full history V26:',e);
+      toast('❌ Full historical data load nahi hua: '+(e.message||e));
+      throw e;
+    }finally{
+      _historyLoadingV26=null;
+    }
+  })();
+
+  return _historyLoadingV26;
+}
+
+
+function _renderSettingsSafeV26(){
+  var errs=[];
+  [['Tawan Category',function(){lmRenderTCategory();}],
+   ['Tawan Purpose',function(){lmRenderTPurpose();}],
+   ['Location',function(){lmLoadFirebaseRegions();}],
+   ['Settings',function(){lmLoadSettings();}]
+  ].forEach(function(x){
+    try{x[1]();}catch(e){errs.push(x[0]+': '+(e.message||e));console.error('Settings render '+x[0],e);}
+  });
+  if(errs.length)toast('⚠️ Settings ke kuch sections load nahi hue; console check karein');
+}
+function openSettingsV26(el){
+  goPage('settings',el);
+  setTimeout(_renderSettingsSafeV26,20);
+}
+
 function goPage(pg,el,skipHistory){
   // Mobile: page khulte hi sidebar band karo (overlap na rahe)
   if(window.innerWidth<=768){ var _sb=document.getElementById('sb'); if(_sb) _sb.classList.remove('mob'); }
@@ -5137,10 +5313,16 @@ function goPage(pg,el,skipHistory){
   requestAnimationFrame(function(){
     if(pg==='dash')         rDash();
     else if(pg==='cases')   rCases();
-    else if(pg==='reports'){ updRepYears(); _repRestoreState(); rRep(); }
+    else if(pg==='reports'){
+      if(window._ccPartial){
+        _historyLoadingUiV26('reports');
+        ensureFullHistoryV26('reports').then(function(){
+          updRepYears();_repRestoreState();rRep();
+        }).catch(function(){updRepYears();_repRestoreState();rRep();});
+      }else{updRepYears();_repRestoreState();rRep();}
+    }
     else if(pg==='settings'){
-      lmRenderTCategory(); lmRenderTPurpose(); lmLoadFirebaseRegions();
-      setTimeout(lmLoadSettings, 30);
+      _renderSettingsSafeV26();
     }
     else if(pg==='users') fbGetU().then(rUsers);
     else if(pg==='clients') { loadClients(); }
@@ -5159,8 +5341,18 @@ function goPage(pg,el,skipHistory){
     }
     else if(pg==='tawan')   openTawanV23();
     else if(pg==='search'){
-      if(_pendingFilters) applyPendingFilters();
-      else doSrch();
+      if(window._ccPartial){
+        _historyLoadingUiV26('search');
+        ensureFullHistoryV26('search').then(function(){
+          initMultiSelects();
+          if(_pendingFilters)applyPendingFilters();else doSrch();
+        }).catch(function(){
+          initMultiSelects();
+          if(_pendingFilters)applyPendingFilters();else doSrch();
+        });
+      }else{
+        if(_pendingFilters)applyPendingFilters();else doSrch();
+      }
     }
   });
 }
@@ -5216,10 +5408,10 @@ function initDD(){
   if(sRgEl){
     sRgEl.innerHTML='<option value="">All</option>';
     // Use actual data region values for search dropdown
-    const dataRegions=['Ajmer','Mumbai','Delhi','Bengaluru','Bengaluru','Hyderabad','Kolkata'];
+    const dataRegions=['Ajmer','Mumbai','Delhi','Bengaluru','Hyderabad','Kolkata','Bareilly','Nagpur'];
     const hierRegions=Object.keys(HIER);
     // Merge both — show HIER names as label but store short name as value
-    const regMap={'Ajmer Region':'Ajmer','Mumbai Region':'Mumbai','Delhi Region':'Delhi','Bengaluru Region':'Bengaluru','Hyderabad Region':'Hyderabad','Kolkata Region':'Kolkata'};
+    const regMap={'Ajmer Region':'Ajmer','Mumbai Region':'Mumbai','Delhi Region':'Delhi','Bengaluru Region':'Bengaluru','Hyderabad Region':'Hyderabad','Kolkata Region':'Kolkata','Bareilly Region':'Bareilly','Nagpur Region':'Nagpur'};
     hierRegions.forEach(r=>{const o=document.createElement('option');o.value=regMap[r]||r;o.textContent=r;sRgEl.appendChild(o);});
   }
   ['fSt','fDiv','fDist'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='<option value="">Select...</option>';});
@@ -6000,14 +6192,16 @@ function updRepYears(){
 // ===== HIDDEN REGIONS (cards chhupao — data nahi hatega, total same rahega) =====
 // In regions ke CARDS dashboard/reports mein chhupte hain. Data/total pe koi asar nahi.
 // Search aur case-entry mein ye regions rehte hain. Toggle se dikha sakte ho.
-var HIDDEN_REGIONS = [];
-var _showHiddenRegions = false;
+var HIDDEN_REGIONS = ['Bareilly Region','Nagpur Region'];
+var _showHiddenRegions = true;
 function toggleHiddenRegions(){
-  _showHiddenRegions=false;
+  _showHiddenRegions=!_showHiddenRegions;
+  var b=document.getElementById('hidRegBtn');
+  if(b)b.textContent=_showHiddenRegions?'🙈 Hide Bareilly/Nagpur':'👁️ Show Bareilly/Nagpur';
   rRegCards();
 }
 function _isHiddenRegion(r){
-  return false; // V19: koi Region hidden nahi
+  return HIDDEN_REGIONS.indexOf(_canonRegionName(r))>-1;
 }
 // ===== END HIDDEN REGIONS =====
 
@@ -6028,25 +6222,29 @@ function _canonRegionName(r){
 
 var dashYear = ''; // '' = all years
 
-function dashFilterYear(yr){
-  dashYear = yr || '';
-  // Title update — year selected ho to dikhe
-  var titleEl = document.getElementById('ptitle');
-  if(titleEl) titleEl.textContent = dashYear ? 'Dashboard — ' + dashYear : 'Dashboard';
-  renderDashYearTabs(); // Tab highlight update karo
-  rDash(); // rDash ke andar stats + region cards ek hi baar refresh honge
+async function dashFilterYear(yr){
+  dashYear=yr||'';
+  var titleEl=document.getElementById('ptitle');
+  if(titleEl)titleEl.textContent=dashYear?'Dashboard — '+dashYear:'Dashboard';
+  renderDashYearTabs();
+  if(dashYear && window._ccPartial){
+    try{await ensureFullHistoryV26('dashboard-year');}catch(e){}
+  }
+  rDash();
 }
 
 function initDashYearFilter(){ renderDashYearTabs(); }
 function renderDashYearTabs(){
-  var tabs = document.getElementById('dashYearTabs');
-  if(!tabs) return;
-  var years = [...new Set(cc.map(_dashCaseYear).filter(Boolean))].sort().reverse();
-  if(dashYear && years.indexOf(dashYear)<0) dashYear='';
-  var opts = '<option value="">All</option>' + years.map(function(y){
+  var tabs=document.getElementById('dashYearTabs');if(!tabs)return;
+  var set={};
+  (cc||[]).map(_dashCaseYear).filter(Boolean).forEach(function(y){set[y]=true;});
+  var cy=(new Date()).getFullYear();
+  for(var y=2022;y<=cy;y++)set[String(y)]=true;
+  var years=Object.keys(set).sort().reverse();
+  var opts='<option value="">All</option>'+years.map(function(y){
     return '<option value="'+_e(y)+'"'+(dashYear===y?' selected':'')+'>'+_e(y)+'</option>';
   }).join('');
-  tabs.innerHTML = '<select aria-label="Dashboard Year" onchange="dashFilterYear(this.value)" style="padding:4px 10px;border-radius:7px;font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid var(--blue);background:#fff;color:var(--bd);outline:none;min-width:80px">'+opts+'</select>';
+  tabs.innerHTML='<select aria-label="Dashboard Year" onchange="dashFilterYear(this.value)" style="padding:4px 10px;border-radius:7px;font-size:.73rem;font-weight:700;cursor:pointer;border:1.5px solid var(--blue);background:#fff;color:var(--bd);outline:none;min-width:80px">'+opts+'</select>';
 }
 // ===== END DASHBOARD YEAR FILTER =====
 
@@ -6299,7 +6497,7 @@ function rRegCards(){
     _explicit.forEach(function(r){if(r&&_allowedRegs.indexOf(r)<0)_allowedRegs.push(r);});
   }
   // V19: koi Region card hide nahi hoga. Bareilly/Nagpur bhi normal Region hain.
-  _allowedRegs = _allowedRegs.filter(function(r){return !!r;});
+  _allowedRegs = _allowedRegs.filter(function(r){return !!r && (_showHiddenRegions || !_isHiddenRegion(r));});
   document.getElementById('regCards').innerHTML=_allowedRegs.map(rRaw=>{
     const r=_e(rRaw); // XSS FIX: region naam data se aata hai
     const s=rs[rRaw]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
@@ -9079,10 +9277,27 @@ async function delC(id){
     removeOneCase(id);toast('🗑️ Recycle Bin mein chala gaya');
   }catch(e){toast('❌ '+e.message);}
 }
-function editC(id){
+async function editC(id){
   if(!requirePerm('edit'))return;
-  window._savedScrollY = window.scrollY || 0;
-  const c=cc.find(x=>x.id===id);if(!c)return;
+  window._savedScrollY=window.scrollY||0;
+  var c=(cc||[]).find(function(x){return x.id===id;});
+
+  if(!c && _tawanServerReadyV23){
+    c=(_tawanServerCasesV23||[]).find(function(x){return x.id===id;})||null;
+  }
+  if(!c){
+    try{
+      var sn=await db.collection('cases').doc(id).get({source:'server'});
+      if(sn.exists)c=Object.assign({id:sn.id},sn.data());
+    }catch(e){console.warn('Edit case point load:',e);}
+  }
+  if(!c){toast('❌ Case load nahi hua');return;}
+  if(!_caseAllowedByCurrentScope(c)){toast('⛔ Is case ka access nahi hai');return;}
+
+  if(!(cc||[]).some(function(x){return x.id===id;})){
+    cc.push(c);
+    cacheSave(cc,false);
+  }
   eId=id;goPage('newcase');document.getElementById('formTit').textContent='✏️ Edit Case';var _cnoEdit=document.getElementById('fCNo');if(_cnoEdit){_cnoEdit.readOnly=true;_cnoEdit.title='Case No create hone ke baad change nahi hota';}
   // Pehle sab tawan fields reset karo — purana data saaf ho jaye
   resetTawnFields();
@@ -10891,6 +11106,13 @@ async function loadTawanServerV23(force){
   return _tawanServerLoadingV23;
 }
 async function openTawanV23(){
+  if(!window._ccPartial && (cc||[]).length){
+    _tawanServerCasesV23=(cc||[]).filter(function(c){return _tawanIsCaseV23(c);});
+    _tawanServerReadyV23=true;
+    _tawanCacheSaveV23(_tawanServerCasesV23);
+    renderTawan();
+    return;
+  }
   _tawanLoadingUiV23('Tawan records load ho rahe hain...');
   try{
     await loadTawanServerV23(false);
@@ -15420,6 +15642,32 @@ function deptClose(){
   return conf*2.2 + urduRatio*140 - latinRatio*100 - junk*10 + Math.min(lines,50)*1.5 + Math.min(urdu,1200)*0.04;
 }
 
+  
+function _ocrTextSignatureV26(txt){
+  txt=String(txt||'').replace(/[^\u0600-\u06FFA-Za-z0-9]+/g,'').toLowerCase();
+  var s={};
+  for(var i=0;i<txt.length-1;i++)s[txt.slice(i,i+2)]=true;
+  return s;
+}
+function _ocrAgreementV26(best,results){
+  var A=_ocrTextSignatureV26(best),ak=Object.keys(A);if(!ak.length)return 0;
+  var max=0;
+  (results||[]).forEach(function(r){
+    if(!r||r.text===best)return;
+    var B=_ocrTextSignatureV26(r.text),bk=Object.keys(B),inter=0;
+    ak.forEach(function(k){if(B[k])inter++;});
+    var uni=ak.length+bk.length-inter;
+    if(uni>0)max=Math.max(max,inter/uni);
+  });
+  return max;
+}
+function _ocrReliableV26(best,results){
+  var txt=String(best.text||''),non=(txt.match(/\S/g)||[]).length||1;
+  var urdu=(txt.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g)||[]).length;
+  var ratio=urdu/non,agree=_ocrAgreementV26(txt,results),conf=Number(best.confidence||0);
+  return {ok:(txt.length>=12 && ratio>=0.68 && conf>=68 && agree>=0.28),ratio:ratio,agree:agree,conf:conf};
+}
+
   window.rahOcrStart=async function(){
   if(!_rahOcrFile){toast('⚠️ Pehle image select karein');return;}
   var run=++_rahOcrRun;
@@ -15487,14 +15735,15 @@ function deptClose(){
       if(s>best.score)best={text:r.text,confidence:r.confidence,score:s};
     });
 
-    var out=best.text||'';
-    if(tx)tx.value=out;
-
-    if(out){
-      setStatus('✅ Urdu BEST model ke 4 passes me se behtar result select hua. Insert se pehle ek baar check kar lein.',100,false);
+    var out=best.text||'',quality=_ocrReliableV26(best,results);
+    if(out && quality.ok){
+      if(tx)tx.value=out;
+      setStatus('✅ OCR result reliable mila. Insert se pehle ek baar check kar lein.',100,false);
       if(ib)ib.disabled=false;
     }else{
-      setStatus('Text nahi mila. Sirf text-area ka cropped screenshot use karein.',100,true);
+      if(tx)tx.value='';
+      if(ib)ib.disabled=true;
+      setStatus('❌ OCR is image ko bharosemand tareeqe se nahi padh saka. Galat text add nahi kiya gaya. Sirf text ka clear/cropped screenshot use karein.',100,true);
     }
     if(rb)rb.disabled=false;
   }catch(e){
