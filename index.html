@@ -664,8 +664,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
       <div class="card cp" onclick="fByS('')"><div class="cn" id="sc0">0</div><div class="cl">Total Cases</div></div>
       <div class="card red cp" onclick="fByS('pending_z')"><div class="cn" id="sc1">0</div><div class="cl">🔴 Pending Zimmedar</div></div>
       <div class="card cp" style="border-top-color:#00838f;cursor:pointer" onclick="fByS('meeting')"><div class="cn" id="sc10" style="color:#00838f">0</div><div class="cl">🔵 Meeting</div></div>
-      <div class="card cyn cp" onclick="fByS('pending_o')"><div class="cn" id="sc3">0</div><div class="cl">🔵 Pending (Office)</div></div>
-      <div class="card cp" style="border-top-color:#607d8b;cursor:pointer" onclick="fByS('office')"><div class="cn" id="sc11" style="color:#607d8b">0</div><div class="cl">🏢 Office</div></div>
+      <div class="card cyn cp" onclick="fByOfficeV17()" title="Pending Office + Office"><div class="cn" id="sc3">0</div><div class="cl">🏢 Office</div></div>
       <div class="card pnk cp" onclick="fByS('ifta')"><div class="cn" id="sc4">0</div><div class="cl">🟣 Sent to Ifta</div></div>
       <div class="card grn cp" onclick="fByS('closed')"><div class="cn" id="sc5">0</div><div class="cl">🟢 Closed</div></div>
     </div>
@@ -775,15 +774,8 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
           <div class="fgr"><label>Opening Date <span style="color:var(--red)">*</span></label><input type="date" id="fOD" onchange="syncYearFromOpeningDate();calcKT()"></div>
           <div class="fgr"><label>Year <span style="color:var(--red)">*</span></label><input id="fYr" type="text" inputmode="numeric" maxlength="4" placeholder="2026" onchange="toggleOldLoc(this.value);caseYearChanged(this.value)" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4);caseYearChanged(this.value)" onkeydown="if(event.key==='Tab'){event.preventDefault();var m=document.getElementById('fMuf');if(m)m.focus();}"></div>
           <div class="fgr">
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
-              <span>Investigator Name <span style="color:var(--red)">*</span></span>
-              <span style="display:flex;gap:4px">
-                <button type="button" id="fMufAutoBtn" onclick="setMufattishMode('auto',true)" style="border:1.5px solid var(--blue);border-radius:6px;padding:2px 7px;font-size:.61rem;font-weight:800;cursor:pointer">⚡ Auto</button>
-                <button type="button" id="fMufManualBtn" onclick="setMufattishMode('manual',false)" style="border:1.5px solid #6a1b9a;border-radius:6px;padding:2px 7px;font-size:.61rem;font-weight:800;cursor:pointer">✋ Manual</button>
-              </span>
-            </label>
-            <select id="fMuf" tabindex="0" onchange="_updateMufattishAssignmentNote();triggerAutoSave()"><option value="">-- Select Investigator --</option></select>
-            <div id="fMufAssignNote" style="font-size:.64rem;color:var(--mt);margin-top:3px;line-height:1.3">Auto Mode • Region select karte hi Investigator set hoga.</div>
+            <label>Investigator Name <span style="color:var(--red)">*</span></label>
+            <select id="fMuf" tabindex="0" onchange="mufattishChangedV17();triggerAutoSave()"><option value="">-- Select Investigator --</option></select>
           </div>
           <div class="fgr"><label>Referred By</label><select id="fSael"><option value="">Select...</option></select></div>
           <div class="fgr" id="fDeptWrap"><label>Department <span style="font-size:.65rem;color:var(--mt)">(Multiple select)</span></label>
@@ -814,8 +806,8 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
       <div class="sbox">
         <div class="sbox-title">🗺️ Location</div>
         <div class="fg">
-          <div class="fgr"><label>Region <span style="color:var(--red)">*</span></label><select id="fReg" onchange="fFS();autoAssignMufattish(true);triggerAutoSave()"><option value="">Select...</option></select></div>
-          <div class="fgr"><label>State</label><select id="fSt" onchange="fFD();autoAssignMufattish(true);triggerAutoSave()"><option value="">Select...</option></select></div>
+          <div class="fgr"><label>Region <span style="color:var(--red)">*</span></label><select id="fReg" onchange="fFS();triggerAutoSave()"><option value="">Select...</option></select></div>
+          <div class="fgr"><label>State</label><select id="fSt" onchange="fFD();triggerAutoSave()"><option value="">Select...</option></select></div>
           <div class="fgr"><label>Division</label><select id="fDiv" onchange="fFDi()"><option value="">Select...</option></select></div>
           <div class="fgr"><label>District</label><select id="fDist"><option value="">Select...</option></select></div>
           <div class="fgr"><label>City</label><input id="fCity"></div>
@@ -1298,10 +1290,9 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
         <div class="fi"><label>Name/Mobile/Code</label><input id="sq" oninput="doSrch()" placeholder="Search..."></div>
         <div class="fi"><label>Case No</label>
           <div style="display:flex;gap:5px;align-items:center">
-            <input id="sCN" oninput="doSrch()" placeholder="Case No..." style="flex:1;min-width:0">
-            <button type="button" class="btn bout bsm" onclick="fetchExactCaseNoV13()" title="Local cache mein na mile to exact Case No ko Firestore se quota-safe tareeqe se dhoondhe">🌐 Exact</button>
+            <input id="sCN" oninput="doSrch()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchExactCaseNoV13();}" placeholder="Case No..." style="flex:1;min-width:0">
+            <button type="button" class="btn bout bsm" onclick="fetchExactCaseNoV13()" title="Old Case No local cache mein na mile to sirf wahi case server se dhoondhe">🔎 Find</button>
           </div>
-          <div style="font-size:.61rem;color:var(--mt);margin-top:3px">Old case local cache mein na ho to exact Case No se server lookup karein.</div>
         </div>
         <div class="fi"><label>Mufattish</label><div class="ms-wrap" id="ms-sMuf"></div></div>
         <div class="fi"><label>Year</label><div class="ms-wrap" id="ms-sYr"></div></div>
@@ -1341,7 +1332,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div class="twrap">
       <div class="thead"><h3>Results</h3><span id="srCnt" style="font-size:.76rem;opacity:.8"></span><button class="btn" style="margin-left:auto;background:var(--green,#16a34a);color:#fff;padding:5px 12px;font-size:.8rem" onclick="openSrchExport()">⬇️ Export</button></div>
       <div id="searchPartialWarn" style="display:none;margin:0 10px 10px;padding:8px 10px;border:1px solid #ffcc80;background:#fff8e1;color:#7a4b00;border-radius:7px;font-size:.69rem;line-height:1.5">
-        🛡️ <b>Local Safe Search:</b> is device par historical database ka sirf quota-safe subset loaded hai. Exact purana case dhoondhne ke liye Case No likh kar <b>🌐 Exact</b> use karein.
+        🛡️ <b>Local Safe Search:</b> is device par historical database ka sirf quota-safe subset loaded hai. Purana case dhoondhne ke liye Case No likh kar <b>🔎 Find</b> use karein.
       </div>
       <!-- srDebug removed in production -->
       <div style="overflow-x:auto"><table><thead><tr id="srTH"></tr></thead><tbody id="srTB"></tbody></table></div>
@@ -1770,7 +1761,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
         <div>
           <h3 style="color:var(--bd);margin:0 0 4px;font-size:.9rem">🧭 Investigator Responsibility Manager</h3>
-          <p style="font-size:.7rem;color:var(--mt);margin:0">New Case ke Auto Mode ke liye Region default aur State-wise override yahan set karein.</p>
+          <p style="font-size:.7rem;color:var(--mt);margin:0">New Case me Mufattish select karne ke baad kaun se Region/State uske neeche dikhne chahiye, yahan responsibility mapping set karein.</p>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn bpri bsm" onclick="mufRespSave()">💾 Save Mapping</button>
@@ -2154,7 +2145,7 @@ const DEFAULT_MUFATTISH_RESPONSIBILITY={
   }
 };
 let MUFATTISH_RESPONSIBILITY=JSON.parse(JSON.stringify(DEFAULT_MUFATTISH_RESPONSIBILITY));
-var _mufMode='auto';
+var _mufMode='manual';
 
 function _cloneMufResp(o){
   try{return JSON.parse(JSON.stringify(o||{}));}catch(e){return {};}
@@ -2190,6 +2181,77 @@ function expectedMufattish(region,state){
   var st=String(state||'').trim();
   return (cfg.states&&cfg.states[st]) ? cfg.states[st] : (cfg.default||'');
 }
+
+function _regionAllowedForCurrentUserV17(r){
+  if(_isHiddenRegion(r)&&!eId)return false;
+  if(_isAdmin())return true;
+  var dr=(cu&&cu.dataRestrict)||{};
+  return !dr.regions||!dr.regions.length||dr.regions.indexOf(r)>-1;
+}
+function _regionsForMufV17(muf){
+  muf=String(muf||'').trim();if(!muf)return[];
+  var out=[];
+  Object.keys(HIER||{}).forEach(function(r){
+    if(!_regionAllowedForCurrentUserV17(r))return;
+    var cfg=MUFATTISH_RESPONSIBILITY[_mufRespRegionKey(r)]||{};
+    var hit=(String(cfg.default||'').trim()===muf);
+    if(!hit){
+      Object.keys(cfg.states||{}).some(function(st){
+        if(String(cfg.states[st]||'').trim()===muf){hit=true;return true;}
+        return false;
+      });
+    }
+    if(hit)out.push(r);
+  });
+  return out;
+}
+function _setSearchableDisabledV17(id,disabled,msg){
+  var el=document.getElementById(id),sw=document.getElementById(id+'_ss');
+  if(el)el.disabled=!!disabled;
+  if(sw){
+    sw.style.pointerEvents=disabled?'none':'';
+    sw.style.opacity=disabled?'.55':'1';
+    var d=sw.querySelector('.ss-display');
+    if(d)d.title=msg||'';
+  }
+}
+function _populateRegionsForMufV17(preserve){
+  var muf=String((document.getElementById('fMuf')||{}).value||'').trim();
+  var r=document.getElementById('fReg'),st=document.getElementById('fSt'),dv=document.getElementById('fDiv'),di=document.getElementById('fDist');
+  if(!r)return;
+  var want=String(preserve||'').trim();
+  r.innerHTML='<option value="">'+(muf?'Select Region...':'Pehle Investigator select karein')+'</option>';
+
+  if(!muf){
+    [st,dv,di].forEach(function(x){if(x){x.innerHTML='<option value="">Select...</option>';if(x._ssRefresh)x._ssRefresh();}});
+    _setSearchableDisabledV17('fReg',true,'Pehle Investigator select karein');
+    if(r._ssRefresh)r._ssRefresh();
+    return;
+  }
+
+  var regs=_regionsForMufV17(muf);
+  if(want && regs.indexOf(want)<0 && HIER[want] && _regionAllowedForCurrentUserV17(want))regs.unshift(want);
+  regs.forEach(function(reg){var o=document.createElement('option');o.value=reg;o.textContent=reg;r.appendChild(o);});
+  _setSearchableDisabledV17('fReg',false,regs.length?'Investigator ke assigned Region':'Is Investigator ki Region mapping Settings me nahi hai');
+  if(want&&Array.from(r.options).some(function(o){return o.value===want;}))r.value=want;
+  if(r._ssRefresh)r._ssRefresh();
+
+  if(!regs.length)_setSearchableDisabledV17('fReg',true,'Is Investigator ki Region mapping Settings me nahi hai');
+}
+function mufattishChangedV17(){
+  _mufMode='manual';
+  _populateRegionsForMufV17('');
+  ['fSt','fDiv','fDist'].forEach(function(id){
+    var e=document.getElementById(id);if(e){e.innerHTML='<option value="">Select...</option>';if(e._ssRefresh)e._ssRefresh();}
+  });
+}
+function _stateAssignedToSelectedMufV17(region,state){
+  var muf=String((document.getElementById('fMuf')||{}).value||'').trim();
+  if(!muf)return false;
+  var cfg=MUFATTISH_RESPONSIBILITY[_mufRespRegionKey(region)];
+  if(!cfg)return true;
+  return String(expectedMufattish(region,state)||'').trim()===muf;
+}
 function _setMufattishField(value){
   var el=document.getElementById('fMuf');
   if(!el)return;
@@ -2198,82 +2260,29 @@ function _setMufattishField(value){
   else if(el._ssRefresh)el._ssRefresh();
 }
 function _renderMufMode(){
+  _mufMode='manual';
   var el=document.getElementById('fMuf');
-  var a=document.getElementById('fMufAutoBtn');
-  var m=document.getElementById('fMufManualBtn');
+  if(el)el.disabled=false;
   var sw=document.getElementById('fMuf_ss');
-  var sd=sw?sw.querySelector('.ss-display'):null;
-  var auto=(_mufMode==='auto');
-  if(el)el.disabled=auto;
-  // fMuf searchable custom dropdown hai: Auto mode me wrapper bhi lock karo.
-  if(sw){
-    sw.style.pointerEvents=auto?'none':'';
-    sw.style.opacity=auto?'.72':'1';
-  }
-  if(sd)sd.title=auto?'Auto Mode: Manual button dabakar Investigator change karein':'Manual Override: Investigator change kar sakte hain';
-  if(a){
-    a.style.background=auto?'var(--blue)':'#fff';
-    a.style.color=auto?'#fff':'var(--blue)';
-  }
-  if(m){
-    m.style.background=!auto?'#6a1b9a':'#fff';
-    m.style.color=!auto?'#fff':'#6a1b9a';
-  }
-  _updateMufattishAssignmentNote();
+  if(sw){sw.style.pointerEvents='';sw.style.opacity='1';}
 }
 function setMufattishMode(mode,applyNow){
-  _mufMode=(mode==='manual')?'manual':'auto';
+  _mufMode='manual';
   _renderMufMode();
-  if(_mufMode==='auto' && applyNow!==false)autoAssignMufattish(true);
-  if(typeof triggerAutoSave==='function')triggerAutoSave();
 }
 function toggleMufattishMode(){
-  setMufattishMode(_mufMode==='auto'?'manual':'auto',true);
+  _mufMode='manual';
+  _renderMufMode();
 }
 function _updateMufattishAssignmentNote(){
-  var note=document.getElementById('fMufAssignNote');
-  if(!note)return;
-  var reg=(document.getElementById('fReg')||{}).value||'';
-  var st=(document.getElementById('fSt')||{}).value||'';
-  var exp=expectedMufattish(reg,st);
-  if(_mufMode==='manual'){
-    note.textContent=exp
-      ? 'Manual Override ON • Auto suggestion: '+exp+(st?' • '+st:'')
-      : 'Manual Override ON • Is location ki auto mapping set nahi hai.';
-    note.style.color='#6a1b9a';
-  }else if(!reg){
-    note.textContent='Auto Mode • Region select karte hi Investigator set hoga.';
-    note.style.color='var(--mt)';
-  }else if(exp){
-    note.textContent='Auto responsibility: '+exp+(st?' • '+st:'');
-    note.style.color='var(--green)';
-  }else{
-    note.textContent='Auto Mode • Is Region ki Investigator mapping abhi set nahi hai.';
-    note.style.color='#e65100';
-  }
+  // V17: Auto/Manual note removed.
 }
 function autoAssignMufattish(showToast){
-  var reg=(document.getElementById('fReg')||{}).value||'';
-  var st=(document.getElementById('fSt')||{}).value||'';
-  var exp=expectedMufattish(reg,st);
-  _updateMufattishAssignmentNote();
-  if(!exp)return '';
-  if(_mufMode==='manual')return exp;
-  var el=document.getElementById('fMuf');
-  var old=el?String(el.value||''):'';
-  _setMufattishField(exp);
-  if(showToast && old!==exp)toast('🔍 Investigator auto-set: '+exp);
-  if(typeof triggerAutoSave==='function')triggerAutoSave();
-  return exp;
+  return String((document.getElementById('fMuf')||{}).value||'').trim();
 }
 function _validateMufattishResponsibility(){
-  var reg=(document.getElementById('fReg')||{}).value||'';
-  var st=(document.getElementById('fSt')||{}).value||'';
   var actual=String((document.getElementById('fMuf')||{}).value||'').trim();
-  var exp=expectedMufattish(reg,st);
-  if(!exp)return {ok:true,expected:'',actual:actual,mode:_mufMode};
-  if(_mufMode==='manual')return {ok:true,expected:exp,actual:actual,mode:'manual',overridden:actual!==exp};
-  return {ok:actual===exp,expected:exp,actual:actual,mode:'auto'};
+  return {ok:!!actual,expected:'',actual:actual,mode:'manual'};
 }
 
 function mufattishResponsibilityMismatches(list){
@@ -2664,6 +2673,12 @@ window.__searchPaginationResetV14=true;
 window.__searchNormalizationV14=true;
 window.__settingsDeepFixV15=true;
 window.__accountPasswordModalLayoutV16=true;
+window.__dashboardOfficeMergedV17=true;
+window.__quotaBannerCompactV17=true;
+window.__mufattishFirstRegionV17=true;
+window.__noAutoManualMufUiV17=true;
+window.__searchFindLabelV17=true;
+
 window.__settingsSaveIntegrityV15=true;
 window.__settingsMasterProtectionV15=true;
 window.__settingsBackupTruthV15=true;
@@ -2974,16 +2989,16 @@ async function _caseMetaPut(m){
 function _showQuotaSafeBanner(partial,count,msg){
   window._ccPartial=!!partial;
   var b=document.getElementById('quotaSafeBanner');
-  if(!b)return;
+  if(b)b.style.display='none';
+  var st=document.getElementById('syncTxt');
+  var live=st&&st.closest('.livebdg');
+  var tip='';
   if(partial){
-    b.style.display='block';
-    var _exact=(window._serverDashExactV13&&window._serverDashExactV13.serverExact===true);
-    b.innerHTML='🛡️ <b>Quota Safe Mode:</b> is device par full Firestore collection auto-read band hai. '
-      +(count?('<b>'+count+'</b> case(s) ka safe subset loaded hai. '):'')
-      +(msg||(_exact?'🌐 Top Dashboard totals server aggregation se exact hain; detailed lists/Reports local subset ho sakte hain.':'Dashboard/Reports totals is mode me poore historical database ke totals nahi hain.'));
-  }else{
-    b.style.display='none';
+    tip='Quota Safe Mode: '+(count||0)+' local safe cases loaded. Top dashboard counts server aggregation se exact ho sakte hain; Search/Reports local subset ho sakte hain.';
+    if(msg)tip+=' '+String(msg).replace(/<[^>]*>/g,'');
   }
+  if(st)st.title=tip;
+  if(live)live.title=tip;
 }
 async function _rgApplyMetaToUi(){
   var m=await _caseMetaGet();
@@ -3298,7 +3313,7 @@ async function fetchExactCaseNoV13(){
   var inp=document.getElementById('sCN');
   var raw=String(inp&&inp.value||'').trim();
   var cn=_normalizeCaseNoSearchV14(raw);
-  if(!cn){toast('⚠️ Exact Case No likhein');return;}
+  if(!cn){toast('⚠️ Case No likhein');return;}
   if(inp)inp.value=cn;
 
   var local=(cc||[]).find(function(c){
@@ -3308,7 +3323,7 @@ async function fetchExactCaseNoV13(){
     doSrch._page=1;doSrch();toast('✅ Case local cache mein mil gaya');return;
   }
 
-  // Exact lookup = registry read + direct case read. Query-family multiplication/composite index nahi.
+  // Case lookup = registry read + direct case read. Query-family multiplication/composite index nahi.
   var ticket=_rgReserve(3,'exact-case-no-registry-v14');
   if(!ticket){toast('🛡️ Aaj ka device read budget exact lookup ke liye available nahi');return;}
 
@@ -3336,7 +3351,7 @@ async function fetchExactCaseNoV13(){
     if(!found){
       var migDone=SCHEMA_MIGRATION_V13&&SCHEMA_MIGRATION_V13.updatedAtMsComplete===true&&SCHEMA_MIGRATION_V13.deptsArrayComplete===true;
       toast(migDone
-        ? 'ℹ️ Exact Case No nahi mila ya aapke access scope mein nahi hai'
+        ? 'ℹ️ Case No nahi mila ya aapke access scope mein nahi hai'
         : 'ℹ️ Case nahi mila. Bahut purana case ho to Settings ka Legacy Migration complete karein; migration registry bhi backfill karti hai.');
       return;
     }
@@ -3344,7 +3359,7 @@ async function fetchExactCaseNoV13(){
     var c=Object.assign({id:found.id},found.data());
     // Belt-and-suspenders: Firestore rule ke baad bhi full client restriction parity verify karo.
     if(!_caseAllowedByCurrentScope(c)){
-      toast('ℹ️ Exact Case No nahi mila ya aapke access scope mein nahi hai');
+      toast('ℹ️ Case No nahi mila ya aapke access scope mein nahi hai');
       return;
     }
 
@@ -3357,10 +3372,10 @@ async function fetchExactCaseNoV13(){
     toast('✅ Old case quota-safe exact lookup se local cache mein add ho gaya');
   }catch(e){
     _rgAdjust(ticket,Math.max(1,billed));
-    console.warn('exact case lookup V14:',e);
+    console.warn('case lookup V14:',e);
     toast((e&&e.code==='permission-denied')
-      ? 'ℹ️ Exact Case No nahi mila ya aapke access scope mein nahi hai'
-      : '❌ Exact lookup: '+e.message);
+      ? 'ℹ️ Case No nahi mila ya aapke access scope mein nahi hai'
+      : '❌ Case lookup: '+e.message);
   }
 }
 
@@ -3517,7 +3532,7 @@ function _applyServerDashExactV13(data){
   if(!data||!window._ccPartial||dashYear)return;
   window._serverDashExactV13=data;
 
-  var map={sc0:data.total,sc1:data.statuses&&data.statuses.pending_z,sc10:data.statuses&&data.statuses.meeting,sc3:data.statuses&&data.statuses.pending_o,sc11:data.statuses&&data.statuses.office,sc4:data.statuses&&data.statuses.ifta,sc5:data.statuses&&data.statuses.closed};
+  var map={sc0:data.total,sc1:data.statuses&&data.statuses.pending_z,sc10:data.statuses&&data.statuses.meeting,sc3:((data.statuses&&data.statuses.pending_o)||0)+((data.statuses&&data.statuses.office)||0),sc4:data.statuses&&data.statuses.ifta,sc5:data.statuses&&data.statuses.closed};
   Object.keys(map).forEach(function(id){
     var el=document.getElementById(id);
     if(el&&typeof map[id]==='number'){
@@ -4726,8 +4741,8 @@ function initDD(){
   if(fGd){const cur=fGd.value;fGd.innerHTML='<option value="">None</option>';RTYPES.forEach(r=>{const o=document.createElement('option');o.value=r.v;o.textContent=r.l;fGd.appendChild(o);});if(cur)fGd.value=cur;}
   const sGd=document.getElementById('sGd');
   if(sGd){const cur=sGd.value;sGd.innerHTML='<option value="">All</option>';RTYPES.forEach(r=>{const o=document.createElement('option');o.value=r.v;o.textContent=r.l;sGd.appendChild(o);});if(cur)sGd.value=cur;}
-  // Region — sRg uses short names (as stored in cases), fReg uses HIER keys
-  const fRegEl=document.getElementById('fReg');if(fRegEl){fRegEl.innerHTML='<option value="">Select...</option>';var _drF=(cu&&cu.dataRestrict)||{},_allowedR=(!_isAdmin()&&_drF.regions&&_drF.regions.length)?_drF.regions:null;Object.keys(HIER).forEach(r=>{if(_isHiddenRegion(r)&&!eId)return;if(_allowedR&&_allowedR.indexOf(r)<0)return;const o=document.createElement('option');o.value=r;o.textContent=r;fRegEl.appendChild(o);});}
+  // V17: New Case me Investigator pehle, uske baad assigned Region.
+  const fRegEl=document.getElementById('fReg');if(fRegEl){var _curRegV17=fRegEl.value||'';_populateRegionsForMufV17(_curRegV17);}
   const sRgEl=document.getElementById('sRg');
   if(sRgEl){
     sRgEl.innerHTML='<option value="">All</option>';
@@ -4745,7 +4760,23 @@ function initDD(){
 function _allowedDivForUser(dv){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.divisions||!dr.divisions.length||dr.divisions.indexOf(dv)>-1;}
 function _allowedStateForUser(st){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.states||!dr.states.length||dr.states.indexOf(st)>-1;}
 function _allowedDistrictForUser(di){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.districts||!dr.districts.length||dr.districts.indexOf(di)>-1;}
-function fFS(){var r=document.getElementById('fReg').value,s=document.getElementById('fSt'),dv=document.getElementById('fDiv'),di=document.getElementById('fDist');s.innerHTML='<option value="">Select State...</option>';dv.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(dv._ssSilent)dv._ssSilent('');if(di._ssSilent)di._ssSilent('');if(!r||!HIER[r])return;Object.keys(HIER[r].states).forEach(function(st){var divNames=Object.keys((HIER[r].states[st]||{}).divs||{}),hasAllowed=divNames.some(_allowedDivForUser);if(!_allowedStateForUser(st)||(!hasAllowed&&cu&&cu.dataRestrict&&cu.dataRestrict.divisions&&cu.dataRestrict.divisions.length))return;var o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
+function fFS(){
+  var r=document.getElementById('fReg').value,s=document.getElementById('fSt'),dv=document.getElementById('fDiv'),di=document.getElementById('fDist');
+  var saved=(s&&s.dataset&&s.dataset.savedVal)||'';
+  s.innerHTML='<option value="">Select State...</option>';dv.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';
+  if(s._ssSilent)s._ssSilent('');if(dv._ssSilent)dv._ssSilent('');if(di._ssSilent)di._ssSilent('');
+  if(!r||!HIER[r])return;
+  Object.keys(HIER[r].states).forEach(function(st){
+    if(!_stateAssignedToSelectedMufV17(r,st))return;
+    var divNames=Object.keys((HIER[r].states[st]||{}).divs||{}),hasAllowed=divNames.some(_allowedDivForUser);
+    if(!_allowedStateForUser(st)||(!hasAllowed&&cu&&cu.dataRestrict&&cu.dataRestrict.divisions&&cu.dataRestrict.divisions.length))return;
+    var o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);
+  });
+  if(saved && HIER[r].states && HIER[r].states[saved] && !Array.from(s.options).some(function(o){return o.value===saved;})){
+    var ex=document.createElement('option');ex.value=saved;ex.textContent=saved+' (Existing)';s.appendChild(ex);
+  }
+  if(s._ssRefresh)s._ssRefresh();
+}
 function fFD(){var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,s=document.getElementById('fDiv'),di=document.getElementById('fDist');s.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(di._ssSilent)di._ssSilent('');if(!r||!st||!HIER[r]||!HIER[r].states[st])return;Object.keys(HIER[r].states[st].divs).forEach(function(d){if(!_allowedDivForUser(d))return;var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
 function fFDi(){var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,dv=document.getElementById('fDiv').value,s=document.getElementById('fDist');s.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(!r||!st||!dv||!HIER[r]||!HIER[r].states[st]||!_allowedDivForUser(dv))return;var a=HIER[r].states[st].divs[dv]||[];a.filter(_allowedDistrictForUser).forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
 
@@ -5571,11 +5602,10 @@ function updStats(){
     c[0]++;
     var _ds=String(m.status||'').toLowerCase();
     if(_ds==='pending_z')c[1]++;
-    else if(_ds==='pending_o')c[3]++;
+    else if(_ds==='pending_o'||_ds==='office')c[3]++;
     else if(_ds==='ifta')c[4]++;
     else if(_ds==='closed')c[5]++;
     else if(_ds==='meeting')c[10]++;
-    else if(_ds==='office')c[11]++;
     var gs=m.guides&&m.guides.length?m.guides:(m.guide?[m.guide]:[]);
     if(gs.indexOf('tawan')>-1)c[6]++;
     if(gs.indexOf('halfia')>-1)c[7]++;
@@ -5806,8 +5836,7 @@ function rRegCards(){
       <div class="rst" onclick="fByR('${r}','')" title="Total"><div class="n" data-reg-total-v13="${_e(rRaw)}" style="color:var(--blue)">${s.t}</div><div class="l">Total</div></div>
       <div class="rst" onclick="fByR('${r}','pending_z')" title="Pending Zimmedar"><div class="n" style="color:var(--red)">${s.pz}</div><div class="l">Zimmedar</div></div>
       <div class="rst" onclick="fByR('${r}','meeting')" title="Meeting"><div class="n" style="color:#00838f">${s.mt}</div><div class="l">Meeting</div></div>
-      <div class="rst" onclick="fByR('${r}','pending_o')" title="Pending Office"><div class="n" style="color:var(--cyan)">${s.po||0}</div><div class="l">P.Office</div></div>
-      <div class="rst" onclick="fByR('${r}','office')" title="Office"><div class="n" style="color:#607d8b">${s.of||0}</div><div class="l">Office</div></div>
+      <div class="rst" onclick="fByROfficeV17('${r}')" title="Pending Office + Office"><div class="n" style="color:var(--cyan)">${(s.po||0)+(s.of||0)}</div><div class="l">Office</div></div>
       <div class="rst" onclick="fByR('${r}','ifta')" title="Sent to Ifta"><div class="n" style="color:var(--pink)">${s['if']}</div><div class="l">Ifta</div></div>
       <div class="rst" onclick="fByR('${r}','closed')" title="Closed"><div class="n" style="color:var(--green)">${s.cl}</div><div class="l">Closed</div></div>
     </div>${tawnRow}${halfRow}</div>`;
@@ -6308,7 +6337,7 @@ function doSrch(){
 
   document.getElementById('srTB').innerHTML = srPageData.length
     ? srPageData.map(function(c,i){ return mRowSearchV14(c,srStart+i+1); }).join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">'+(window._ccPartial?'No local results — purane exact case ke liye Case No + 🌐 Exact use karein':'No results')+'</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mt)">'+(window._ccPartial?'No local results — purane exact case ke liye Case No + 🔎 Find use karein':'No results')+'</td></tr>';
 
   document.getElementById('srCnt').textContent=_searchPartialLabelV14(srTotal,_srPage,srTotalPages,srStart);
   var _spw=document.getElementById('searchPartialWarn');
@@ -6571,6 +6600,24 @@ function fByS(s){
   clrSrch();
   var _yr = dashYear;
   _pendingFilters = s ? {stat: s, customFilter: function(c){ return !_yr || _dashCaseYear(c)===_yr; }} : {customFilter: function(c){ return !_yr || _dashCaseYear(c)===_yr; }};
+  goPage('search');
+}
+function fByOfficeV17(){
+  clrSrch();
+  var _yr=dashYear;
+  _pendingFilters={customFilter:function(c){
+    var st=String(c.status||'').toLowerCase();
+    return (st==='pending_o'||st==='office')&&(!_yr||_dashCaseYear(c)===_yr);
+  }};
+  goPage('search');
+}
+function fByROfficeV17(r){
+  clrSrch();
+  var short=HIER_KEY_MAP[r]||r,_yr=dashYear;
+  _pendingFilters={rg:short,customFilter:function(c){
+    var st=String(c.status||'').toLowerCase();
+    return (st==='pending_o'||st==='office')&&(!_yr||_dashCaseYear(c)===_yr);
+  }};
   goPage('search');
 }
 function fByR(r,status){
@@ -8036,7 +8083,7 @@ function resetF(){
   if(cnoInp){ cnoInp.readOnly=false;cnoInp.style.borderColor=''; cnoInp.style.background='';cnoInp.dataset.autoGenerated='1'; }
   if(cnoMsg) cnoMsg.style.display='none';
   if(cnoIcon) cnoIcon.textContent='';
-  _mufMode='auto';_renderMufMode();
+  _mufMode='manual';_renderMufMode();
   // Auto fill case no
   setTimeout(autoFillCaseNo, 100);
   ['fIdr','fReg','fSt','fDiv','fDist','fGd','fSael','tDO','tDC','tJm','tPM','hSt','halfiaSt','tawnSt','tfT','tfD','tbO','tbD','mazSt','mazratSt'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
@@ -8076,6 +8123,7 @@ function resetF(){
       var e=document.getElementById(id);
       if(e){ e.selectedIndex=0; if(e._ssRefresh) e._ssRefresh(); }
     });
+    _populateRegionsForMufV17('');
     // State/Div/Dist options bhi clear karo — fFS/fFD chain reset
     ['fSt','fDiv','fDist'].forEach(function(id){
       var e=document.getElementById(id);
@@ -8375,8 +8423,7 @@ async function _saveCaseInner(){
     _reqFail('fMuf','Investigator zaroori hai'); return;
   }
   if(!_mufCheck.ok){
-    _setMufattishField(_mufCheck.expected);
-    _reqFail('fMuf','Is Region/State ke liye Investigator '+_mufCheck.expected+' hona chahiye');
+    _reqFail('fMuf','Investigator zaroori hai');
     return;
   }
   if(document.getElementById('fIdr').value==='yes' && !document.getElementById('fIdN').value.trim()){ _reqFail('fIdN','Institution Name zaroori hai'); return; }
@@ -8628,6 +8675,7 @@ function editC(id){
       var el = document.getElementById(id);
       if(el && el._ssRefresh) el._ssRefresh();
     }
+    _populateRegionsForMufV17(regFull);
     document.getElementById('fReg').value = regFull;
     ssRef('fReg');
     // fSt pe saved state store karo PEHLE fFS() call se (unknown region ke liye)
@@ -8648,8 +8696,7 @@ function editC(id){
           // Also refresh mufattish, sael, status display.
           // Existing old case ko open karte waqt Mufattish silently overwrite nahi karna.
           ssRef('fMuf'); ssRef('fSael'); ssRef('fStat'); ssRef('fIdr');
-          var _editExpected=expectedMufattish(c.region,c.state);
-          _mufMode=(c.mufattishMode==='manual'||(!c.mufattishMode&&_editExpected&&c.mufattish&&c.mufattish!==_editExpected))?'manual':'auto';
+          _mufMode='manual';
           _renderMufMode();
           ssRef('tMd'); ssRef('tMq'); ssRef('tDO'); ssRef('tDC'); ssRef('tJm');
   // Show donor response only if rabita hua
