@@ -598,6 +598,11 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
 5) Password recovery uses Firebase Authentication built-in reset email only (Spark/free). No Cloud Functions, SMTP, Blaze plan, or paid backend is required.
 -->
 
+
+<style id="v18CleanUi">
+.livebdg{display:none!important}
+#quotaSafeBanner,#searchPartialWarn{display:none!important}
+</style>
 </head>
 <body>
 <div class="font-preload" aria-hidden="true">صَلُّوا عَلَى الْحَبِيبِ! صَلَّى اللَّهُ تَعَالَى عَلَى مُحَمَّد</div>
@@ -669,7 +674,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
       <div class="card grn cp" onclick="fByS('closed')"><div class="cn" id="sc5">0</div><div class="cl">🟢 Closed</div></div>
     </div>
     <div class="cgrid">
-      <div class="card orn cp" style="min-width:160px">
+      <div id="dashGuideTawan" class="card orn cp" style="min-width:160px">
         <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('tawan')">💰 Tawan</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #ffe0b2;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tawan','')"><div style="font-size:1rem;font-weight:800;color:var(--orange)" id="sc6">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
@@ -677,7 +682,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tawan','closed')"><div style="font-size:1rem;font-weight:800;color:var(--green)" id="scTawnClosed">0</div><div style="font-size:.6rem;color:var(--mt)">Closed</div></div>
         </div>
       </div>
-      <div class="card ppl cp" style="min-width:160px">
+      <div id="dashGuideHalfia" class="card ppl cp" style="min-width:160px">
         <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('halfia')">📜 Halfiya Bayan</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #e1bee7;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('halfia','')"><div style="font-size:1rem;font-weight:800;color:#9c27b0" id="sc7">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
@@ -686,7 +691,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
         </div>
       </div>
 
-      <div class="card cp" style="border-top-color:var(--blue);min-width:160px">
+      <div id="dashGuideTafhim" class="card cp" style="border-top-color:var(--blue);min-width:160px">
         <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('tafhim')">🗣️ Tafhim</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #bbdefb;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tafhim','')"><div style="font-size:1rem;font-weight:800;color:var(--blue)" id="sc8">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
@@ -694,7 +699,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tafhim','closed')"><div style="font-size:1rem;font-weight:800;color:var(--green)" id="scTafhimClosed">0</div><div style="font-size:.6rem;color:var(--mt)">Closed</div></div>
         </div>
       </div>
-      <div class="card grn cp" style="min-width:160px">
+      <div id="dashGuideTransfer" class="card grn cp" style="min-width:160px">
         <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('tabadla')">🔄 Transfer</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #c8e6c9;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tabadla','')"><div style="font-size:1rem;font-weight:800;color:var(--green)" id="sc9">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
@@ -702,7 +707,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
           <div style="text-align:center;cursor:pointer" onclick="fByGS('tabadla','closed')"><div style="font-size:1rem;font-weight:800;color:var(--green)" id="scTransClosed">0</div><div style="font-size:.6rem;color:var(--mt)">Closed</div></div>
         </div>
       </div>
-      <div class="card cp" style="border-top-color:#795548;min-width:160px">
+      <div id="dashGuideMazrat" class="card cp" style="border-top-color:#795548;min-width:160px">
         <div class="cl" style="margin-bottom:4px;cursor:pointer" onclick="fByG('mazratnama')">📝 Mazratnama</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;border-top:1px solid #d7ccc8;padding-top:6px">
           <div style="text-align:center;cursor:pointer" onclick="fByGS('mazratnama','')"><div style="font-size:1rem;font-weight:800;color:#795548" id="sc12">0</div><div style="font-size:.6rem;color:var(--mt)">Total</div></div>
@@ -711,7 +716,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
         </div>
       </div>
     </div>
-    <div class="stitle"><h2>🗺️ Region Overview</h2><button onclick="toggleHiddenRegions()" id="hidRegBtn" style="margin-left:auto;padding:4px 11px;font-size:.72rem;border:1.5px solid var(--blue);background:#fff;color:var(--blue);border-radius:7px;cursor:pointer;font-weight:600">👁️ Hidden regions</button></div>
+    <div class="stitle"><h2>🗺️ Region Overview</h2></div>
     <div class="rcards" id="regCards"></div>
     <div class="stitle"><h2>📝 Recent Cases</h2><span id='dashNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="eId=null;goPage('newcase')">➕ New Case</button></span></div>
     <div class="twrap">
@@ -1289,10 +1294,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
       <div class="sgrid">
         <div class="fi"><label>Name/Mobile/Code</label><input id="sq" oninput="doSrch()" placeholder="Search..."></div>
         <div class="fi"><label>Case No</label>
-          <div style="display:flex;gap:5px;align-items:center">
-            <input id="sCN" oninput="doSrch()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchExactCaseNoV13();}" placeholder="Case No..." style="flex:1;min-width:0">
-            <button type="button" class="btn bout bsm" onclick="fetchExactCaseNoV13()" title="Old Case No local cache mein na mile to sirf wahi case server se dhoondhe">🔎 Find</button>
-          </div>
+          <input id="sCN" oninput="doSrch()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchExactCaseNoV13();}" placeholder="Case No..." title="Purana case local list me na ho to Case No likh kar Enter dabayein">
         </div>
         <div class="fi"><label>Mufattish</label><div class="ms-wrap" id="ms-sMuf"></div></div>
         <div class="fi"><label>Year</label><div class="ms-wrap" id="ms-sYr"></div></div>
@@ -1988,7 +1990,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="ps" style="accent-color:var(--blue)"> 🔍 Search</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pr" style="accent-color:var(--blue)"> 📊 Reports</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="ptw" style="accent-color:var(--orange)"> 💰 Tawan Sheet</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pcl" style="accent-color:var(--blue)"> 🧑‍💼 Clients Master</label>
+            <label id="pclWrapV18" style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pcl" style="accent-color:var(--blue)"> 🧑‍💼 Clients Master</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:not-allowed;opacity:.7" title="User Management sirf Admin role ke liye"><input type="checkbox" id="pu" disabled style="accent-color:var(--blue)"> 👥 Users (Admin only)</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:5px 8px;border:1px solid var(--bor);border-radius:6px;cursor:pointer"><input type="checkbox" id="pst" style="accent-color:var(--blue)"> ⚙️ Settings</label>
           </div>
@@ -2220,23 +2222,36 @@ function _populateRegionsForMufV17(preserve){
   var r=document.getElementById('fReg'),st=document.getElementById('fSt'),dv=document.getElementById('fDiv'),di=document.getElementById('fDist');
   if(!r)return;
   var want=String(preserve||'').trim();
-  r.innerHTML='<option value="">'+(muf?'Select Region...':'Pehle Investigator select karein')+'</option>';
+  r.innerHTML='<option value="">'+(muf?'Select Region...':'Investigator select karein')+'</option>';
 
   if(!muf){
     [st,dv,di].forEach(function(x){if(x){x.innerHTML='<option value="">Select...</option>';if(x._ssRefresh)x._ssRefresh();}});
-    _setSearchableDisabledV17('fReg',true,'Pehle Investigator select karein');
+    _setSearchableDisabledV17('fReg',true,'Investigator select karein');
     if(r._ssRefresh)r._ssRefresh();
     return;
   }
 
-  var regs=_regionsForMufV17(muf);
-  if(want && regs.indexOf(want)<0 && HIER[want] && _regionAllowedForCurrentUserV17(want))regs.unshift(want);
-  regs.forEach(function(reg){var o=document.createElement('option');o.value=reg;o.textContent=reg;r.appendChild(o);});
-  _setSearchableDisabledV17('fReg',false,regs.length?'Investigator ke assigned Region':'Is Investigator ki Region mapping Settings me nahi hai');
-  if(want&&Array.from(r.options).some(function(o){return o.value===want;}))r.value=want;
+  var assigned=_regionsForMufV17(muf);
+  var all=[];
+  Object.keys(HIER||{}).forEach(function(reg){
+    if(_regionAllowedForCurrentUserV17(reg)&&all.indexOf(reg)<0)all.push(reg);
+  });
+  assigned.forEach(function(reg){if(all.indexOf(reg)<0&&_regionAllowedForCurrentUserV17(reg))all.unshift(reg);});
+  all=assigned.concat(all.filter(function(reg){return assigned.indexOf(reg)<0;}));
+
+  all.forEach(function(reg){
+    var o=document.createElement('option');o.value=reg;
+    o.textContent=(assigned.indexOf(reg)>-1?'✓ ':'')+reg;
+    r.appendChild(o);
+  });
+
+  _setSearchableDisabledV17('fReg',!all.length,all.length?'':'Koi allowed Region nahi');
+  if(want&&all.indexOf(want)>-1)r.value=want;
+  else if(assigned.length===1)r.value=assigned[0];
   if(r._ssRefresh)r._ssRefresh();
 
-  if(!regs.length)_setSearchableDisabledV17('fReg',true,'Is Investigator ki Region mapping Settings me nahi hai');
+  // Assigned Region sirf default/prefill hai; user dropdown se kisi bhi allowed Region me change kar sakta hai.
+  if(r.value)fFS();
 }
 function mufattishChangedV17(){
   _mufMode='manual';
@@ -2678,6 +2693,19 @@ window.__quotaBannerCompactV17=true;
 window.__mufattishFirstRegionV17=true;
 window.__noAutoManualMufUiV17=true;
 window.__searchFindLabelV17=true;
+window.__cleanDashboardV18=true;
+window.__hideQuotaUiV18=true;
+window.__mufSingleRegionAutoV18=true;
+window.__searchEnterOldCaseV18=true;
+window.__urduOcrImproveV18=true;
+window.__scopedClientsPermissionUxV18=true;
+window.__noDashboardHideV19=true;
+window.__exactRegionStatsV19=true;
+window.__exactGuideStatsV19=true;
+window.__mufRegionManualOverrideV19=true;
+window.__urduOcrTwoPassV19=true;
+
+
 
 window.__settingsSaveIntegrityV15=true;
 window.__settingsMasterProtectionV15=true;
@@ -3485,45 +3513,95 @@ async function _restCountV13(filter){
   });
   return v;
 }
+
+function _andV19(filters){
+  filters=(filters||[]).filter(Boolean);
+  if(!filters.length)return null;
+  if(filters.length===1)return filters[0];
+  return {compositeFilter:{op:'AND',filters:filters}};
+}
+function _orV19(filters){
+  filters=(filters||[]).filter(Boolean);
+  if(!filters.length)return null;
+  if(filters.length===1)return filters[0];
+  return {compositeFilter:{op:'OR',filters:filters}};
+}
+function _regionFilterV19(rg){
+  var short=String(rg||'').replace(/\s+Region$/i,'');
+  var vals=short!==rg?[rg,short]:[rg];
+  return vals.length===1?_ffV13('region','EQUAL',_svV13(vals[0])):_ffV13('region','IN',_arrV13(vals));
+}
+function _guideFilterV19(g){
+  return _orV19([
+    _ffV13('guides','ARRAY_CONTAINS',_svV13(g)),
+    _ffV13('guide','EQUAL',_svV13(g))
+  ]);
+}
+async function _safeRestCountV19(filter,label){
+  try{return await _restCountV13(filter);}
+  catch(e){console.warn('aggregate '+label+':',e&&e.message?e.message:e);return null;}
+}
+
 async function _loadServerDashExactV13(force){
   if(!window._ccPartial||_isServerScoped()||dashYear)return null;
   if(!force){
     var cached=_dashAggReadCacheV13();
-    if(cached)return cached;
+    if(cached&&cached.v19Exact)return cached;
   }
 
-  var ticket=_rgReserve(120,'dashboard-aggregation-v13');
+  var ticket=_rgReserve(260,'dashboard-aggregation-v19');
   if(!ticket)return null;
 
   try{
     var statuses=['pending_z','meeting','pending_o','office','ifta','closed'];
-    var out={total:await _restCountV13(null),statuses:{},regions:{}};
+    var out={total:await _safeRestCountV19(null,'total'),statuses:{},regions:{},guides:{},serverExact:true,v19Exact:true};
 
     for(var i=0;i<statuses.length;i++){
       var st=statuses[i];
-      out.statuses[st]=await _restCountV13(_ffV13('status','EQUAL',_svV13(st)));
+      out.statuses[st]=await _safeRestCountV19(_ffV13('status','EQUAL',_svV13(st)),'status '+st);
     }
 
     var regs=[];
+    var preferred=['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
+    preferred.forEach(function(r){if(regs.indexOf(r)<0)regs.push(r);});
     Object.keys(HIER||{}).forEach(function(r){r=_canonRegionName(r);if(r&&regs.indexOf(r)<0)regs.push(r);});
     (cc||[]).forEach(function(c){var r=_canonRegionName(c.region);if(r&&regs.indexOf(r)<0)regs.push(r);});
-    regs=regs.slice(0,12);
+    regs=regs.slice(0,16);
 
     for(var j=0;j<regs.length;j++){
-      var rg=regs[j],short=rg.replace(/\s+Region$/i,'');
-      var vals=short!==rg?[rg,short]:[rg];
-      out.regions[rg]=await _restCountV13(
-        vals.length===1
-          ? _ffV13('region','EQUAL',_svV13(vals[0]))
-          : _ffV13('region','IN',_arrV13(vals))
-      );
+      var rg=regs[j],rf=_regionFilterV19(rg),obj={total:null,statuses:{}};
+      obj.total=await _safeRestCountV19(rf,'region '+rg);
+      for(var k=0;k<statuses.length;k++){
+        var rs=statuses[k];
+        obj.statuses[rs]=await _safeRestCountV19(_andV19([rf,_ffV13('status','EQUAL',_svV13(rs))]),'region '+rg+' '+rs);
+      }
+      out.regions[rg]=obj;
     }
-    out.serverExact=true;
+
+    var guideDefs={
+      tawan:{closed:_ffV13('tawnSt','EQUAL',_svV13('closed'))},
+      halfia:{closed:_ffV13('halfiaSt','EQUAL',_svV13('closed'))},
+      tafhim:{closed:_orV19([_ffV13('tafhimSt','EQUAL',_svV13('closed')),_ffV13('tfD','EQUAL',_svV13('yes'))])},
+      tabadla:{closed:_orV19([_ffV13('tabadlaSt','EQUAL',_svV13('closed')),_ffV13('tbD','EQUAL',_svV13('yes'))])},
+      mazratnama:{closed:_ffV13('mazratSt','EQUAL',_svV13('closed'))}
+    };
+    var gids=Object.keys(guideDefs);
+    for(var g=0;g<gids.length;g++){
+      var gid=gids[g],gf=_guideFilterV19(gid);
+      var total=await _safeRestCountV19(gf,'guide '+gid);
+      var closed=await _safeRestCountV19(_andV19([gf,guideDefs[gid].closed]),'guide '+gid+' closed');
+      out.guides[gid]={
+        total:total,
+        closed:closed,
+        pending:(typeof total==='number'&&typeof closed==='number')?Math.max(0,total-closed):null
+      };
+    }
+
     _dashAggWriteCacheV13(out);
     window._serverDashExactV13=out;
     return out;
   }catch(e){
-    console.warn('dashboard aggregation V13:',e);
+    console.warn('dashboard aggregation V19:',e);
     return null;
   }
 }
@@ -3532,25 +3610,53 @@ function _applyServerDashExactV13(data){
   if(!data||!window._ccPartial||dashYear)return;
   window._serverDashExactV13=data;
 
-  var map={sc0:data.total,sc1:data.statuses&&data.statuses.pending_z,sc10:data.statuses&&data.statuses.meeting,sc3:((data.statuses&&data.statuses.pending_o)||0)+((data.statuses&&data.statuses.office)||0),sc4:data.statuses&&data.statuses.ifta,sc5:data.statuses&&data.statuses.closed};
+  var map={
+    sc0:data.total,
+    sc1:data.statuses&&data.statuses.pending_z,
+    sc10:data.statuses&&data.statuses.meeting,
+    sc3:((data.statuses&&data.statuses.pending_o)||0)+((data.statuses&&data.statuses.office)||0),
+    sc4:data.statuses&&data.statuses.ifta,
+    sc5:data.statuses&&data.statuses.closed
+  };
   Object.keys(map).forEach(function(id){
-    var el=document.getElementById(id);
-    if(el&&typeof map[id]==='number'){
-      el.textContent=map[id];
-      el.title='🌐 Server exact count; clicked list may still be quota-safe local subset';
-      el.setAttribute('data-server-exact-v13','1');
-    }
+    var el=document.getElementById(id),v=map[id];
+    if(el&&typeof v==='number'){el.textContent=v;el.title='Server exact count';}
   });
 
   document.querySelectorAll('[data-reg-total-v13]').forEach(function(el){
-    var r=el.getAttribute('data-reg-total-v13');
-    if(data.regions&&typeof data.regions[r]==='number'){
-      el.textContent=data.regions[r];
-      el.title='🌐 Server exact region total';
-    }
+    var r=el.getAttribute('data-reg-total-v13'),obj=data.regions&&data.regions[r];
+    var v=(obj&&typeof obj==='object')?obj.total:obj;
+    if(typeof v==='number'){el.textContent=v;el.title='Server exact region total';}
+  });
+  document.querySelectorAll('[data-reg-v19][data-reg-status-v19]').forEach(function(el){
+    var r=el.getAttribute('data-reg-v19'),key=el.getAttribute('data-reg-status-v19'),obj=data.regions&&data.regions[r];
+    if(!obj||!obj.statuses)return;
+    var v=null;
+    if(key==='office_combined'){
+      var a=obj.statuses.pending_o,b=obj.statuses.office;
+      if(typeof a==='number'&&typeof b==='number')v=a+b;
+    }else v=obj.statuses[key];
+    if(typeof v==='number'){el.textContent=v;el.title='Server exact region status';}
   });
 
-  _showQuotaSafeBanner(true,(cc&&cc.length)||0,'🌐 Top Dashboard status/region totals server aggregation se exact hain; case lists/Search/Reports abhi local safe subset ho sakte hain.');
+  var gids={
+    tawan:['sc6','scTawnOpen','scTawnClosed'],
+    halfia:['sc7','scHalfOpen','scHalfClosed'],
+    tafhim:['sc8','scTafhimOpen','scTafhimClosed'],
+    tabadla:['sc9','scTransOpen','scTransClosed'],
+    mazratnama:['sc12','scMazOpen','scMazClosed']
+  };
+  Object.keys(gids).forEach(function(g){
+    var o=data.guides&&data.guides[g],ids=gids[g];if(!o)return;
+    [['total',ids[0]],['pending',ids[1]],['closed',ids[2]]].forEach(function(x){
+      var el=document.getElementById(x[1]),v=o[x[0]];
+      if(el&&typeof v==='number'){el.textContent=v;el.title='Server exact Rahnumai count';}
+      else if(el&&window._ccPartial&&el.textContent==='…')el.textContent='—';
+    });
+  });
+
+  // Region cards may have been rendered before exact data existed; refresh hooks already update them.
+  _showQuotaSafeBanner(true,(cc&&cc.length)||0,'');
 }
 function refreshServerDashExactV13(){
   if(!window._ccPartial||_isServerScoped()||dashYear)return;
@@ -4762,19 +4868,14 @@ function _allowedStateForUser(st){var dr=(cu&&cu.dataRestrict)||{};return _isAdm
 function _allowedDistrictForUser(di){var dr=(cu&&cu.dataRestrict)||{};return _isAdmin()||!dr.districts||!dr.districts.length||dr.districts.indexOf(di)>-1;}
 function fFS(){
   var r=document.getElementById('fReg').value,s=document.getElementById('fSt'),dv=document.getElementById('fDiv'),di=document.getElementById('fDist');
-  var saved=(s&&s.dataset&&s.dataset.savedVal)||'';
   s.innerHTML='<option value="">Select State...</option>';dv.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';
   if(s._ssSilent)s._ssSilent('');if(dv._ssSilent)dv._ssSilent('');if(di._ssSilent)di._ssSilent('');
   if(!r||!HIER[r])return;
   Object.keys(HIER[r].states).forEach(function(st){
-    if(!_stateAssignedToSelectedMufV17(r,st))return;
     var divNames=Object.keys((HIER[r].states[st]||{}).divs||{}),hasAllowed=divNames.some(_allowedDivForUser);
     if(!_allowedStateForUser(st)||(!hasAllowed&&cu&&cu.dataRestrict&&cu.dataRestrict.divisions&&cu.dataRestrict.divisions.length))return;
     var o=document.createElement('option');o.value=st;o.textContent=st;s.appendChild(o);
   });
-  if(saved && HIER[r].states && HIER[r].states[saved] && !Array.from(s.options).some(function(o){return o.value===saved;})){
-    var ex=document.createElement('option');ex.value=saved;ex.textContent=saved+' (Existing)';s.appendChild(ex);
-  }
   if(s._ssRefresh)s._ssRefresh();
 }
 function fFD(){var r=document.getElementById('fReg').value,st=document.getElementById('fSt').value,s=document.getElementById('fDiv'),di=document.getElementById('fDist');s.innerHTML='<option value="">Select Division...</option>';di.innerHTML='<option value="">Select District...</option>';if(s._ssSilent)s._ssSilent('');if(di._ssSilent)di._ssSilent('');if(!r||!st||!HIER[r]||!HIER[r].states[st])return;Object.keys(HIER[r].states[st].divs).forEach(function(d){if(!_allowedDivForUser(d))return;var o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);});if(s._ssRefresh)s._ssRefresh();}
@@ -5536,19 +5637,14 @@ function updRepYears(){
 // ===== HIDDEN REGIONS (cards chhupao — data nahi hatega, total same rahega) =====
 // In regions ke CARDS dashboard/reports mein chhupte hain. Data/total pe koi asar nahi.
 // Search aur case-entry mein ye regions rehte hain. Toggle se dikha sakte ho.
-var HIDDEN_REGIONS = ['Bareilly Region','Nagpur Region'];
+var HIDDEN_REGIONS = [];
 var _showHiddenRegions = false;
 function toggleHiddenRegions(){
-  _showHiddenRegions = !_showHiddenRegions;
+  _showHiddenRegions=false;
   rRegCards();
-  if(typeof rRep==='function' && _currentPg==='reports') rRep();
-  if(typeof initDD==='function') initDD(); // region dropdown bhi update karo
-  var btns=document.querySelectorAll('#hidRegBtn'); 
-  if(btns[0]) btns[0].textContent = _showHiddenRegions ? '🙈 Hidden chhupao' : '👁️ Hidden regions';
 }
 function _isHiddenRegion(r){
-  if(_showHiddenRegions) return false;
-  return HIDDEN_REGIONS.indexOf(r) > -1;
+  return false; // V19: koi Region hidden nahi
 }
 // ===== END HIDDEN REGIONS =====
 
@@ -5633,6 +5729,18 @@ function updStats(){
   var tc=document.getElementById('scTawnClosed'); if(tc)  tc.textContent=tawnClosed;
   var ho=document.getElementById('scHalfOpen');   if(ho)  ho.textContent=halfPend;
   var hc=document.getElementById('scHalfClosed'); if(hc)  hc.textContent=halfClosed;
+
+  // V19: Rahnumai cards kabhi hide nahi honge.
+  ['dashGuideTawan','dashGuideHalfia','dashGuideTafhim','dashGuideTransfer','dashGuideMazrat'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.style.display='';
+  });
+
+  // Partial cache me server exact stats aane tak fake 0 na dikhayein.
+  if(window._ccPartial && !(window._serverDashExactV13&&window._serverDashExactV13.guides)){
+    ['sc6','scTawnOpen','scTawnClosed','sc7','scHalfOpen','scHalfClosed','sc8','scTafhimOpen','scTafhimClosed','sc9','scTransOpen','scTransClosed','sc12','scMazOpen','scMazClosed'].forEach(function(id){
+      var el=document.getElementById(id);if(el)el.textContent='…';
+    });
+  }
 }
 
 // Badges
@@ -5813,8 +5921,8 @@ function rRegCards(){
     _allowedRegs=_actual.slice();
     _explicit.forEach(function(r){if(r&&_allowedRegs.indexOf(r)<0)_allowedRegs.push(r);});
   }
-  // Hidden regions (Bareilly/Nagpur) ke cards chhupao — data/total pe asar nahi
-  _allowedRegs = _allowedRegs.filter(function(r){ return !_isHiddenRegion(r); });
+  // V19: koi Region card hide nahi hoga. Bareilly/Nagpur bhi normal Region hain.
+  _allowedRegs = _allowedRegs.filter(function(r){return !!r;});
   document.getElementById('regCards').innerHTML=_allowedRegs.map(rRaw=>{
     const r=_e(rRaw); // XSS FIX: region naam data se aata hai
     const s=rs[rRaw]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
@@ -5832,13 +5940,14 @@ function rRegCards(){
       <div onclick="fByRGS('${r}','halfia','pending')" style="text-align:center;cursor:pointer" title="Pending Halfiya"><div style="font-size:.82rem;font-weight:800;color:var(--red)">${h.p}</div><div style="font-size:.56rem;color:var(--mt)">Pending</div></div>
       <div onclick="fByRGS('${r}','halfia','closed')" style="text-align:center;cursor:pointer" title="Closed Halfiya"><div style="font-size:.82rem;font-weight:800;color:var(--green)">${h.cl}</div><div style="font-size:.56rem;color:var(--mt)">Closed</div></div>
     </div>`:'';
+    var _ph=window._ccPartial?'…':null;
     return`<div class="rcard"><h4 onclick="fByR('${r}')" style="cursor:pointer">📍 ${r}</h4><div class="rcstats">
-      <div class="rst" onclick="fByR('${r}','')" title="Total"><div class="n" data-reg-total-v13="${_e(rRaw)}" style="color:var(--blue)">${s.t}</div><div class="l">Total</div></div>
-      <div class="rst" onclick="fByR('${r}','pending_z')" title="Pending Zimmedar"><div class="n" style="color:var(--red)">${s.pz}</div><div class="l">Zimmedar</div></div>
-      <div class="rst" onclick="fByR('${r}','meeting')" title="Meeting"><div class="n" style="color:#00838f">${s.mt}</div><div class="l">Meeting</div></div>
-      <div class="rst" onclick="fByROfficeV17('${r}')" title="Pending Office + Office"><div class="n" style="color:var(--cyan)">${(s.po||0)+(s.of||0)}</div><div class="l">Office</div></div>
-      <div class="rst" onclick="fByR('${r}','ifta')" title="Sent to Ifta"><div class="n" style="color:var(--pink)">${s['if']}</div><div class="l">Ifta</div></div>
-      <div class="rst" onclick="fByR('${r}','closed')" title="Closed"><div class="n" style="color:var(--green)">${s.cl}</div><div class="l">Closed</div></div>
+      <div class="rst" onclick="fByR('${r}','')" title="Total"><div class="n" data-reg-total-v13="${_e(rRaw)}" style="color:var(--blue)">${_ph!==null?_ph:s.t}</div><div class="l">Total</div></div>
+      <div class="rst" onclick="fByR('${r}','pending_z')" title="Pending Zimmedar"><div class="n" data-reg-v19="${_e(rRaw)}" data-reg-status-v19="pending_z" style="color:var(--red)">${_ph!==null?_ph:s.pz}</div><div class="l">Zimmedar</div></div>
+      <div class="rst" onclick="fByR('${r}','meeting')" title="Meeting"><div class="n" data-reg-v19="${_e(rRaw)}" data-reg-status-v19="meeting" style="color:#00838f">${_ph!==null?_ph:s.mt}</div><div class="l">Meeting</div></div>
+      <div class="rst" onclick="fByROfficeV17('${r}')" title="Pending Office + Office"><div class="n" data-reg-v19="${_e(rRaw)}" data-reg-status-v19="office_combined" style="color:var(--cyan)">${_ph!==null?_ph:((s.po||0)+(s.of||0))}</div><div class="l">Office</div></div>
+      <div class="rst" onclick="fByR('${r}','ifta')" title="Sent to Ifta"><div class="n" data-reg-v19="${_e(rRaw)}" data-reg-status-v19="ifta" style="color:var(--pink)">${_ph!==null?_ph:s['if']}</div><div class="l">Ifta</div></div>
+      <div class="rst" onclick="fByR('${r}','closed')" title="Closed"><div class="n" data-reg-v19="${_e(rRaw)}" data-reg-status-v19="closed" style="color:var(--green)">${_ph!==null?_ph:s.cl}</div><div class="l">Closed</div></div>
     </div>${tawnRow}${halfRow}</div>`;
   }).join('');
 }
@@ -6210,8 +6319,7 @@ function mRowSearchV14(c,i){
   return mRow(x,i,false);
 }
 function _searchPartialLabelV14(total,page,totalPages,start){
-  var pfx=window._ccPartial?'Local Safe Results: ':'Results: ';
-  var s=pfx+total;
+  var s='Results: '+total;
   if(totalPages>1)s+=' | Page '+page+'/'+totalPages+' ('+(start+1)+'-'+Math.min(start+PAGE_SIZE,total)+')';
   return s;
 }
@@ -6341,7 +6449,7 @@ function doSrch(){
 
   document.getElementById('srCnt').textContent=_searchPartialLabelV14(srTotal,_srPage,srTotalPages,srStart);
   var _spw=document.getElementById('searchPartialWarn');
-  if(_spw)_spw.style.display=window._ccPartial?'block':'none';
+  if(_spw)_spw.style.display='none';
   updateActiveFilterCount();
 
   // Search pagination buttons
@@ -8906,6 +9014,20 @@ function _setUserAdminPermUI(isAdminRole){var e=document.getElementById('pu');if
 function sPm(p){var map={pv:'view',pa:'add',pe:'edit',pd:'del',ps:'search',pr:'reports',ptw:'tawan',pcl:'clients',pu:'users',pst:'settings'};Object.keys(map).forEach(function(id){var e=document.getElementById(id);if(e)e.checked=!!(p&&p[map[id]]);});}
 function gPm(){function c(id){var e=document.getElementById(id);return!!(e&&e.checked);}return{view:c('pv'),add:c('pa'),edit:c('pe'),del:c('pd'),search:c('ps'),reports:c('pr'),tawan:c('ptw'),clients:c('pcl'),users:c('pu'),settings:c('pst')};}
 function generateUserPassword(){var chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';var a=new Uint32Array(14);crypto.getRandomValues(a);var pw='';for(var i=0;i<a.length;i++)pw+=chars[a[i]%chars.length];document.getElementById('uPW').value=pw;document.getElementById('uPC').value=pw;toast('✅ Strong temporary password generate ho gaya');}
+function _syncScopedClientsPermissionV18(){
+  var scoped=['uDRegBox','uDStBox','uDDivBox','uDDistBox','uDSaelBox','uDDeptBox'].some(function(id){
+    return drGetChecked(id).length>0;
+  });
+  var cb=document.getElementById('pcl'),wrap=document.getElementById('pclWrapV18');
+  if(!cb)return;
+  if(scoped){
+    cb.checked=false;cb.disabled=true;
+    if(wrap){wrap.style.opacity='.48';wrap.style.cursor='not-allowed';wrap.title='Clients Master full-data users ke liye hai';}
+  }else{
+    cb.disabled=false;
+    if(wrap){wrap.style.opacity='1';wrap.style.cursor='pointer';wrap.title='';}
+  }
+}
 function updateAccessSummary(){var el=document.getElementById('uAccessSummary');if(!el)return;var r=drGetChecked('uDRegBox'),v=drGetChecked('uDDivBox'),d=drGetChecked('uDDeptBox'),st=drGetChecked('uDStBox'),di=drGetChecked('uDDistBox'),sa=drGetChecked('uDSaelBox');var hard=[];if(r.length)hard.push('📍 Region: <b>'+_e(r.join(', '))+'</b>');if(v.length)hard.push('🏙️ Division: <b>'+_e(v.join(', '))+'</b>');if(d.length)hard.push('🏢 Department: <b>'+_e(d.join(', '))+'</b>');var soft=[];if(st.length)soft.push('State: '+_e(st.join(', ')));if(di.length)soft.push('District: '+_e(di.join(', ')));if(sa.length)soft.push('Referred By: '+_e(sa.join(', ')));if(!hard.length&&!soft.length){el.innerHTML='🌐 <b>Full data access</b> (no restriction selected)';return;}el.innerHTML=(hard.length?'🔐 '+hard.join(' &nbsp; + &nbsp; '):'')+(soft.length?'<div style="margin-top:4px;color:var(--mt)">Additional narrowing: '+soft.join(' • ')+'</div>':'');}
 function renderDesignationPreviewOnly(){var d=document.getElementById('uDesig'),w=document.getElementById('desigPreviewWrap'),p=document.getElementById('desigPreview');if(!d||!w||!p||!d.value||!DESIG_PRESETS[d.value]){if(w)w.style.display='none';return;}var x=DESIG_PRESETS[d.value];w.style.display='block';p.innerHTML='<b>'+_e(d.options[d.selectedIndex].text)+'</b><div style="margin-top:4px;color:var(--mt)">'+_e(x.label||'')+'</div>';}
 
@@ -8973,6 +9095,8 @@ function drRenderBox(boxId, items, selectedArr, onChangeFn){
   box.appendChild(topBar);
   box.appendChild(listDiv);
   drFillList(boxId, items, selectedArr, onChangeFn);
+
+  _syncScopedClientsPermissionV18();
 }
 
 // eval ki jagah — sirf simple function-naam call kare (CSP-safe, arbitrary code nahi)
@@ -9115,7 +9239,7 @@ async function saveUser(){
   if((dr.regions&&dr.regions.length)||(dr.divisions&&dr.divisions.length)||(dr.depts&&dr.depts.length)){if(!(await ensureCaseNoRegistry())){toast('❌ Scoped user save se pehle Case No Registry initialize nahi ho saki');return;}}
   // Case actions/search/reports meaningful hone ke liye case View permission required hai.
   if(perms.add||perms.edit||perms.del||perms.search||perms.reports||perms.tawan)perms.view=true;
-  if(_hasHardScopeObj(dr)&&perms.clients){toast('❌ Region/Division/Department scoped user ko global Clients Master permission nahi de sakte. Clients Master uncheck karein.');return;}
+  if(_hasHardScopeObj(dr)&&perms.clients)perms.clients=false;
   if(role==='admin'||role==='superadmin'){perms.users=true;dr={};_setUserAdminPermUI(true);}else perms.users=false;var oldUser=eUId?uc.find(function(x){return x.id===eUId;}):null;if(oldUser&&String(oldUser.username||'').toLowerCase()==='admin'){if(!active||role!=='admin'){toast('❌ Primary admin ko deactivate/demote nahi kar sakte');return;}role='admin';desig='admin';perms.users=true;}if(eUId===cu.id&&!active){toast('❌ Apna account deactivate nahi kar sakte');return;}if(oldUser&&oldUser.active!==false&&(oldUser.role==='admin'||oldUser.role==='superadmin')&&!active&&_activeAdminCount(oldUser.id)===0){toast('❌ Last active Admin ko deactivate nahi kar sakte');return;}
   var authCtx=null,authUid='';try{if(!eUId){authCtx=await _createAuthUserSecondary(email,pw);authUid=authCtx.uid;}var d={username:un,email:email,fullname:fn,role:role,designation:desig,active:active,note:document.getElementById('uNt').value.trim(),perms:perms,dataRestrict:dr,updatedAt:new Date().toISOString()};if(authUid)d.authUid=authUid;if(eUId){var os=await db.collection('users').doc(eUId).get(),old=os.exists?os.data():{},merged=Object.assign({},old,d);['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){delete merged[k];});await db.collection('users').doc(eUId).set(merged);if(merged.authUid)await syncAuthz(eUId,merged,merged.authUid);await logActivity('user_update','',{target:eUId,username:un,scope:dr});}else{d.createdAt=new Date().toISOString();d.mustChangePw=true;await db.collection('users').doc(un.toLowerCase()).set(d);await syncAuthz(un.toLowerCase(),d,authUid);await logActivity('user_create','',{target:un.toLowerCase(),username:un,scope:dr});await _finishSecondaryAuth(authCtx);authCtx=null;setTimeout(function(){alert('✅ User create ho gaya.\n\nLogin Email: '+email+'\nTemporary Password: '+pw+'\n\nFirst login par user ko apna naya password set karna mandatory hoga.');},50);}toast('✅ User saved!');cmo('mUser');fbGetU(true).then(rUsers);if(eUId&&cu&&cu.id===eUId){cu=Object.assign({},cu,d,{id:eUId});delete cu.password;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));cacheInvalidate();startListener();}}catch(e){if(authCtx)await _rollbackSecondaryAuth(authCtx);if(e&&e.code==='auth/email-already-in-use')toast('❌ Firebase Auth mein ye Email ID pehle se registered hai');else toast('❌ '+e.message);}
 }
@@ -14378,8 +14502,9 @@ function deptClose(){
           <div style="margin-top:10px">
             <label style="font-size:.7rem;font-weight:700;color:var(--bd)">OCR Language</label>
             <select id="rahOcrLang" style="margin-top:4px;width:100%">
-              <option value="urd+eng">Urdu + English (Recommended)</option>
-              <option value="urd+ara+eng">Urdu + Arabic + English (slower)</option>
+              <option value="urd" selected>Urdu Only — Best for Urdu</option>
+              <option value="urd+ara">Urdu + Arabic</option>
+              <option value="urd+eng">Urdu + English</option>
             </select>
           </div>
         </div>
@@ -14497,6 +14622,57 @@ function deptClose(){
     setTimeout(window.rahOcrStart,80);
   };
 
+
+  async function preprocessRahOcrImageV18(file){
+    var bmp=null,img=null,w=0,h=0;
+    try{
+      if(window.createImageBitmap){
+        bmp=await createImageBitmap(file);w=bmp.width;h=bmp.height;
+      }else{
+        img=await new Promise(function(resolve,reject){
+          var im=new Image(),u=URL.createObjectURL(file);
+          im.onload=function(){URL.revokeObjectURL(u);resolve(im);};
+          im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Image open nahi hui'));};
+          im.src=u;
+        });
+        w=img.naturalWidth||img.width;h=img.naturalHeight||img.height;
+      }
+      var maxDim=Math.max(w,h),scale=maxDim<2200?2:Math.min(1.6,3200/maxDim);
+      scale=Math.max(1,scale);
+      var cw=Math.max(1,Math.round(w*scale)),ch=Math.max(1,Math.round(h*scale));
+      var c=document.createElement('canvas');c.width=cw;c.height=ch;
+      var ctx=c.getContext('2d',{willReadFrequently:true});
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+      ctx.drawImage(bmp||img,0,0,cw,ch);
+      var id=ctx.getImageData(0,0,cw,ch),d=id.data,contrast=1.45;
+      for(var i=0;i<d.length;i+=4){
+        var g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+        g=(g-128)*contrast+128;g=Math.max(0,Math.min(255,g));
+        d[i]=d[i+1]=d[i+2]=g;d[i+3]=255;
+      }
+      ctx.putImageData(id,0,0);
+      var blob=await new Promise(function(resolve){c.toBlob(resolve,'image/png',1);});
+      if(bmp&&bmp.close)bmp.close();
+      return blob||file;
+    }catch(e){
+      try{if(bmp&&bmp.close)bmp.close();}catch(_){}
+      console.warn('OCR preprocess fallback:',e);
+      return file;
+    }
+  }
+
+
+  function _scoreUrduOcrV19(txt){
+    txt=String(txt||'');
+    var ar=(txt.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g)||[]).length;
+    var latin=(txt.match(/[A-Za-z]/g)||[]).length;
+    var digits=(txt.match(/[0-9]/g)||[]).length;
+    var junk=(txt.match(/[�□■◆◇]/g)||[]).length;
+    var lines=txt.split(/\n/).filter(function(x){return x.trim().length>2;}).length;
+    return ar*3 - latin*1.8 - junk*8 + Math.min(lines,40)*2 + Math.min(digits,30)*0.2;
+  }
+
   window.rahOcrStart=async function(){
     if(!_rahOcrFile){ toast('⚠️ Pehle image select karein'); return; }
     var run=++_rahOcrRun;
@@ -14509,8 +14685,11 @@ function deptClose(){
       var T=await ensureLib();
       if(run!==_rahOcrRun)return;
 
-      var langs=(el('rahOcrLang')||{value:'urd+eng'}).value||'urd+eng';
-      setStatus('Urdu OCR tayyar ho raha hai…',5,false);
+      var langs=(el('rahOcrLang')||{value:'urd'}).value||'urd';
+      setStatus('Image saaf/upscale ho rahi hai…',5,false);
+      var ocrInput=await preprocessRahOcrImageV18(_rahOcrFile);
+      if(run!==_rahOcrRun)return;
+      setStatus('Urdu OCR tayyar ho raha hai…',10,false);
 
       // createWorker keeps OCR fully inside this browser tab.
       var opts={logger:function(m){
@@ -14525,13 +14704,31 @@ function deptClose(){
         _rahOcrWorker=null; return;
       }
 
-      var result=await _rahOcrWorker.recognize(_rahOcrFile);
+      async function _passV19(input,psm,label){
+        try{
+          await _rahOcrWorker.setParameters({
+            tessedit_pageseg_mode:String(psm),
+            preserve_interword_spaces:'1',
+            user_defined_dpi:'300'
+          });
+        }catch(_p){}
+        setStatus(label,psm===6?35:70,false);
+        var rr=await _rahOcrWorker.recognize(input);
+        return cleanText(rr&&rr.data&&rr.data.text);
+      }
+
+      // Pass 1: single-block/column Urdu; Pass 2: full-page auto layout.
+      var out6=await _passV19(ocrInput,6,'Urdu OCR — column/text pass…');
       if(run!==_rahOcrRun)return;
-      var out=cleanText(result&&result.data&&result.data.text);
+      var out3=await _passV19(_rahOcrFile,3,'Urdu OCR — full page pass…');
+      if(run!==_rahOcrRun)return;
+
+      var score6=_scoreUrduOcrV19(out6),score3=_scoreUrduOcrV19(out3);
+      var out=score6>=score3?out6:out3;
       if(tx)tx.value=out;
 
       if(out){
-        setStatus('✅ Text nikal gaya — check/edit karke Rahnumai me add karein.',100,false);
+        setStatus('✅ 2 OCR passes me se behtar Urdu result select hua — check/edit karke add karein.',100,false);
         if(ib)ib.disabled=false;
       }else{
         setStatus('Text nahi mila. Clear/cropped screenshot se dobara try karein.',100,true);
