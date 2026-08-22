@@ -715,7 +715,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
         </div>
       </div>
     </div>
-    <div class="stitle"><h2>🗺️ Region Overview</h2><button onclick="toggleHiddenRegions()" id="hidRegBtn" style="margin-left:auto;padding:4px 11px;font-size:.72rem;border:1.5px solid var(--blue);background:#fff;color:var(--blue);border-radius:7px;cursor:pointer;font-weight:600">👁️ Hidden regions</button></div>
+    <div class="stitle"><h2>🗺️ Region Overview</h2></div>
     <div class="rcards" id="regCards"></div>
     <div class="stitle"><h2>📝 Recent Cases</h2><span id='dashNewCaseBtn' style="display:none"><button class="btn bpri bsm" onclick="eId=null;goPage('newcase')">➕ New Case</button></span></div>
     <div class="twrap">
@@ -6000,19 +6000,14 @@ function updRepYears(){
 // ===== HIDDEN REGIONS (cards chhupao — data nahi hatega, total same rahega) =====
 // In regions ke CARDS dashboard/reports mein chhupte hain. Data/total pe koi asar nahi.
 // Search aur case-entry mein ye regions rehte hain. Toggle se dikha sakte ho.
-var HIDDEN_REGIONS = ['Bareilly Region','Nagpur Region'];
+var HIDDEN_REGIONS = [];
 var _showHiddenRegions = false;
 function toggleHiddenRegions(){
-  _showHiddenRegions = !_showHiddenRegions;
+  _showHiddenRegions=false;
   rRegCards();
-  if(typeof rRep==='function' && _currentPg==='reports') rRep();
-  if(typeof initDD==='function') initDD();
-  var btns=document.querySelectorAll('#hidRegBtn');
-  if(btns[0]) btns[0].textContent = _showHiddenRegions ? '🙈 Hidden chhupao' : '👁️ Hidden regions';
 }
 function _isHiddenRegion(r){
-  if(_showHiddenRegions) return false;
-  return HIDDEN_REGIONS.indexOf(r) > -1;
+  return false; // V19: koi Region hidden nahi
 }
 // ===== END HIDDEN REGIONS =====
 
@@ -6304,7 +6299,7 @@ function rRegCards(){
     _explicit.forEach(function(r){if(r&&_allowedRegs.indexOf(r)<0)_allowedRegs.push(r);});
   }
   // V19: koi Region card hide nahi hoga. Bareilly/Nagpur bhi normal Region hain.
-  _allowedRegs = _allowedRegs.filter(function(r){return !!r && !_isHiddenRegion(r);});
+  _allowedRegs = _allowedRegs.filter(function(r){return !!r;});
   document.getElementById('regCards').innerHTML=_allowedRegs.map(rRaw=>{
     const r=_e(rRaw); // XSS FIX: region naam data se aata hai
     const s=rs[rRaw]||{t:0,pz:0,po:0,of:0,mt:0,'if':0,cl:0};
