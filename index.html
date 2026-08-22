@@ -1607,13 +1607,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div id="settingsGridV15" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;grid-auto-rows:auto">
 
 
-    <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor);grid-column:1/-1">
-      <h3 style="color:var(--bd);margin-bottom:6px;font-size:.87rem">💾 Quota-Safe Recovery Snapshot</h3>
-      <p style="font-size:.74rem;color:var(--mt);margin-bottom:8px">Loaded/local cache ka recovery snapshot banega — <b>koi hidden Firestore collection read nahi</b>. Firebase Auth accounts, Storage ki actual PDF bytes, activity logs aur derived registry/counters is JSON ka hissa nahi hain.</p>
-      <p style="font-size:.66rem;color:#8a4b00;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:6px 8px;margin-bottom:10px">ℹ️ Ye automatic full disaster-restore file nahi hai. File ke andar manifest clearly batayega kya included/omitted hai.</p>
-      <button class="btn bpri" onclick="downloadBackup(this)" style="font-size:.82rem">💾 Recovery Snapshot Download</button>
-      <span id="backupStatus" style="margin-left:12px;font-size:.76rem;color:var(--mt)"></span>
-    </div>
+    
 
     <div style="background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--bor)">
       <h3 style="color:var(--bd);margin-bottom:4px;font-size:.87rem">🖼️ This Device Logo</h3><div style="font-size:.65rem;color:var(--mt);margin-bottom:10px">Sirf isi browser/device par save hota hai. PNG/JPG/WebP, max 500 KB.</div>
@@ -2331,6 +2325,7 @@ let STATUSES=[...DEF_STATUS];
 let RTYPES=[...DEF_RTYPES];
 var SCHEMA_MIGRATION_V13={updatedAtMsComplete:false,deptsArrayComplete:false,cursor:'',processed:0,completedAt:''};
 window._deletedCaseFeedV13=[];
+var _resetRegistryCompleteV24=false;
 var _tawanIndexCompleteV23=false;
 var _tawanServerCasesV23=[];
 var _tawanServerReadyV23=false;
@@ -2385,6 +2380,7 @@ async function fbLoadSettings(){
       }
       window._deletedCaseFeedV13=Array.isArray(d.deletedCaseFeedV13)?d.deletedCaseFeedV13.slice():[];
       _tawanIndexCompleteV23=(d.tawanIndexV23Complete===true);
+      _resetRegistryCompleteV24=(d.resetRegistryV24Complete===true);
     }
     if(typeof renderSchemaMigrationStatusV13==='function')renderSchemaMigrationStatusV13();
     initDD();
@@ -2726,6 +2722,14 @@ window.__tawanServerExactV23=true;
 window.__tawanHasFlagV23=true;
 window.__tawanIndexBackfillV23=true;
 window.__tawanNoLocal250DependencyV23=true;
+window.__forgotRequiresAppProfileV24=true;
+window.__passwordResetRegistryV24=true;
+window.__orphanAuthResetBlockedV24=true;
+window.__dashboardTopExactFastV25=true;
+window.__noPartial250AsTotalV25=true;
+window.__recoverySnapshotUiRemovedV25=true;
+
+
 
 
 
@@ -3593,6 +3597,18 @@ async function _loadServerDashExactV13(force){
       out.statuses[st]=await _safeRestCountV19(_ffV13('status','EQUAL',_svV13(st)),'status '+st);
     }
 
+    // V25: heavy Region/Rahnumai loop ka wait nahi — top exact cards turant update.
+    _applyDashTopExactV25({
+      total:out.total,
+      pending_z:out.statuses.pending_z,
+      meeting:out.statuses.meeting,
+      pending_o:out.statuses.pending_o,
+      office:out.statuses.office,
+      ifta:out.statuses.ifta,
+      closed:out.statuses.closed,
+      serverExact:true
+    });
+
     var regs=[];
     var preferred=['Ajmer Region','Mumbai Region','Delhi Region','Bengaluru Region','Hyderabad Region','Kolkata Region','Bareilly Region','Nagpur Region'];
     preferred.forEach(function(r){if(regs.indexOf(r)<0)regs.push(r);});
@@ -3690,6 +3706,93 @@ function _applyServerDashExactV13(data){
   // Region cards may have been rendered before exact data existed; refresh hooks already update them.
   _showQuotaSafeBanner(true,(cc&&cc.length)||0,'');
 }
+
+function _dashTopCacheKeyV25(){return 'sab_dash_top_v25_'+_ckBase();}
+function _dashTopReadCacheV25(){
+  try{
+    var x=JSON.parse(localStorage.getItem(_dashTopCacheKeyV25())||'null');
+    if(!x||!x.savedAt||(Date.now()-x.savedAt)>30*60*1000)return null;
+    return x;
+  }catch(e){return null;}
+}
+function _dashTopWriteCacheV25(x){
+  try{localStorage.setItem(_dashTopCacheKeyV25(),JSON.stringify(Object.assign({},x,{savedAt:Date.now()})));}catch(e){}
+}
+function _applyDashTopExactV25(data){
+  if(!data||dashYear)return false;
+  var vals={
+    sc0:data.total,
+    sc1:data.pending_z,
+    sc10:data.meeting,
+    sc3:(typeof data.pending_o==='number'&&typeof data.office==='number')?(data.pending_o+data.office):null,
+    sc4:data.ifta,
+    sc5:data.closed
+  };
+  Object.keys(vals).forEach(function(id){
+    var el=document.getElementById(id),v=vals[id];
+    if(el&&typeof v==='number'){
+      el.textContent=v;
+      el.title='Server exact count';
+      el.setAttribute('data-exact-v25','1');
+    }
+  });
+  window._dashTopExactV25=data;
+  return true;
+}
+async function _loadDashTopExactV25(force){
+  if(dashYear)return null;
+  if(!window._ccPartial)return null;
+  if(_isServerScoped())return null; // scoped dashboard exact aggregation needs scope-specific query; never show fake local total instead.
+
+  if(!force){
+    var cached=_dashTopReadCacheV25();
+    if(cached){_applyDashTopExactV25(cached);return cached;}
+  }
+
+  // Aggregation count billing is tiny compared with loading thousands of case docs.
+  // Reserve conservatively, but do not wait for heavy Region/Rahnumai aggregation.
+  var ticket=_rgReserve(50,'dashboard-top-exact-v25');
+  if(!ticket)return null;
+
+  try{
+    var reqs=[
+      _safeRestCountV19(null,'top total'),
+      _safeRestCountV19(_ffV13('status','EQUAL',_svV13('pending_z')),'top pending_z'),
+      _safeRestCountV19(_ffV13('status','EQUAL',_svV13('meeting')),'top meeting'),
+      _safeRestCountV19(_ffV13('status','EQUAL',_svV13('pending_o')),'top pending_o'),
+      _safeRestCountV19(_ffV13('status','EQUAL',_svV13('office')),'top office'),
+      _safeRestCountV19(_ffV13('status','EQUAL',_svV13('ifta')),'top ifta'),
+      _safeRestCountV19(_ffV13('status','EQUAL',_svV13('closed')),'top closed')
+    ];
+    var a=await Promise.all(reqs);
+    var out={total:a[0],pending_z:a[1],meeting:a[2],pending_o:a[3],office:a[4],ifta:a[5],closed:a[6],serverExact:true};
+    var ok=Object.keys(out).some(function(k){return typeof out[k]==='number';});
+    _rgAdjust(ticket,ok?15:1);
+    if(!ok)return null;
+    _dashTopWriteCacheV25(out);
+    _applyDashTopExactV25(out);
+    return out;
+  }catch(e){
+    _rgAdjust(ticket,1);
+    console.warn('Dashboard fast exact V25:',e);
+    return null;
+  }
+}
+function refreshDashTopExactV25(){
+  if(!window._ccPartial||dashYear)return;
+  var c=_dashTopReadCacheV25();
+  if(c)_applyDashTopExactV25(c);
+  _loadDashTopExactV25(false).then(function(x){
+    if(!x && window._ccPartial){
+      // Never fall back to misleading local 250 as "Total Cases".
+      ['sc0','sc1','sc10','sc3','sc4','sc5'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el&&!el.hasAttribute('data-exact-v25'))el.textContent='—';
+      });
+    }
+  });
+}
+
 function refreshServerDashExactV13(){
   if(!window._ccPartial||_isServerScoped()||dashYear)return;
   var cached=_dashAggReadCacheV13();
@@ -3719,7 +3822,10 @@ async function fbGetU(force){
     if(!force&&Array.isArray(uc)&&uc.length)return uc;
     const snap=await db.collection('users').limit(200).get();
     uc=snap.docs.map(function(d){var x=Object.assign({id:d.id},d.data());delete x.password;return x;});
-    if(_isAdmin())_syncQuotaGuardFromUsers(uc);
+    if(_isAdmin()){
+      _syncQuotaGuardFromUsers(uc);
+      _backfillResetRegistryV24(uc);
+    }
     return uc;
   }catch(e){console.warn('users load:',e.code||e.message);return[];}
 }
@@ -4292,6 +4398,13 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (isSelfProfile(userId) && request.resource.data.get('authUid','') == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid','password','mustChangePw','updatedAt','authMigratedAt']));
     }
+    match /passwordResetRegistry/{emailHash} {
+      // Pre-login Forgot Password ko sirf exact hashed-email document check karne diya jata hai.
+      // Collection listing/query kabhi allowed nahi.
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if isAdmin();
+    }
     match /authz/{uid} {
       function profile() { return get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data; }
       function validSelfMirror() { return signedIn() && uid == request.auth.uid && profile().get('authUid','') == request.auth.uid && request.resource.data.get('role','viewer') == profile().get('role','viewer') && request.resource.data.get('active',true) == profile().get('active',true) && request.resource.data.get('perms',{}) == profile().get('perms',{}) && request.resource.data.get('dataRestrict',{}) == profile().get('dataRestrict',{}); }
@@ -4404,6 +4517,65 @@ function _freePwErr(e){
   return msg.replace(/^Firebase:\s*/,'').replace(/\s*\(auth\/[^)]+\)\.?$/,'').trim();
 }
 
+
+async function _emailHashV24(email){
+  var em=String(email||'').trim().toLowerCase();
+  if(!em)throw new Error('Email missing');
+  if(!(window.crypto&&crypto.subtle))throw new Error('Secure browser required');
+  var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(em));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+async function _resetRegistrySetV24(email,profileId,active){
+  if(!_validEmail(email))return false;
+  var h=await _emailHashV24(email);
+  await db.collection('passwordResetRegistry').doc(h).set({
+    profileId:String(profileId||''),
+    enabled:active!==false,
+    updatedAt:new Date().toISOString()
+  },{merge:true});
+  return true;
+}
+async function _resetRegistryDeleteV24(email){
+  if(!_validEmail(email))return false;
+  var h=await _emailHashV24(email);
+  await db.collection('passwordResetRegistry').doc(h).delete();
+  return true;
+}
+async function _resetRegistryEligibleV24(email){
+  if(!_validEmail(email))return false;
+  var h=await _emailHashV24(email);
+  var sn=await db.collection('passwordResetRegistry').doc(h).get({source:'server'});
+  return !!(sn.exists && (sn.data()||{}).enabled===true && String((sn.data()||{}).profileId||''));
+}
+async function _backfillResetRegistryV24(users){
+  if(!_isAdmin()||_resetRegistryCompleteV24)return;
+  users=(Array.isArray(users)?users:[]).filter(function(u){return u&&_validEmail(u.email);});
+  try{
+    for(var i=0;i<users.length;i+=350){
+      var part=users.slice(i,i+350),batch=db.batch();
+      var rows=await Promise.all(part.map(async function(u){
+        return {u:u,h:await _emailHashV24(u.email)};
+      }));
+      rows.forEach(function(x){
+        batch.set(db.collection('passwordResetRegistry').doc(x.h),{
+          profileId:String(x.u.id||x.u.username||''),
+          enabled:x.u.active!==false,
+          updatedAt:new Date().toISOString()
+        },{merge:true});
+      });
+      if(rows.length)await batch.commit();
+    }
+    await db.collection('settings').doc('app').set({
+      resetRegistryV24Complete:true,
+      resetRegistryV24At:new Date().toISOString()
+    },{merge:true});
+    _resetRegistryCompleteV24=true;
+    console.info('Password reset registry V24 backfill complete:',users.length);
+  }catch(e){
+    console.warn('reset registry backfill:',e&&e.message?e.message:e);
+  }
+}
+
 function openForgotPassword(){
   var em=document.getElementById('fpReqEmail');
   var login=String((document.getElementById('lu')||{}).value||'').trim();
@@ -4429,27 +4601,35 @@ async function submitForgotPassword(){
     msg.textContent=t;
   }
   if(!_validEmail(em)){show('❌ Valid Email ID dalein',false);return;}
-  if(btn){btn.disabled=true;btn.textContent='⏳ Sending...';}
+  if(btn){btn.disabled=true;btn.textContent='⏳ Checking...';}
+
   try{
+    // V24: Firebase Auth account akela enough nahi.
+    // App user/profile registry active hona zaroori hai.
+    var eligible=await _resetRegistryEligibleV24(em);
+    if(!eligible){
+      show('❌ Is Email ID ki App User ID / active profile nahi bani hai.',false);
+      return;
+    }
+
+    if(btn)btn.textContent='⏳ Sending...';
     try{
       await firebase.auth().sendPasswordResetEmail(em,{
         url:_freeResetContinueUrl(),
         handleCodeInApp:false
       });
     }catch(e){
-      // If the continue URL is not authorized yet, Firebase's own default reset page
-      // can still be used without any paid service.
       if(e&&e.code==='auth/unauthorized-continue-uri'){
         await firebase.auth().sendPasswordResetEmail(em);
       }else{
         throw e;
       }
     }
-    show('✅ Agar is Email ID ka login account maujood hai to reset email bhej di gayi hai. Inbox/Spam check karein.',true);
+
+    show('✅ Password reset email bhej di gayi hai. Inbox/Spam check karein.',true);
   }catch(e){
-    // Do not reveal whether an account exists.
-    if(e&&(e.code==='auth/user-not-found')){
-      show('✅ Agar is Email ID ka login account maujood hai to reset email bhej di gayi hai. Inbox/Spam check karein.',true);
+    if(e&&e.code==='auth/user-not-found'){
+      show('❌ App User ID hai lekin Firebase login account nahi mila. Admin se contact karein.',false);
     }else{
       show('❌ '+_freePwErr(e),false);
     }
@@ -5894,6 +6074,17 @@ function updStats(){
     if(gs.indexOf('mazratnama')>-1){c[12]++;var _mzDone=(m.mazratSt==='closed');if(_mzDone)c.mazCl=(c.mazCl||0)+1;else c.mazOp=(c.mazOp||0)+1;}
   });
   for(let i=0;i<=12;i++){const e=document.getElementById('sc'+i);if(e)e.textContent=c[i]||0;}
+
+  // V25: partial local 250 subset ko kabhi Dashboard ka actual Total/Status count mat dikhao.
+  if(window._ccPartial && !dashYear){
+    ['sc0','sc1','sc10','sc3','sc4','sc5'].forEach(function(id){
+      var e=document.getElementById(id);
+      if(e)e.textContent='…';
+    });
+    var _topCachedV25=_dashTopReadCacheV25();
+    if(_topCachedV25)_applyDashTopExactV25(_topCachedV25);
+  }
+
   var _ids=[['scTafhimOpen',c.tafhimOp||0],['scTafhimClosed',c.tafhimCl||0],['scTransOpen',c.transOp||0],['scTransClosed',c.transCl||0],['scMazOpen',c.mazOp||0],['scMazClosed',c.mazCl||0]];
   _ids.forEach(function(x){var el=document.getElementById(x[0]);if(el)el.textContent=x[1];});
   // Count closed cases with pending tawan/halfiya
@@ -5977,7 +6168,10 @@ function rDash(){
   document.getElementById('dTB').innerHTML=r.length?r.map((c,i)=>mRow(c,i+1,true)).join(''):`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--mt)">No cases. Add your first case!</td></tr>`;
   if(typeof updStats==='function') updStats(); // top number cards bhi refresh (naya case turant dikhe)
   rRegCards();
-  if(window._ccPartial&&typeof refreshServerDashExactV13==='function')setTimeout(refreshServerDashExactV13,50);
+  if(window._ccPartial){
+    if(typeof refreshDashTopExactV25==='function')setTimeout(refreshDashTopExactV25,20);
+    if(typeof refreshServerDashExactV13==='function')setTimeout(refreshServerDashExactV13,250);
+  }
 }
 var _rCasesHash = '';
 function rCases(){
@@ -9479,7 +9673,7 @@ async function saveUser(){
       if(_idCheck.exists){un=_autoUserIdFromEmailV22(email+'-'+Date.now());document.getElementById('uUN').value=un;}
       authCtx=await _createAuthUserSecondary(email,pw);authUid=authCtx.uid;
     }
-    var d={username:un,email:email,fullname:fn,role:role,designation:desig,active:active,note:document.getElementById('uNt').value.trim(),perms:perms,dataRestrict:dr,updatedAt:new Date().toISOString()};if(authUid)d.authUid=authUid;if(eUId){var os=await db.collection('users').doc(eUId).get(),old=os.exists?os.data():{},merged=Object.assign({},old,d);['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){delete merged[k];});await db.collection('users').doc(eUId).set(merged);if(merged.authUid)await syncAuthz(eUId,merged,merged.authUid);await logActivity('user_update','',{target:eUId,username:un,scope:dr});}else{d.createdAt=new Date().toISOString();d.mustChangePw=true;await db.collection('users').doc(un.toLowerCase()).set(d);await syncAuthz(un.toLowerCase(),d,authUid);await logActivity('user_create','',{target:un.toLowerCase(),username:un,scope:dr});await _finishSecondaryAuth(authCtx);authCtx=null;setTimeout(function(){alert('✅ User create ho gaya.\n\nEmail ID: '+email+'\nTemporary Password: '+pw+'\n\nFirst login par user ko apna naya password set karna mandatory hoga.');},50);}toast('✅ User saved!');cmo('mUser');fbGetU(true).then(rUsers);if(eUId&&cu&&cu.id===eUId){cu=Object.assign({},cu,d,{id:eUId});delete cu.password;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));cacheInvalidate();startListener();}}catch(e){if(authCtx)await _rollbackSecondaryAuth(authCtx);if(e&&e.code==='auth/email-already-in-use')toast('❌ Firebase Auth mein ye Email ID pehle se registered hai');else toast('❌ '+e.message);}
+    var d={username:un,email:email,fullname:fn,role:role,designation:desig,active:active,note:document.getElementById('uNt').value.trim(),perms:perms,dataRestrict:dr,updatedAt:new Date().toISOString()};if(authUid)d.authUid=authUid;if(eUId){var os=await db.collection('users').doc(eUId).get(),old=os.exists?os.data():{},merged=Object.assign({},old,d);['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){delete merged[k];});await db.collection('users').doc(eUId).set(merged);if(merged.authUid)await syncAuthz(eUId,merged,merged.authUid);await _resetRegistrySetV24(merged.email||email,eUId,merged.active!==false);await logActivity('user_update','',{target:eUId,username:un,scope:dr});}else{d.createdAt=new Date().toISOString();d.mustChangePw=true;await db.collection('users').doc(un.toLowerCase()).set(d);await syncAuthz(un.toLowerCase(),d,authUid);await _resetRegistrySetV24(email,un.toLowerCase(),active);await logActivity('user_create','',{target:un.toLowerCase(),username:un,scope:dr});await _finishSecondaryAuth(authCtx);authCtx=null;setTimeout(function(){alert('✅ User create ho gaya.\n\nEmail ID: '+email+'\nTemporary Password: '+pw+'\n\nFirst login par user ko apna naya password set karna mandatory hoga.');},50);}toast('✅ User saved!');cmo('mUser');fbGetU(true).then(rUsers);if(eUId&&cu&&cu.id===eUId){cu=Object.assign({},cu,d,{id:eUId});delete cu.password;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));cacheInvalidate();startListener();}}catch(e){if(authCtx)await _rollbackSecondaryAuth(authCtx);if(e&&e.code==='auth/email-already-in-use')toast('❌ Is Email ka purana Firebase login account maujood hai lekin App User ID nahi bani ho sakti. Firebase Authentication > Users se orphan account delete karke phir user banayein.');else toast('❌ '+e.message);}
 }
 async function dUser(id){
   if(!_isAdmin()){toast('⛔ User delete sirf Admin kar sakta hai');return;}
@@ -9493,9 +9687,12 @@ async function dUser(id){
   try{
     var sn=await db.collection('users').doc(id).get();
     var old=sn.exists?sn.data():u;
+    var _resetHashV24=null;
+    if(old&&_validEmail(old.email))_resetHashV24=await _emailHashV24(old.email);
     var batch=db.batch();
     batch.delete(db.collection('users').doc(id));
     if(old&&old.authUid) batch.delete(db.collection('authz').doc(old.authUid));
+    if(_resetHashV24)batch.delete(db.collection('passwordResetRegistry').doc(_resetHashV24));
     await batch.commit();
     await logActivity('user_delete','',{target:id,username:(old&&old.username)||u.username||'',authUid:(old&&old.authUid)||''});
     uc=uc.filter(function(x){return x.id!==id;});
