@@ -1855,19 +1855,22 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
 </div>
 
 
-<!-- ACCOUNT PASSWORD MODAL V15 — available to every signed-in user -->
-<div class="modal" id="mAccountPwV15" style="z-index:10050">
-  <div class="mbox" style="max-width:430px">
-    <div class="mhead"><b>🔑 Change My Password</b><button class="mx" onclick="closeAccountPasswordV15()">×</button></div>
-    <div style="padding:16px">
+<!-- ACCOUNT PASSWORD MODAL V16 — available to every signed-in user -->
+<div class="mo" id="mAccountPwV15" style="z-index:10050">
+  <div class="modal" style="max-width:430px">
+    <div class="mh">
+      <h3>🔑 Change My Password</h3>
+      <button class="mcl" type="button" onclick="closeAccountPasswordV15()">×</button>
+    </div>
+    <div class="mb">
       <div class="fgr"><label>Current Password</label><input type="password" id="accOldV15" autocomplete="current-password"></div>
-      <div class="fgr"><label>New Password</label><input type="password" id="accNewV15" autocomplete="new-password"></div>
-      <div class="fgr"><label>Confirm New Password</label><input type="password" id="accConfirmV15" autocomplete="new-password"></div>
-      <div style="font-size:.66rem;color:var(--mt);margin:5px 0 12px">Minimum 8 characters.</div>
-      <div style="display:flex;justify-content:flex-end;gap:7px">
-        <button class="btn bout" onclick="closeAccountPasswordV15()">Cancel</button>
-        <button class="btn bpri" id="accPwSaveV15" onclick="accountPasswordSaveV15()">💾 Change Password</button>
-      </div>
+      <div class="fgr" style="margin-top:10px"><label>New Password</label><input type="password" id="accNewV15" autocomplete="new-password"></div>
+      <div class="fgr" style="margin-top:10px"><label>Confirm New Password</label><input type="password" id="accConfirmV15" autocomplete="new-password"></div>
+      <div style="font-size:.66rem;color:var(--mt);margin:7px 0 0">Minimum 8 characters.</div>
+    </div>
+    <div class="mf">
+      <button class="btn bout" type="button" onclick="closeAccountPasswordV15()">Cancel</button>
+      <button class="btn bpri" type="button" id="accPwSaveV15" onclick="accountPasswordSaveV15()">💾 Change Password</button>
     </div>
   </div>
 </div>
@@ -2660,6 +2663,7 @@ window.__searchExactRegistryV14=true;
 window.__searchPaginationResetV14=true;
 window.__searchNormalizationV14=true;
 window.__settingsDeepFixV15=true;
+window.__accountPasswordModalLayoutV16=true;
 window.__settingsSaveIntegrityV15=true;
 window.__settingsMasterProtectionV15=true;
 window.__settingsBackupTruthV15=true;
@@ -9169,6 +9173,12 @@ function openAccountPasswordV15(){
 function closeAccountPasswordV15(){
   var m=document.getElementById('mAccountPwV15');if(m)m.classList.remove('open');
 }
+
+document.addEventListener('click',function(e){
+  var m=document.getElementById('mAccountPwV15');
+  if(m&&e.target===m)closeAccountPasswordV15();
+});
+
 async function accountPasswordSaveV15(){
   var op=(document.getElementById('accOldV15')||{}).value||'';
   var np=(document.getElementById('accNewV15')||{}).value||'';
