@@ -614,7 +614,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
   </div>
     <h2>SHARI'AH ADVISORY BOARD</h2>
     <p>Internal Case Management System</p>
-    <div class="lf"><label>Email ID</label><input id="lu" type="text" inputmode="email" placeholder="name@example.com" autocomplete="username"><div style="font-size:.62rem;color:var(--mt);margin-top:3px">Legacy Admin username se bhi login kar sakta hai.</div></div>
+    <div class="lf"><label>Email ID</label><input id="lu" type="email" inputmode="email" placeholder="name@example.com" autocomplete="username"></div>
     <div class="lf"><label>Password</label><div style="position:relative"><input id="lp" type="password" placeholder="Enter password" autocomplete="current-password" style="padding-right:42px"><button type="button" id="lpToggle" aria-label="Show password" onclick="togglePasswordField('lp',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0">👁️</button></div></div>
     <button class="lbtn" id="lbtn" onclick="doLogin()">🔐 Login</button>
     <button type="button" onclick="openForgotPassword()" style="width:100%;margin-top:8px;background:none;border:0;color:var(--blue);font-size:.78rem;font-weight:700;cursor:pointer;text-decoration:underline">Forgot Password?</button>
@@ -1347,6 +1347,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div class="stitle">
       <h2>💰 Tawan Sheet</h2>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn bout bsm" onclick="refreshTawanV23()">🔄 Refresh</button>
         <button class="btn bpri bsm" onclick="exportTawanCSV()">📥 Export CSV</button>
         <button class="btn bout bsm" onclick="window.print()">🖨️ Print</button>
       </div>
@@ -1894,8 +1895,8 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
     <div class="mh"><h3 id="umTit">New User</h3><button class="mcl" onclick="cmo('mUser')">✕</button></div>
     <div class="mb">
       <div class="fg">
-        <div class="fgr"><label>Login Email ID <span id="uEmailReq">*</span></label><input id="uEM" type="email" autocomplete="email" placeholder="name@example.com" oninput="suggestUsernameFromEmail()"><div id="uEmailHelp" style="font-size:.62rem;color:var(--mt);margin-top:3px">Naya user isi Email ID se login karega.</div></div>
-        <div class="fgr"><label>User ID / Short Name *</label><input id="uUN" placeholder="e.g. afroz.madani" oninput="this.dataset.userEdited='1'"><div style="font-size:.62rem;color:var(--mt);margin-top:3px">Internal ID hai; login ke liye Email use hoga.</div></div>
+        <div class="fgr"><label>Login Email ID <span id="uEmailReq">*</span></label><input id="uEM" type="email" autocomplete="email" placeholder="name@example.com" oninput="suggestUsernameFromEmail()"></div>
+        <div class="fgr"><label>User ID / Short Name <span style="font-size:.62rem;color:var(--mt)">(Optional)</span></label><input id="uUN" placeholder="Blank chhodein to auto ban jayega" oninput="this.dataset.userEdited='1'"></div>
         <div class="fgr"><label>Full Name</label><input id="uFN"></div>
         <div class="fgr"><label>Password <span id="uPwReq">*</span></label>
           <div style="position:relative">
@@ -1923,7 +1924,7 @@ SECURITY DEPLOYMENT NOTE (IMPORTANT):
         <div class="fgr"><label>Note</label><input id="uNt"></div>
 
         <!-- DATA RESTRICTION - MULTI SELECT -->
-        <div class="fgr fw" style="border:1.5px solid #e3f2fd;border-radius:9px;padding:12px;background:#f7fbff;margin-top:4px">
+        <div class="fgr fw" id="uDataRestrictWrapV20" style="border:1.5px solid #e3f2fd;border-radius:9px;padding:12px;background:#f7fbff;margin-top:4px">
           <label style="font-weight:700;color:var(--blue);font-size:.78rem;display:block;margin-bottom:6px">🔒 Data Restriction (optional)</label>
           <p style="font-size:.69rem;color:var(--mt);margin-bottom:4px">Multiple select kar sakte ho. Access <b>AND logic</b> se lagega: Region + Division + Department select kiya to user ko sirf matching cases milenge.</p>
           <p style="font-size:.66rem;color:#1b5e20;margin-bottom:8px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:6px 8px">🔐 <b>Hard Security:</b> Region, State, Division, District, Referred By aur Department sab Firebase Rules se enforce hote hain. <b>Department-only</b> access bhi allowed hai.</p>
@@ -2330,6 +2331,12 @@ let STATUSES=[...DEF_STATUS];
 let RTYPES=[...DEF_RTYPES];
 var SCHEMA_MIGRATION_V13={updatedAtMsComplete:false,deptsArrayComplete:false,cursor:'',processed:0,completedAt:''};
 window._deletedCaseFeedV13=[];
+var _tawanIndexCompleteV23=false;
+var _tawanServerCasesV23=[];
+var _tawanServerReadyV23=false;
+var _tawanServerLoadingV23=null;
+var _tawanServerErrorV23='';
+
 
 
 function loadAllSettings(){
@@ -2377,6 +2384,7 @@ async function fbLoadSettings(){
         SCHEMA_MIGRATION_V13=Object.assign({},SCHEMA_MIGRATION_V13,d.schemaMigrationV13);
       }
       window._deletedCaseFeedV13=Array.isArray(d.deletedCaseFeedV13)?d.deletedCaseFeedV13.slice():[];
+      _tawanIndexCompleteV23=(d.tawanIndexV23Complete===true);
     }
     if(typeof renderSchemaMigrationStatusV13==='function')renderSchemaMigrationStatusV13();
     initDD();
@@ -2704,6 +2712,25 @@ window.__exactRegionStatsV19=true;
 window.__exactGuideStatsV19=true;
 window.__mufRegionManualOverrideV19=true;
 window.__urduOcrTwoPassV19=true;
+window.__userSaveNoRegistryBlockV20=true;
+window.__liveAuthzRefreshV20=true;
+window.__firstLoginModalPriorityV20=true;
+window.__urduBestModelV21=true;
+window.__urduBinaryPreprocessV21=true;
+window.__urduMultiPassConfidenceV21=true;
+window.__cleanLoginCopyV22=true;
+window.__emailPrimaryLoginV22=true;
+window.__optionalInternalUserIdV22=true;
+window.__authzProfileResolveV22=true;
+window.__tawanServerExactV23=true;
+window.__tawanHasFlagV23=true;
+window.__tawanIndexBackfillV23=true;
+window.__tawanNoLocal250DependencyV23=true;
+
+
+
+window.__adminScopeUiCleanV20=true;
+
 
 
 
@@ -3279,6 +3306,11 @@ async function runSchemaMigrationBatchV13(){
       if(!Array.isArray(d.depts)||!d.depts.length){
         var dep=String(d.dept||'').trim();
         patch.depts=dep?[dep]:[];
+      }
+
+      if(typeof d.hasTawan!=='boolean'){
+        var _gs=Array.isArray(d.guides)?d.guides:(d.guide?[d.guide]:[]);
+        patch.hasTawan=_gs.indexOf('tawan')>-1;
       }
 
       if(Object.keys(patch).length){
@@ -3907,6 +3939,16 @@ function _rerenderCurrent(){
 }
 function _ccResort(){ _sortByCaseNoDesc(cc); }
 function _patchOneCaseLocal(id,patch){
+  if(_tawanServerReadyV23){
+    var _ti=_tawanServerCasesV23.findIndex(function(x){return x.id===id;});
+    var _tb=_ti>=0?_tawanServerCasesV23[_ti]:{id:id};
+    var _to=Object.assign({},_tb,patch,{id:id});
+    if(_tawanIsCaseV23(_to)&&!_to.deletedAt){
+      if(_ti>=0)_tawanServerCasesV23[_ti]=_to;else _tawanServerCasesV23.push(_to);
+    }else if(_ti>=0)_tawanServerCasesV23.splice(_ti,1);
+    _tawanCacheSaveV23(_tawanServerCasesV23);
+  }
+
   if(!id||!patch)return;
   var i=cc.findIndex(function(c){return c.id===id;});
   var base=i>=0?cc[i]:{id:id};
@@ -3938,6 +3980,11 @@ function refreshOneCase(id){
 }
 // cc se ek case hatao (0 reads)
 function removeOneCase(id){
+  if(_tawanServerReadyV23){
+    _tawanServerCasesV23=_tawanServerCasesV23.filter(function(x){return x.id!==id;});
+    _tawanCacheSaveV23(_tawanServerCasesV23);
+  }
+
   try{localStorage.removeItem(_dashAggCacheKeyV13());window._serverDashExactV13=null;}catch(_e){}
   if(typeof _clientIndexInvalidate==='function')_clientIndexInvalidate();
   cc = cc.filter(function(c){return c.id!==id;});
@@ -4091,13 +4138,22 @@ function togglePasswordField(id,btn){
   var show=e.type==='password';e.type=show?'text':'password';
   if(btn){btn.textContent=show?'🙈':'👁️';btn.setAttribute('aria-label',show?'Hide password':'Show password');}
 }
+function _autoUserIdFromEmailV22(email){
+  var local=String(email||'').trim().toLowerCase().split('@')[0]||'user';
+  local=local.replace(/[^a-z0-9_-]+/g,'.').replace(/^\.+|\.+$/g,'').slice(0,26);
+  if(local.length<3)local='user';
+  var h=0,s=String(email||'').toLowerCase();
+  for(var i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;
+  var suffix=Math.abs(h).toString(36).slice(0,5);
+  return (local+'-'+suffix).slice(0,32);
+}
+
 function suggestUsernameFromEmail(){
   if(eUId)return;
-  var em=String((document.getElementById('uEM')||{}).value||'');
+  var em=String((document.getElementById('uEM')||{}).value||'').trim();
   var un=document.getElementById('uUN');
-  if(!un||un.dataset.userEdited==='1')return;
-  var local=em.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]+/g,'.').replace(/^\.+|\.+$/g,'').slice(0,32);
-  if(local.length>=3)un.value=local;
+  if(!un||un.dataset.userEdited==='1'||un.value.trim())return;
+  if(_validEmail(em))un.value=_autoUserIdFromEmailV22(em);
 }
 function _isAdmin(){ return !!(cu && (cu.role==='admin'||cu.role==='superadmin'||cu.username==='admin')); }
 function requirePerm(p){
@@ -4105,24 +4161,50 @@ function requirePerm(p){
   if(!ok && typeof toast==='function') toast('⛔ Aap ke paas is action ki permission nahi hai');
   return ok;
 }
-async function _getUserProfile(username,authUid){
-  // Auth UID sabse reliable link hai; isse legacy/custom document IDs bhi safely milte hain.
+async function _getUserProfile(identifier,authUid){
+  // V22: user ko internal ID yaad rakhna zaroori nahi.
+  // Auth ke baad authz/{uid} se profileId resolve karna sabse direct/safe path hai.
   if(authUid){
+    try{
+      var az=await db.collection('authz').doc(authUid).get();
+      if(az.exists){
+        var zd=az.data()||{},pid=String(zd.profileId||'').trim();
+        if(pid){
+          var ps=await db.collection('users').doc(pid).get();
+          if(ps.exists)return{id:ps.id,data:ps.data()};
+        }
+      }
+    }catch(_az){}
+
     try{
       var aq=await db.collection('users').where('authUid','==',authUid).limit(1).get();
       if(!aq.empty)return{id:aq.docs[0].id,data:aq.docs[0].data()};
     }catch(_aq){}
   }
-  var id=String(username||'').trim().toLowerCase();
+
+  var raw=String(identifier||'').trim();
+  var id=raw.toLowerCase();
+
+  // Legacy/internal document-id fallback.
   try{
     var sn=await db.collection('users').doc(id).get();
     if(sn.exists)return{id:sn.id,data:sn.data()};
   }catch(_sn){}
-  // Ye fallback mainly Rules publish hone se pehle legacy migration ke liye hai.
+
+  // Email fallback for admin/open legacy situations; protected Rules may reject this,
+  // which is fine because Authz/UID path above is the normal modern path.
+  if(_validEmail(raw)){
+    try{
+      var eq=await db.collection('users').where('email','==',raw.toLowerCase()).limit(1).get();
+      if(!eq.empty)return{id:eq.docs[0].id,data:eq.docs[0].data()};
+    }catch(_eq){}
+  }
+
   try{
-    var q=await db.collection('users').where('username','==',String(username||'').trim()).limit(1).get();
+    var q=await db.collection('users').where('username','==',raw).limit(1).get();
     if(!q.empty)return{id:q.docs[0].id,data:q.docs[0].data()};
   }catch(_q){}
+
   return null;
 }
 async function _legacyMigrateLogin(username,password){
@@ -4363,11 +4445,11 @@ async function submitForgotPassword(){
         throw e;
       }
     }
-    show('✅ Agar ye Email ID registered hai to Firebase ki taraf se password reset email bhej di gayi hai. Inbox/Spam check karein.',true);
+    show('✅ Agar is Email ID ka login account maujood hai to reset email bhej di gayi hai. Inbox/Spam check karein.',true);
   }catch(e){
     // Do not reveal whether an account exists.
     if(e&&(e.code==='auth/user-not-found')){
-      show('✅ Agar ye Email ID registered hai to Firebase ki taraf se password reset email bhej di gayi hai. Inbox/Spam check karein.',true);
+      show('✅ Agar is Email ID ka login account maujood hai to reset email bhej di gayi hai. Inbox/Spam check karein.',true);
     }else{
       show('❌ '+_freePwErr(e),false);
     }
@@ -4499,26 +4581,27 @@ async function doLogin(){
     const secs=Math.ceil((_loginLockedUntil-Date.now())/1000),err=document.getElementById('lerr');
     err.style.display='block';err.textContent='⏳ Bahut zyada attempts. '+secs+' seconds baad try karein.';return;
   }
-  const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;
+  const u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value;
   const err=document.getElementById('lerr'),btn=document.getElementById('lbtn');
   if(!u||!p){err.style.display='block';err.textContent='❌ Email ID aur password enter karein';return;}
+  if(!_validEmail(u) && u!=='admin'){err.style.display='block';err.textContent='❌ Valid Email ID enter karein';return;}
   err.style.display='none';btn.textContent='⏳ Checking...';btn.disabled=true;
   try{
     var prof=null, authUser=null;
     try{
       var cred=await firebase.auth().signInWithEmailAndPassword(_authEmail(u),p);
       authUser=cred.user;
-      prof=await _getUserProfile(u,authUser&&authUser.uid); // Auth ke BAAD UID-bound profile read
+      prof=await _getUserProfile(u,authUser&&authUser.uid);
     }catch(ae){
-      if(ae && ae.code==='auth/user-not-found'){
-        // Backward compatibility: purana Firestore-password account one-time Auth me migrate.
+      // Sirf bahut purane primary Admin ke backward compatibility ke liye hidden fallback.
+      if(u==='admin' && ae && ae.code==='auth/user-not-found'){
         prof=await _legacyMigrateLogin(u,p);
         authUser=firebase.auth().currentUser;
       }else{
         throw ae;
       }
     }
-    if(!prof) throw new Error('User profile not found');
+    if(!prof) throw new Error('Is Email ID ka app access profile nahi mila');
     var ud=Object.assign({id:prof.id},prof.data||{}); delete ud.password;
     if(ud.active===false) throw new Error('Account inactive');
     if(ud.authUid && authUser && ud.authUid!==authUser.uid) throw new Error('Auth/profile mismatch');
@@ -4629,6 +4712,93 @@ var _reauthTried = false;
 var _authzUnsub = null;
 var _authzSig = '';
 function _authzCoreSig(z){try{return JSON.stringify({active:z.active!==false,role:z.role||'viewer',perms:z.perms||{},dataRestrict:z.dataRestrict||{}});}catch(e){return'';}}
+
+function _accessPageAllowedV20(pg){
+  if(!cu)return false;
+  var isA=_isAdmin();
+  if(pg==='dash')return true;
+  if(pg==='cases')return isA||!!(cu.perms&&cu.perms.view);
+  if(pg==='newcase')return isA||!!(cu.perms&&cu.perms.add);
+  if(pg==='search')return isA||!!(cu.perms&&cu.perms.search);
+  if(pg==='reports')return isA||!!(cu.perms&&cu.perms.reports);
+  if(pg==='tawan')return isA||_hasTawanPerm(cu);
+  if(pg==='clients')return isA||!!(cu.perms&&cu.perms.clients&&!_isServerScoped());
+  if(pg==='users'||pg==='trash')return isA;
+  if(pg==='settings')return isA||!!(cu.perms&&cu.perms.settings);
+  return true;
+}
+function _refreshAccessUiV20(){
+  if(!cu)return;
+  var isA=_isAdmin(),canAdd=isA||!!(cu.perms&&cu.perms.add);
+  var sbName=document.getElementById('sbName'),sbRole=document.getElementById('sbRole'),sbAv=document.getElementById('sbAv');
+  if(sbName)sbName.textContent=cu.fullname||cu.username||'User';
+  if(sbRole)sbRole.textContent=String(cu.role||'viewer').toUpperCase();
+  if(sbAv)sbAv.textContent=String(cu.fullname||cu.username||'U').charAt(0).toUpperCase();
+
+  var nc=document.getElementById('nav-nc');if(nc)nc.style.display=canAdd?'flex':'none';
+  var dn=document.getElementById('dashNewCaseBtn');if(dn)dn.style.display=canAdd?'':'none';
+  var cn=document.getElementById('casesNewCaseBtn');if(cn)cn.style.display=canAdd?'':'none';
+
+  var navMap={cases:'view',search:'search',reports:'reports'};
+  Object.keys(navMap).forEach(function(pg){
+    var el=document.querySelector('[data-p="'+pg+'"]');
+    if(el)el.style.display=(isA||!!(cu.perms&&cu.perms[navMap[pg]]))?'flex':'none';
+  });
+  var tw=document.querySelector('[data-p="tawan"]');if(tw)tw.style.display=(isA||_hasTawanPerm(cu))?'flex':'none';
+  var cl=document.getElementById('nav-clients');if(cl)cl.style.display=(isA||!!(cu.perms&&cu.perms.clients&&!_isServerScoped()))?'flex':'none';
+  var us=document.getElementById('nav-users');if(us)us.classList.toggle('hide',!isA);
+  var se=document.getElementById('nav-set');if(se)se.classList.toggle('hide',!(isA||!!(cu.perms&&cu.perms.settings)));
+  var tr=document.getElementById('nav-trash');if(tr)tr.classList.toggle('hide',!isA);
+}
+async function _applyLiveAuthzV20(z){
+  if(!cu||!z)return;
+  // IMPORTANT: old-scope cache delete current (old) cu ke basis par hi karo.
+  try{
+    sessionStorage.removeItem(_ckData());
+    sessionStorage.removeItem(_ckTs());
+    await _pcDel('cases');
+    await _pcDel('caseMeta');
+    await _pcDel('clients');
+  }catch(e){console.warn('old scope cache clear:',e);}
+
+  if(_casesUnsub){try{_casesUnsub();}catch(e){} _casesUnsub=null;}
+  cc=[];window._ccLoaded=false;
+  _clients=[];
+  if(typeof _clientIndexInvalidate==='function')_clientIndexInvalidate();
+
+  cu=Object.assign({},cu,{
+    username:z.username||cu.username,
+    email:z.email||cu.email,
+    fullname:z.fullname||cu.fullname,
+    role:z.role||'viewer',
+    active:z.active!==false,
+    perms:z.perms||{},
+    dataRestrict:z.dataRestrict||{}
+  });
+  delete cu.password;
+  localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));
+
+  _refreshAccessUiV20();
+  if(!_accessPageAllowedV20(_currentPg))goPage('dash',null,true);
+  else if(_currentPg!=='dash')goPage('dash',null,true); // old-scope data ko screen par bilkul na rakho
+
+  if(cu.perms&&cu.perms.view || _isAdmin()){
+    await startListener();
+  }else{
+    window._ccLoaded=true;
+    updStats();
+  }
+  if((cu.perms&&cu.perms.clients)&&!_isServerScoped())loadClients();
+
+  // First-login modal priority: authz refresh kabhi ise close/replace nahi karega.
+  if(cu.mustChangePw===true){
+    var fm=document.getElementById('mForcePw');
+    if(fm&&!fm.classList.contains('open'))openForcePwModal();
+  }else{
+    toast('✅ Access permissions update ho gayi');
+  }
+}
+
 function _watchAuthz(){
   try{
     var au=firebase.auth().currentUser;if(!cu||!au||_authzUnsub)return;
@@ -4638,11 +4808,25 @@ function _watchAuthz(){
       if(!_authzSig){_authzSig=sig;return;}
       if(sig===_authzSig)return;
       _authzSig=sig;
-      try{sessionStorage.removeItem(_ckData());sessionStorage.removeItem(_ckTs());cc=[];}catch(e){}_pcDel('cases');_pcDel('clients');
-      if(z.active===false){alert('Aapka account deactivate ho gaya hai. Dobara access ke liye Admin se rabta karein.');doLogout();return;}
-      alert('Aapki access permissions / data scope Admin ne update ki hai. Security ke liye dobara login karein.');
-      doLogout();
-    },function(e){if(e&&e.code!=='permission-denied')console.warn('authz watch:',e.code||e.message);});
+
+      if(z.active===false){
+        var fm=document.getElementById('mForcePw');if(fm)fm.classList.remove('open');
+        toast('⛔ Account deactivate ho gaya hai');
+        setTimeout(doLogout,700);
+        return;
+      }
+
+      // V20: No browser alert, no forced re-login. Firestore rules already new authz ko immediately enforce karti hain.
+      _applyLiveAuthzV20(z).catch(function(e){
+        console.warn('live authz apply:',e);
+        // Security-first fallback: stale old-scope UI na rahe.
+        try{cc=[];cacheInvalidate();}catch(_e){}
+        goPage('dash',null,true);
+        toast('⚠️ Access update apply hui; data refresh dobara try karein');
+      });
+    },function(e){
+      if(e&&e.code!=='permission-denied')console.warn('authz watch:',e.code||e.message);
+    });
   }catch(e){console.warn('authz watch init:',e.message||e);}
 }
 function _watchAuth(){
@@ -4794,7 +4978,7 @@ function goPage(pg,el,skipHistory){
         setTimeout(_newCaseGoTop,120);
       }, 100);
     }
-    else if(pg==='tawan')   renderTawan();
+    else if(pg==='tawan')   openTawanV23();
     else if(pg==='search'){
       if(_pendingFilters) applyPendingFilters();
       else doSrch();
@@ -8578,7 +8762,7 @@ async function _saveCaseInner(){
     }
   }
   var _deptPayload=getDeptPayloadForSave();
-  const data={caseNo:cn,openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),mufattishMode:_mufMode,mufattishExpected:expectedMufattish(document.getElementById('fReg').value,document.getElementById('fSt').value),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:_deptPayload.dept,depts:_deptPayload.depts,idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,clientId:(persons[0]||{}).clientId||'',clientIds:persons.map(function(p){return p.clientId||'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}),subject:sanitizeHtml(document.getElementById('fSub').value).trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:sanitizeHtml(document.getElementById('fRem').value).trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:sanitizeHtml(document.getElementById('fRah').value).trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
+  const data={caseNo:cn,openDate:document.getElementById('fOD').value,year:document.getElementById('fYr').value,mufattish:document.getElementById('fMuf').value.trim(),mufattishMode:_mufMode,mufattishExpected:expectedMufattish(document.getElementById('fReg').value,document.getElementById('fSt').value),sael:document.getElementById('fSael').value,region:document.getElementById('fReg').value,state:document.getElementById('fSt').value,division:document.getElementById('fDiv').value,district:document.getElementById('fDist').value,city:document.getElementById('fCity').value.trim(),oldRegion:document.getElementById('fOldRegion').value.trim(),oldDivision:document.getElementById('fOldDivision').value.trim(),oldKabina:document.getElementById('fOldKabina').value.trim(),oldSheher:document.getElementById('fOldSheher').value.trim(),dept:_deptPayload.dept,depts:_deptPayload.depts,idarati:document.getElementById('fIdr').value,idaraName:document.getElementById('fIdN').value.trim(),name:nm,mobile:mb,empCode:(persons[0]||{}).empCode||'',persons:persons,clientId:(persons[0]||{}).clientId||'',clientIds:persons.map(function(p){return p.clientId||'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}),subject:sanitizeHtml(document.getElementById('fSub').value).trim(),detail:document.getElementById('fDet').value.trim(),status:document.getElementById('fStat').value,closeDate:document.getElementById('fCD').value,remarks:sanitizeHtml(document.getElementById('fRem').value).trim(),closingTime:document.getElementById('fKT').value.trim(),callCount:document.getElementById('fCall').value,mailCount:document.getElementById('fMail').value,waCount:document.getElementById('fWA').value,contactTotal:document.getElementById('fCTotal').value,rahnumai:sanitizeHtml(document.getElementById('fRah').value).trim(),guide:getGuideValues()[0]||'',guides:getGuideValues(),hasTawan:getGuideValues().indexOf('tawan')>-1,personGuides:(typeof getPgmSelection==='function'?getPgmSelection():{}),tDO:document.getElementById('tDO').value,tDC:document.getElementById('tDC').value,tawnKismWajiba:document.getElementById('tKismWajiba')?document.getElementById('tKismWajiba').checked:false,tawnKismNafila:document.getElementById('tKismNafila')?document.getElementById('tKismNafila').checked:false,tDR:document.getElementById('tDR').value.trim(),tDRCustom:document.getElementById('tDRCustom').value.trim(),
       tTypeRaqam:document.getElementById('tTypeRaqam')?document.getElementById('tTypeRaqam').checked:false,
       tTypeAshiya:document.getElementById('tTypeAshiya')?document.getElementById('tTypeAshiya').checked:false,
       tCollMethod:(function(){var methods=[];['tCollHR','tCollInst','tCollDirect'].forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)methods.push(el.value);});return methods.join(',');}()),
@@ -9009,6 +9193,8 @@ function openUM(id){
   if(id){var u=uc.find(function(x){return x.id===id;});if(!u)return;document.getElementById('uUN').value=u.username;document.getElementById('uUN').readOnly=true;document.getElementById('uUN').dataset.userEdited='1';if(em){em.value=u.email||'';em.readOnly=true;}if(emReq)emReq.style.display=u.email?'':'none';if(emHelp)emHelp.textContent=u.email?'Login Email Firebase Auth se linked hai; yahan edit nahi hoga.':'Legacy account: real Email Firebase Auth Console se migrate/link karein.';document.getElementById('uFN').value=u.fullname||'';pw.value='';pc.value='';pw.disabled=true;pc.disabled=true;if(pwReq)pwReq.style.display='none';if(pcReq)pcReq.style.display='none';if(tools)tools.style.display='none';document.getElementById('uRl').value=u.role||'viewer';document.getElementById('uAc').value=u.active!==false?'1':'0';document.getElementById('uNt').value=u.note||'';var de=document.getElementById('uDesig');if(de)de.value=u.designation||((u.role==='admin'||u.role==='superadmin')?u.role:'');sPm(u.perms||{});_setUserAdminPermUI(u.role==='admin'||u.role==='superadmin');initUDRestrict(u.dataRestrict||{});renderDesignationPreviewOnly();}
   else{['uEM','uUN','uFN','uPW','uPC','uNt'].forEach(function(x){var e=document.getElementById(x);if(e)e.value='';});document.getElementById('uUN').readOnly=false;document.getElementById('uUN').dataset.userEdited='0';if(em){em.readOnly=false;em.value='';}if(emReq)emReq.style.display='';if(emHelp)emHelp.textContent='Naya user isi Email ID se login karega.';pw.disabled=false;pc.disabled=false;if(pwReq)pwReq.style.display='';if(pcReq)pcReq.style.display='';if(tools)tools.style.display='flex';document.getElementById('uRl').value='viewer';document.getElementById('uAc').value='1';var de=document.getElementById('uDesig');if(de)de.value='';sPm({view:true,search:true,tawan:false});_setUserAdminPermUI(false);initUDRestrict({});var dp=document.getElementById('desigPreviewWrap');if(dp)dp.style.display='none';}
   updateAccessSummary();document.getElementById('mUser').classList.add('open');
+
+  _syncAdminScopeUiV20();
 }
 function _setUserAdminPermUI(isAdminRole){var e=document.getElementById('pu');if(e){e.disabled=!isAdminRole;if(!isAdminRole)e.checked=false;}}
 function sPm(p){var map={pv:'view',pa:'add',pe:'edit',pd:'del',ps:'search',pr:'reports',ptw:'tawan',pcl:'clients',pu:'users',pst:'settings'};Object.keys(map).forEach(function(id){var e=document.getElementById(id);if(e)e.checked=!!(p&&p[map[id]]);});}
@@ -9223,7 +9409,42 @@ var DESIG_PRESETS = {
   'viewer_report':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:true,reports:true,tawan:false,clients:false,users:false,settings:false},label:'View + Search + Reports'},
   'viewer_tawan':{role:'viewer',perms:{view:true,add:false,edit:false,del:false,search:true,reports:false,tawan:true,clients:false,users:false,settings:false},label:'View + Search + Tawan'}
 };
-function applyDesignationPreset(){var d=document.getElementById('uDesig'),desig=d?d.value:'',preset=DESIG_PRESETS[desig],roleEl=document.getElementById('uRl');if(!desig||!preset){if(roleEl)roleEl.value='viewer';_setUserAdminPermUI(false);renderDesignationPreviewOnly();return;}if((desig==='admin'||desig==='superadmin')&&!_isAdmin()){toast('⛔ Admin role sirf Admin assign kar sakta hai');d.value='';return;}sPm(preset.perms||{});var ar=(desig==='admin'||desig==='superadmin');_setUserAdminPermUI(ar);if(ar){document.getElementById('pu').checked=true;roleEl.value=desig;}else roleEl.value=preset.role==='viewer'?'viewer':'staff';renderDesignationPreviewOnly();}
+
+function _syncAdminScopeUiV20(){
+  var desig=(document.getElementById('uDesig')||{}).value||'';
+  var isAdminPreset=(desig==='admin'||desig==='superadmin');
+  var wrap=document.getElementById('uDataRestrictWrapV20');
+  if(isAdminPreset){
+    initUDRestrict({});
+    if(wrap){wrap.style.display='none';wrap.setAttribute('aria-hidden','true');}
+  }else{
+    if(wrap){wrap.style.display='';wrap.removeAttribute('aria-hidden');}
+  }
+  updateAccessSummary();
+}
+
+function applyDesignationPreset(){
+  var d=document.getElementById('uDesig'),desig=d?d.value:'',preset=DESIG_PRESETS[desig],roleEl=document.getElementById('uRl');
+  if(!desig||!preset){
+    if(roleEl)roleEl.value='viewer';
+    _setUserAdminPermUI(false);
+    _syncAdminScopeUiV20();
+    renderDesignationPreviewOnly();
+    return;
+  }
+  if((desig==='admin'||desig==='superadmin')&&!_isAdmin()){
+    toast('⛔ Admin role sirf Admin assign kar sakta hai');d.value='';return;
+  }
+  sPm(preset.perms||{});
+  var ar=(desig==='admin'||desig==='superadmin');
+  _setUserAdminPermUI(ar);
+  if(ar){
+    document.getElementById('pu').checked=true;
+    roleEl.value=desig;
+  }else roleEl.value=preset.role==='viewer'?'viewer':'staff';
+  _syncAdminScopeUiV20();
+  renderDesignationPreviewOnly();
+}
 function autoPm(){var r=document.getElementById('uRl').value;sPm((r==='admin'||r==='superadmin')?DESIG_PRESETS.admin.perms:r==='staff'?DESIG_PRESETS.nazim.perms:DESIG_PRESETS.viewer_report.perms);_setUserAdminPermUI(r==='admin'||r==='superadmin');}
 function _deriveRole(perms,desig){if(desig==='admin'||desig==='superadmin')return desig;return(perms.add||perms.edit||perms.del||perms.settings)?'staff':'viewer';}
 function _validUserName(un){return/^[A-Za-z0-9_-]{3,32}$/.test(un||'');}
@@ -9231,17 +9452,34 @@ function _validateUserScope(dr){if((dr.divisions&&dr.divisions.length)&&(!dr.reg
 function _activeAdminCount(exceptId){return uc.filter(function(u){return u.id!==exceptId&&u.active!==false&&(u.role==='admin'||u.role==='superadmin'||String(u.username||'').toLowerCase()==='admin');}).length;}
 async function saveUser(){
   if(!_isAdmin()){toast('⛔ Add/Edit User sirf Admin kar sakta hai');return;}
-  var un=document.getElementById('uUN').value.trim(),email=String((document.getElementById('uEM')||{}).value||'').trim().toLowerCase(),pw=document.getElementById('uPW').value,pc=document.getElementById('uPC').value,fn=document.getElementById('uFN').value.trim();if(!_validUserName(un)){toast('❌ User ID 3-32 chars: sirf letters, numbers, _ ya -');return;}if(!fn)fn=un;if(!eUId){if(!_validEmail(email)){toast('❌ Valid Login Email ID zaroori hai');return;}if(!pw||pw.length<8){toast('❌ Password minimum 8 characters ka ho');return;}if(pw!==pc){toast('❌ Password aur Confirm Password match nahi karte');return;}}if(uc.find(function(x){return(x.username||'').toLowerCase()===un.toLowerCase()&&x.id!==eUId;})){toast('❌ User ID exists');return;}if(email&&uc.find(function(x){return String(x.email||'').toLowerCase()===email&&x.id!==eUId;})){toast('❌ Ye Email ID already kisi user ke saath linked hai');return;}
+  var un=document.getElementById('uUN').value.trim(),email=String((document.getElementById('uEM')||{}).value||'').trim().toLowerCase(),pw=document.getElementById('uPW').value,pc=document.getElementById('uPC').value,fn=document.getElementById('uFN').value.trim();
+  if(!eUId){
+    if(!_validEmail(email)){toast('❌ Valid Login Email ID zaroori hai');return;}
+    if(!un){un=_autoUserIdFromEmailV22(email);document.getElementById('uUN').value=un;}
+    if(!pw||pw.length<8){toast('❌ Password minimum 8 characters ka ho');return;}
+    if(pw!==pc){toast('❌ Password aur Confirm Password match nahi karte');return;}
+  }
+  if(!un&&eUId){toast('❌ Existing user ka internal ID missing hai');return;}
+  if(!_validUserName(un)){toast('❌ Internal User ID auto-generate nahi ho saka; Email check karein');return;}
+  if(!fn)fn=email?email.split('@')[0]:un;if(uc.find(function(x){return(x.username||'').toLowerCase()===un.toLowerCase()&&x.id!==eUId;})){toast('❌ User ID exists');return;}if(email&&uc.find(function(x){return String(x.email||'').toLowerCase()===email&&x.id!==eUId;})){toast('❌ Ye Email ID already kisi user ke saath linked hai');return;}
   var dr={regions:drGetChecked('uDRegBox'),states:drGetChecked('uDStBox'),divisions:drGetChecked('uDDivBox'),districts:drGetChecked('uDDistBox'),saels:drGetChecked('uDSaelBox'),depts:drGetChecked('uDDeptBox')};Object.keys(dr).forEach(function(k){if(!dr[k]||!dr[k].length)delete dr[k];});var se=_validateUserScope(dr);if(se){toast('❌ '+se);return;}
   var perms=gPm(),desig=(document.getElementById('uDesig')||{}).value||'',role=_deriveRole(perms,desig),active=document.getElementById('uAc').value==='1';
+  if(role==='admin'||role==='superadmin')dr={};
   if(desig==='hod'&&(!dr.depts||!dr.depts.length)){toast('❌ HOD / Department Head ke liye kam az kam ek Department select karein');return;}
   if(desig==='regional_head'&&(!dr.regions||!dr.regions.length)){toast('❌ Regional Head ke liye kam az kam ek Region select karein');return;}
-  if((dr.regions&&dr.regions.length)||(dr.divisions&&dr.divisions.length)||(dr.depts&&dr.depts.length)){if(!(await ensureCaseNoRegistry())){toast('❌ Scoped user save se pehle Case No Registry initialize nahi ho saki');return;}}
+  // V20: User scope save Case No Registry build par depend nahi karta.
+  // New cases apni registry/counter entry atomic save me banate hain; legacy registry alag migration tool se backfill hoti hai.
   // Case actions/search/reports meaningful hone ke liye case View permission required hai.
   if(perms.add||perms.edit||perms.del||perms.search||perms.reports||perms.tawan)perms.view=true;
   if(_hasHardScopeObj(dr)&&perms.clients)perms.clients=false;
   if(role==='admin'||role==='superadmin'){perms.users=true;dr={};_setUserAdminPermUI(true);}else perms.users=false;var oldUser=eUId?uc.find(function(x){return x.id===eUId;}):null;if(oldUser&&String(oldUser.username||'').toLowerCase()==='admin'){if(!active||role!=='admin'){toast('❌ Primary admin ko deactivate/demote nahi kar sakte');return;}role='admin';desig='admin';perms.users=true;}if(eUId===cu.id&&!active){toast('❌ Apna account deactivate nahi kar sakte');return;}if(oldUser&&oldUser.active!==false&&(oldUser.role==='admin'||oldUser.role==='superadmin')&&!active&&_activeAdminCount(oldUser.id)===0){toast('❌ Last active Admin ko deactivate nahi kar sakte');return;}
-  var authCtx=null,authUid='';try{if(!eUId){authCtx=await _createAuthUserSecondary(email,pw);authUid=authCtx.uid;}var d={username:un,email:email,fullname:fn,role:role,designation:desig,active:active,note:document.getElementById('uNt').value.trim(),perms:perms,dataRestrict:dr,updatedAt:new Date().toISOString()};if(authUid)d.authUid=authUid;if(eUId){var os=await db.collection('users').doc(eUId).get(),old=os.exists?os.data():{},merged=Object.assign({},old,d);['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){delete merged[k];});await db.collection('users').doc(eUId).set(merged);if(merged.authUid)await syncAuthz(eUId,merged,merged.authUid);await logActivity('user_update','',{target:eUId,username:un,scope:dr});}else{d.createdAt=new Date().toISOString();d.mustChangePw=true;await db.collection('users').doc(un.toLowerCase()).set(d);await syncAuthz(un.toLowerCase(),d,authUid);await logActivity('user_create','',{target:un.toLowerCase(),username:un,scope:dr});await _finishSecondaryAuth(authCtx);authCtx=null;setTimeout(function(){alert('✅ User create ho gaya.\n\nLogin Email: '+email+'\nTemporary Password: '+pw+'\n\nFirst login par user ko apna naya password set karna mandatory hoga.');},50);}toast('✅ User saved!');cmo('mUser');fbGetU(true).then(rUsers);if(eUId&&cu&&cu.id===eUId){cu=Object.assign({},cu,d,{id:eUId});delete cu.password;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));cacheInvalidate();startListener();}}catch(e){if(authCtx)await _rollbackSecondaryAuth(authCtx);if(e&&e.code==='auth/email-already-in-use')toast('❌ Firebase Auth mein ye Email ID pehle se registered hai');else toast('❌ '+e.message);}
+  var authCtx=null,authUid='';try{
+    if(!eUId){
+      var _idCheck=await db.collection('users').doc(un.toLowerCase()).get();
+      if(_idCheck.exists){un=_autoUserIdFromEmailV22(email+'-'+Date.now());document.getElementById('uUN').value=un;}
+      authCtx=await _createAuthUserSecondary(email,pw);authUid=authCtx.uid;
+    }
+    var d={username:un,email:email,fullname:fn,role:role,designation:desig,active:active,note:document.getElementById('uNt').value.trim(),perms:perms,dataRestrict:dr,updatedAt:new Date().toISOString()};if(authUid)d.authUid=authUid;if(eUId){var os=await db.collection('users').doc(eUId).get(),old=os.exists?os.data():{},merged=Object.assign({},old,d);['region','state','division','district','sael','dept','regions','states','divisions','districts','saels','depts'].forEach(function(k){delete merged[k];});await db.collection('users').doc(eUId).set(merged);if(merged.authUid)await syncAuthz(eUId,merged,merged.authUid);await logActivity('user_update','',{target:eUId,username:un,scope:dr});}else{d.createdAt=new Date().toISOString();d.mustChangePw=true;await db.collection('users').doc(un.toLowerCase()).set(d);await syncAuthz(un.toLowerCase(),d,authUid);await logActivity('user_create','',{target:un.toLowerCase(),username:un,scope:dr});await _finishSecondaryAuth(authCtx);authCtx=null;setTimeout(function(){alert('✅ User create ho gaya.\n\nEmail ID: '+email+'\nTemporary Password: '+pw+'\n\nFirst login par user ko apna naya password set karna mandatory hoga.');},50);}toast('✅ User saved!');cmo('mUser');fbGetU(true).then(rUsers);if(eUId&&cu&&cu.id===eUId){cu=Object.assign({},cu,d,{id:eUId});delete cu.password;localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));cacheInvalidate();startListener();}}catch(e){if(authCtx)await _rollbackSecondaryAuth(authCtx);if(e&&e.code==='auth/email-already-in-use')toast('❌ Firebase Auth mein ye Email ID pehle se registered hai');else toast('❌ '+e.message);}
 }
 async function dUser(id){
   if(!_isAdmin()){toast('⛔ User delete sirf Admin kar sakta hai');return;}
@@ -9378,8 +9616,49 @@ async function chPass(){
   }
 }
 
-function openForcePwModal(){var m=document.getElementById('mForcePw');if(!m||!cu||cu.mustChangePw!==true)return;['fpOld','fpNew','fpConfirm'].forEach(function(id){var e=document.getElementById(id);if(e){e.value='';e.type='password';}});var msg=document.getElementById('fpMsg');if(msg)msg.style.display='none';m.classList.add('open');setTimeout(function(){var e=document.getElementById('fpOld');if(e)e.focus();},100);}
-async function doForcePwChange(){var op=document.getElementById('fpOld').value,np=document.getElementById('fpNew').value,cp=document.getElementById('fpConfirm').value,msg=document.getElementById('fpMsg');function fail(t){if(msg){msg.style.display='block';msg.style.color='var(--red)';msg.textContent='❌ '+t;}}if(!op||!np||!cp){fail('Sab fields required hain');return;}if(np.length<8){fail('Naya password minimum 8 characters ka ho');return;}if(np!==cp){fail('New passwords match nahi karte');return;}if(op===np){fail('Naya password temporary password se alag rakhein');return;}try{var au=firebase.auth().currentUser;if(!au)throw new Error('Auth session missing');var cred=firebase.auth.EmailAuthProvider.credential(_profileAuthEmail(cu),op);await au.reauthenticateWithCredential(cred);await au.updatePassword(np);await db.collection('users').doc(cu.id).update({mustChangePw:false,authUid:au.uid,password:firebase.firestore.FieldValue.delete(),updatedAt:new Date().toISOString()});cu.mustChangePw=false;cu.authUid=au.uid;await syncAuthz(cu.id,cu,au.uid);localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));document.getElementById('mForcePw').classList.remove('open');await logActivity('first_password_change','',{});toast('✅ Naya password set ho gaya');}catch(e){fail((e&&e.code==='auth/wrong-password')?'Current password galat hai':e.message);}}
+function openForcePwModal(){
+  var m=document.getElementById('mForcePw');
+  if(!m||!cu||cu.mustChangePw!==true)return;
+
+  // First-login password change is the only modal that should remain open.
+  ['mAccountPwV15','mUser','mResetPw'].forEach(function(id){
+    var x=document.getElementById(id);if(x)x.classList.remove('open');
+  });
+  ['fpOld','fpNew','fpConfirm'].forEach(function(id){
+    var e=document.getElementById(id);if(e){e.value='';e.type='password';}
+  });
+  var msg=document.getElementById('fpMsg');if(msg)msg.style.display='none';
+  m.classList.add('open');
+  setTimeout(function(){var e=document.getElementById('fpOld');if(e)e.focus();},100);
+}
+async function doForcePwChange(){
+  var op=document.getElementById('fpOld').value,np=document.getElementById('fpNew').value,cp=document.getElementById('fpConfirm').value,msg=document.getElementById('fpMsg');
+  function fail(t){if(msg){msg.style.display='block';msg.style.color='var(--red)';msg.textContent='❌ '+t;}}
+  if(!op||!np||!cp){fail('Sab fields bharein');return;}
+  if(np!==cp){fail('New password match nahi kar raha');return;}
+  if(np.length<8){fail('Password minimum 8 characters ka hona chahiye');return;}
+  try{
+    var au=firebase.auth().currentUser;if(!au)throw new Error('Auth session missing');
+    var cred=firebase.auth.EmailAuthProvider.credential(_profileAuthEmail(cu),op);
+    await au.reauthenticateWithCredential(cred);
+    await au.updatePassword(np);
+    await db.collection('users').doc(cu.id).update({
+      mustChangePw:false,
+      authUid:au.uid,
+      password:firebase.firestore.FieldValue.delete(),
+      updatedAt:new Date().toISOString()
+    });
+    cu.mustChangePw=false;cu.authUid=au.uid;
+    await syncAuthz(cu.id,cu,au.uid);
+    localStorage.setItem('sr_s',JSON.stringify(Object.assign({},cu,{loginAt:Date.now()})));
+    document.getElementById('mForcePw').classList.remove('open');
+    await logActivity('first_password_change','',{});
+    toast('✅ Naya password set ho gaya');
+    _refreshAccessUiV20();
+  }catch(e){
+    fail((e&&e.code==='auth/wrong-password')?'Current password galat hai':(e.message||e));
+  }
+}
 
 // Utils
 function cmo(id){document.getElementById(id).classList.remove('open');}
@@ -10214,11 +10493,227 @@ loadLogo();
 
 // ===== TAWAN SHEET =====
 function getTawanCases(){
-  return cc.filter(function(c){
-    var gs=c.guides&&c.guides.length?c.guides:(c.guide?[c.guide]:[]);
-    return gs.indexOf('tawan')>-1;
-  });
+  // V23: Tawan Sheet ka source local 250-case cache nahi hai.
+  // Server Tawan dataset load ho chuka ho to wahi authoritative list hai.
+  if(_tawanServerReadyV23){
+    var map={};
+    (_tawanServerCasesV23||[]).forEach(function(c){if(c&&c.id&&!c.deletedAt)map[c.id]=c;});
+
+    // Same device par abhi-abhi edited/saved Tawan case ko server list me immediately merge karo.
+    (cc||[]).forEach(function(c){
+      if(!c||!c.id)return;
+      var gs=Array.isArray(c.guides)?c.guides:(c.guide?[c.guide]:[]);
+      var has=(c.hasTawan===true)||gs.indexOf('tawan')>-1;
+      if(map[c.id]||has){
+        if(has&&!c.deletedAt)map[c.id]=Object.assign({},map[c.id]||{},c);
+        else delete map[c.id];
+      }
+    });
+    return _sortByCaseNoDesc(Object.keys(map).map(function(id){return map[id];}));
+  }
+  return [];
 }
+
+function _tawanIsCaseV23(c){
+  if(!c)return false;
+  if(c.hasTawan===true)return true;
+  var gs=Array.isArray(c.guides)?c.guides:(c.guide?[c.guide]:[]);
+  return gs.indexOf('tawan')>-1;
+}
+async function _tawanCacheLoadV23(){
+  try{
+    var r=await _pcGet('tawanCasesV23');
+    if(!r||!r.json||!r.savedAt||(Date.now()-r.savedAt)>60*60*1000)return null;
+    var a=JSON.parse(r.json);
+    return Array.isArray(a)?a:null;
+  }catch(e){return null;}
+}
+async function _tawanCacheSaveV23(arr){
+  try{await _pcPut('tawanCasesV23',arr||[],Date.now());}catch(e){}
+}
+async function _tawanCacheClearV23(){
+  try{await _pcDel('tawanCasesV23');}catch(e){}
+}
+function _tawanLoadingUiV23(msg){
+  function se(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  ['twTotal','twReceived','twPending'].forEach(function(id){se(id,'…');});
+  ['twTotalAmt','twWajAmt','twNafAmt'].forEach(function(id){se(id,'…');});
+  se('twCnt',msg||'Loading...');
+  var tb=document.getElementById('twBody');
+  if(tb)tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:26px;color:var(--mt)"><div class="loading"><div class="spin"></div>'+(msg||'Tawan data load ho raha hai...')+'</div></td></tr>';
+}
+async function _twFetchQueryPagesV23(q,map,label,targetTotal){
+  var cursor=null,done=false,pages=0;
+  while(!done){
+    if(targetTotal&&Object.keys(map).length>=targetTotal)break;
+    var left=_rgBlockedStatus().left;
+    if(left<=0)throw new Error('READ_BUDGET');
+    var n=Math.max(1,Math.min(200,left));
+    var ticket=_rgReserve(n,label+' page '+(pages+1));
+    if(!ticket)throw new Error('READ_BUDGET');
+
+    try{
+      var qq=q.orderBy(firebase.firestore.FieldPath.documentId()).limit(n);
+      if(cursor)qq=qq.startAfter(cursor);
+      var sn=await qq.get({source:'server'});
+      var actual=Math.max(1,sn.size||0);
+      _rgAdjust(ticket,actual);
+
+      sn.docs.forEach(function(d){
+        var c=Object.assign({id:d.id},d.data());
+        if(!c.deletedAt&&_tawanIsCaseV23(c))map[d.id]=c;
+      });
+      pages++;
+      if(sn.empty||sn.size<n)done=true;
+      else cursor=sn.docs[sn.docs.length-1];
+    }catch(e){
+      _rgAdjust(ticket,1);
+      throw e;
+    }
+  }
+  return map;
+}
+async function _twBackfillHasFlagV23(docs){
+  if(!_isAdmin()||!docs||!docs.length)return;
+  var pending=docs.filter(function(c){return c&&c.id&&c.hasTawan!==true;});
+  for(var i=0;i<pending.length;i+=400){
+    var batch=db.batch(),part=pending.slice(i,i+400);
+    part.forEach(function(c){batch.set(db.collection('cases').doc(c.id),{hasTawan:true},{merge:true});});
+    if(part.length)await batch.commit();
+  }
+}
+async function _twInitializeIndexV23(){
+  // Full-access Admin ek baar sirf Tawan documents query karke hasTawan=true backfill karta hai.
+  // Poora cases collection kabhi read nahi hota.
+  if(!_isAdmin()&&_isServerScoped())throw new Error('TAWAN_INDEX_ADMIN');
+
+  var expected=null;
+  try{expected=await _restCountV13(_guideFilterV19('tawan'));}catch(e){console.warn('Tawan exact count:',e);}
+  var map={};
+
+  // Modern query first. Agar exact aggregate count poora ho gaya to legacy duplicate query ki zarurat nahi.
+  await _twFetchQueryPagesV23(
+    db.collection('cases').where('guides','array-contains','tawan'),
+    map,'tawan-modern-v23',expected
+  );
+
+  if(!(typeof expected==='number'&&Object.keys(map).length>=expected)){
+    await _twFetchQueryPagesV23(
+      db.collection('cases').where('guide','==','tawan'),
+      map,'tawan-legacy-v23',expected
+    );
+  }
+
+  var arr=Object.keys(map).map(function(id){return map[id];});
+  if(typeof expected==='number'&&arr.length<expected)throw new Error('TAWAN_INCOMPLETE');
+
+  await _twBackfillHasFlagV23(arr);
+  if(_isAdmin()){
+    await db.collection('settings').doc('app').set({
+      tawanIndexV23Complete:true,
+      tawanIndexV23Count:arr.length,
+      tawanIndexV23At:new Date().toISOString()
+    },{merge:true});
+    _tawanIndexCompleteV23=true;
+  }
+  return arr;
+}
+async function _twLoadIndexedV23(){
+  var map={};
+
+  if(!_isServerScoped()){
+    await _twFetchQueryPagesV23(
+      db.collection('cases').where('hasTawan','==',true),
+      map,'tawan-index-v23'
+    );
+  }else{
+    if(!_tawanIndexCompleteV23)throw new Error('TAWAN_INDEX_ADMIN');
+    var qs=_caseQueryFamiliesV13();
+    for(var i=0;i<qs.length;i++){
+      await _twFetchQueryPagesV23(
+        qs[i].where('hasTawan','==',true),
+        map,'tawan-scoped-v23-'+i
+      );
+    }
+  }
+
+  var out=Object.keys(map).map(function(id){return map[id];});
+  out=_applyRestriction(out);
+  return _sortByCaseNoDesc(out);
+}
+async function loadTawanServerV23(force){
+  if(_tawanServerLoadingV23)return _tawanServerLoadingV23;
+
+  _tawanServerLoadingV23=(async function(){
+    _tawanServerErrorV23='';
+    if(!force){
+      var cached=await _tawanCacheLoadV23();
+      if(cached&&cached.length){
+        _tawanServerCasesV23=_applyRestriction(cached.filter(_tawanIsCaseV23));
+        _tawanServerReadyV23=true;
+        renderTawan();
+        return _tawanServerCasesV23;
+      }
+    }
+
+    _tawanServerReadyV23=false;
+    _tawanLoadingUiV23('Tawan records load ho rahe hain...');
+
+    try{
+      var arr;
+      if(_tawanIndexCompleteV23){
+        arr=await _twLoadIndexedV23();
+      }else if(_isAdmin()||!_isServerScoped()){
+        arr=await _twInitializeIndexV23();
+        arr=_applyRestriction(arr);
+      }else{
+        throw new Error('TAWAN_INDEX_ADMIN');
+      }
+
+      _tawanServerCasesV23=_sortByCaseNoDesc((arr||[]).filter(_tawanIsCaseV23));
+      _tawanServerReadyV23=true;
+      await _tawanCacheSaveV23(_tawanServerCasesV23);
+      return _tawanServerCasesV23;
+    }catch(e){
+      console.warn('Tawan server load V23:',e&&e.message?e.message:e);
+      _tawanServerReadyV23=false;
+      if(e&&e.message==='TAWAN_INDEX_ADMIN'){
+        _tawanServerErrorV23='Tawan data ek martaba Admin account se initialize karna zaroori hai.';
+      }else if(e&&e.message==='READ_BUDGET'){
+        _tawanServerErrorV23='Aaj ki safe read limit mein poora Tawan data load nahi ho saka.';
+      }else if(e&&e.message==='TAWAN_INCOMPLETE'){
+        _tawanServerErrorV23='Tawan records ka complete server set verify nahi ho saka.';
+      }else{
+        _tawanServerErrorV23='Tawan data load nahi hua: '+(e&&e.message?e.message:'unknown error');
+      }
+      throw e;
+    }finally{
+      _tawanServerLoadingV23=null;
+    }
+  })();
+
+  return _tawanServerLoadingV23;
+}
+async function openTawanV23(){
+  _tawanLoadingUiV23('Tawan records load ho rahe hain...');
+  try{
+    await loadTawanServerV23(false);
+    renderTawan();
+  }catch(e){
+    var tb=document.getElementById('twBody');
+    if(tb)tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--red)">❌ '+_e(_tawanServerErrorV23||'Tawan data load nahi hua')+'</td></tr>';
+    ['twTotal','twReceived','twPending','twTotalAmt','twWajAmt','twNafAmt'].forEach(function(id){
+      var x=document.getElementById(id);if(x)x.textContent='—';
+    });
+    var c=document.getElementById('twCnt');if(c)c.textContent='Server data unavailable';
+  }
+}
+async function refreshTawanV23(){
+  await _tawanCacheClearV23();
+  _tawanServerReadyV23=false;_tawanServerCasesV23=[];
+  return openTawanV23();
+}
+
 function _twHasAshiya(c){return !!(c&&(c.tTypeAshiya||c.tAshiyaNaam||c.tAshiyaWasool));}
 function _twAshiyaReceived(c){
   if(!_twHasAshiya(c))return true;
@@ -10322,11 +10817,21 @@ function twCardClick(type){
   if(tbody&&tbody.closest('table'))tbody.closest('table').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function renderTawan(){
-  if(!cc||cc.length===0){
-    var tb=document.getElementById('twBody');
-    if(tb)tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:22px;color:var(--mt)"><div class="loading"><div class="spin"></div>Loading cases...</div></td></tr>';
+  if(!_tawanServerReadyV23){
+    if(_tawanServerLoadingV23){
+      _tawanLoadingUiV23('Tawan records load ho rahe hain...');
+      return;
+    }
+    if(_tawanServerErrorV23){
+      var tb0=document.getElementById('twBody');
+      if(tb0)tb0.innerHTML='<tr><td colspan="11" style="text-align:center;padding:25px;color:var(--red)">❌ '+_e(_tawanServerErrorV23)+'</td></tr>';
+      return;
+    }
+    // Tawan page open hua ho aur server load abhi start na hua ho.
+    if(_currentPg==='tawan'){openTawanV23();return;}
     return;
   }
+
   var tw=getTawanCases(),filtered=_twApplyFilters(tw);
   var tot=tw.length;
   var fulfilled=tw.filter(function(c){return _twCaseState(c).state==='fulfilled';}).length;
@@ -10334,6 +10839,7 @@ function renderTawan(){
   var totalAmt=tw.reduce(function(s,c){return s+(parseFloat(c.tTot)||0);},0);
   var wajAmt=tw.reduce(function(s,c){return s+(parseFloat(c.tWaj)||0);},0);
   var nafAmt=tw.reduce(function(s,c){return s+(parseFloat(c.tNaf)||0);},0);
+
   function se(id){return document.getElementById(id);}
   if(se('twTotal'))se('twTotal').textContent=tot;
   if(se('twReceived'))se('twReceived').textContent=fulfilled;
@@ -10342,10 +10848,13 @@ function renderTawan(){
   if(se('twWajAmt'))se('twWajAmt').textContent='₹'+wajAmt.toLocaleString('en-IN');
   if(se('twNafAmt'))se('twNafAmt').textContent='₹'+nafAmt.toLocaleString('en-IN');
   if(se('twCnt'))se('twCnt').textContent=filtered.length+' record'+(filtered.length!==1?'s':'');
+
   var tbody=se('twBody');if(!tbody)return;
   if(!filtered.length){
-    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:22px;color:var(--mt)">📭 Koi tawan case nahi mila</td></tr>';return;
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:22px;color:var(--mt)">📭 Koi Tawan case nahi mila</td></tr>';
+    return;
   }
+
   tbody.innerHTML=filtered.map(function(cRaw,i){
     var c=_cleanC(cRaw),st=_twCaseState(cRaw);
     return `<tr style="cursor:pointer" onclick="rowClick(event,'${c.id}')">
@@ -10389,6 +10898,7 @@ function clrTawanFilter(){
   renderTawan();
 }
 function exportTawanCSV(){
+  if(!_tawanServerReadyV23){toast('⏳ Tawan data load hone dein');return;}
   var tw=_twApplyFilters(getTawanCases());
   if(!tw.length){toast('⚠️ Current filter mein export ke liye koi Tawan record nahi');return;}
   var headers=['Sr No','Investigator Name','Region Name','State Name','Division Name','District Name','City Name','Order Date','Case No','Zimmadari Ajeer','Ajeer Code','Mobile','MOBILE MAJLIS','Total Amount','Wajiba Amount','Nafila Amount','Maddat-e-Makhsusa','Received Amount','Remaining Amount','Extra Received','Tawan Status','Donor Response','Tawan Category','Tawan Purpose','Donor / Center','Ashiya Details'];
@@ -14502,7 +15012,7 @@ function deptClose(){
           <div style="margin-top:10px">
             <label style="font-size:.7rem;font-weight:700;color:var(--bd)">OCR Language</label>
             <select id="rahOcrLang" style="margin-top:4px;width:100%">
-              <option value="urd" selected>Urdu Only — Best for Urdu</option>
+              <option value="urd" selected>Urdu High Quality (Recommended)</option>
               <option value="urd+ara">Urdu + Arabic</option>
               <option value="urd+eng">Urdu + English</option>
             </select>
@@ -14624,128 +15134,185 @@ function deptClose(){
 
 
   async function preprocessRahOcrImageV18(file){
-    var bmp=null,img=null,w=0,h=0;
-    try{
-      if(window.createImageBitmap){
-        bmp=await createImageBitmap(file);w=bmp.width;h=bmp.height;
-      }else{
-        img=await new Promise(function(resolve,reject){
-          var im=new Image(),u=URL.createObjectURL(file);
-          im.onload=function(){URL.revokeObjectURL(u);resolve(im);};
-          im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Image open nahi hui'));};
-          im.src=u;
-        });
-        w=img.naturalWidth||img.width;h=img.naturalHeight||img.height;
-      }
-      var maxDim=Math.max(w,h),scale=maxDim<2200?2:Math.min(1.6,3200/maxDim);
-      scale=Math.max(1,scale);
-      var cw=Math.max(1,Math.round(w*scale)),ch=Math.max(1,Math.round(h*scale));
-      var c=document.createElement('canvas');c.width=cw;c.height=ch;
-      var ctx=c.getContext('2d',{willReadFrequently:true});
-      ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);
-      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-      ctx.drawImage(bmp||img,0,0,cw,ch);
-      var id=ctx.getImageData(0,0,cw,ch),d=id.data,contrast=1.45;
-      for(var i=0;i<d.length;i+=4){
-        var g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-        g=(g-128)*contrast+128;g=Math.max(0,Math.min(255,g));
-        d[i]=d[i+1]=d[i+2]=g;d[i+3]=255;
-      }
-      ctx.putImageData(id,0,0);
-      var blob=await new Promise(function(resolve){c.toBlob(resolve,'image/png',1);});
-      if(bmp&&bmp.close)bmp.close();
-      return blob||file;
-    }catch(e){
-      try{if(bmp&&bmp.close)bmp.close();}catch(_){}
-      console.warn('OCR preprocess fallback:',e);
-      return file;
+  var bmp=null,img=null,w=0,h=0;
+  try{
+    if(window.createImageBitmap){
+      bmp=await createImageBitmap(file);w=bmp.width;h=bmp.height;
+    }else{
+      img=await new Promise(function(resolve,reject){
+        var im=new Image(),u=URL.createObjectURL(file);
+        im.onload=function(){URL.revokeObjectURL(u);resolve(im);};
+        im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Image open nahi hui'));};
+        im.src=u;
+      });
+      w=img.naturalWidth||img.width;h=img.naturalHeight||img.height;
     }
+
+    var maxDim=Math.max(w,h);
+    var scale=maxDim<1800?2.4:(maxDim<2600?1.8:Math.min(1.4,3600/maxDim));
+    scale=Math.max(1,scale);
+    var cw=Math.max(1,Math.round(w*scale)),ch=Math.max(1,Math.round(h*scale));
+
+    var base=document.createElement('canvas');base.width=cw;base.height=ch;
+    var ctx=base.getContext('2d',{willReadFrequently:true});
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(bmp||img,0,0,cw,ch);
+
+    var id=ctx.getImageData(0,0,cw,ch),d=id.data;
+    var min=255,max=0,pix=[];
+    for(var i=0;i<d.length;i+=4){
+      var g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+      pix.push(g);if(g<min)min=g;if(g>max)max=g;
+    }
+    var span=Math.max(20,max-min),p=0;
+    for(var j=0;j<d.length;j+=4){
+      var gv=pix[p++];
+      gv=Math.max(0,Math.min(255,Math.round((gv-min)*255/span)));
+      gv=Math.max(0,Math.min(255,Math.round((gv-128)*1.25+128)));
+      d[j]=d[j+1]=d[j+2]=gv;d[j+3]=255;
+    }
+    ctx.putImageData(id,0,0);
+
+    // Otsu threshold
+    var stretched=ctx.getImageData(0,0,cw,ch),sd=stretched.data,hist=new Array(256).fill(0);
+    for(var k=0;k<sd.length;k+=4)hist[sd[k]]++;
+    var total=cw*ch,sum=0;
+    for(var t=0;t<256;t++)sum+=t*hist[t];
+    var sumB=0,wB=0,maxVar=-1,thr=180;
+    for(var q=0;q<256;q++){
+      wB+=hist[q];if(!wB)continue;
+      var wF=total-wB;if(!wF)break;
+      sumB+=q*hist[q];
+      var mB=sumB/wB,mF=(sum-sumB)/wF;
+      var between=wB*wF*(mB-mF)*(mB-mF);
+      if(between>maxVar){maxVar=between;thr=q;}
+    }
+
+    var bin=document.createElement('canvas');bin.width=cw;bin.height=ch;
+    var bctx=bin.getContext('2d',{willReadFrequently:true});
+    var bid=bctx.createImageData(cw,ch),bd=bid.data;
+    for(var z=0;z<sd.length;z+=4){
+      var v=sd[z] < Math.min(225,thr+12) ? 0 : 255;
+      bd[z]=bd[z+1]=bd[z+2]=v;bd[z+3]=255;
+    }
+    bctx.putImageData(bid,0,0);
+
+    var grayBlob=await new Promise(function(resolve){base.toBlob(resolve,'image/png',1);});
+    var binaryBlob=await new Promise(function(resolve){bin.toBlob(resolve,'image/png',1);});
+    if(bmp&&bmp.close)bmp.close();
+
+    return {gray:grayBlob||file,binary:binaryBlob||grayBlob||file,original:file};
+  }catch(e){
+    try{if(bmp&&bmp.close)bmp.close();}catch(_){}
+    console.warn('OCR preprocess fallback:',e);
+    return {gray:file,binary:file,original:file};
   }
+}
 
 
-  function _scoreUrduOcrV19(txt){
-    txt=String(txt||'');
-    var ar=(txt.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g)||[]).length;
-    var latin=(txt.match(/[A-Za-z]/g)||[]).length;
-    var digits=(txt.match(/[0-9]/g)||[]).length;
-    var junk=(txt.match(/[�□■◆◇]/g)||[]).length;
-    var lines=txt.split(/\n/).filter(function(x){return x.trim().length>2;}).length;
-    return ar*3 - latin*1.8 - junk*8 + Math.min(lines,40)*2 + Math.min(digits,30)*0.2;
-  }
+  function _scoreUrduOcrV19(txt,confidence){
+  txt=String(txt||'');
+  var urdu=(txt.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g)||[]).length;
+  var latin=(txt.match(/[A-Za-z]/g)||[]).length;
+  var junk=(txt.match(/[�□■◆◇¤]/g)||[]).length;
+  var nonSpace=(txt.match(/\S/g)||[]).length||1;
+  var urduRatio=urdu/nonSpace;
+  var latinRatio=latin/nonSpace;
+  var lines=txt.split(/\n/).filter(function(x){return x.trim().length>2;}).length;
+  var conf=Number(confidence||0);
+  return conf*2.2 + urduRatio*140 - latinRatio*100 - junk*10 + Math.min(lines,50)*1.5 + Math.min(urdu,1200)*0.04;
+}
 
   window.rahOcrStart=async function(){
-    if(!_rahOcrFile){ toast('⚠️ Pehle image select karein'); return; }
-    var run=++_rahOcrRun;
-    var rb=el('rahOcrRetryBtn'),ib=el('rahOcrInsertBtn'),tx=el('rahOcrText');
-    if(rb)rb.disabled=true; if(ib)ib.disabled=true;
-    if(tx)tx.value='';
-    setStatus('OCR library load ho rahi hai…',2,false);
+  if(!_rahOcrFile){toast('⚠️ Pehle image select karein');return;}
+  var run=++_rahOcrRun;
+  var rb=el('rahOcrRetryBtn'),ib=el('rahOcrInsertBtn'),tx=el('rahOcrText');
+  if(rb)rb.disabled=true;if(ib)ib.disabled=true;
+  if(tx)tx.value='';
+  setStatus('High-Quality Urdu OCR load ho raha hai…',2,false);
 
-    try{
-      var T=await ensureLib();
-      if(run!==_rahOcrRun)return;
+  try{
+    var T=await ensureLib();
+    if(run!==_rahOcrRun)return;
 
-      var langs=(el('rahOcrLang')||{value:'urd'}).value||'urd';
-      setStatus('Image saaf/upscale ho rahi hai…',5,false);
-      var ocrInput=await preprocessRahOcrImageV18(_rahOcrFile);
-      if(run!==_rahOcrRun)return;
-      setStatus('Urdu OCR tayyar ho raha hai…',10,false);
+    var langs=(el('rahOcrLang')||{value:'urd'}).value||'urd';
+    setStatus('Image preprocess ho rahi hai…',5,false);
+    var prep=await preprocessRahOcrImageV18(_rahOcrFile);
+    if(run!==_rahOcrRun)return;
 
-      // createWorker keeps OCR fully inside this browser tab.
-      var opts={logger:function(m){
+    var opts={
+      langPath:'https://tessdata.projectnaptha.com/4.0.0_best/',
+      logger:function(m){
         if(run!==_rahOcrRun)return;
-        var pct=(typeof m.progress==='number')?Math.max(5,m.progress*100):5;
+        var pct=(typeof m.progress==='number')?Math.max(8,Math.min(94,m.progress*100)):8;
         setStatus(friendlyStatus(m),pct,false);
-      }};
-      var oem=(T.OEM&&T.OEM.LSTM_ONLY!==undefined)?T.OEM.LSTM_ONLY:1;
-      _rahOcrWorker=await T.createWorker(langs,oem,opts);
-      if(run!==_rahOcrRun){
-        try{await _rahOcrWorker.terminate();}catch(e){}
-        _rahOcrWorker=null; return;
       }
+    };
+    var oem=(T.OEM&&T.OEM.LSTM_ONLY!==undefined)?T.OEM.LSTM_ONLY:1;
+    setStatus('Urdu BEST model tayyar ho raha hai…',10,false);
+    _rahOcrWorker=await T.createWorker(langs,oem,opts);
 
-      async function _passV19(input,psm,label){
-        try{
-          await _rahOcrWorker.setParameters({
-            tessedit_pageseg_mode:String(psm),
-            preserve_interword_spaces:'1',
-            user_defined_dpi:'300'
-          });
-        }catch(_p){}
-        setStatus(label,psm===6?35:70,false);
-        var rr=await _rahOcrWorker.recognize(input);
-        return cleanText(rr&&rr.data&&rr.data.text);
-      }
-
-      // Pass 1: single-block/column Urdu; Pass 2: full-page auto layout.
-      var out6=await _passV19(ocrInput,6,'Urdu OCR — column/text pass…');
-      if(run!==_rahOcrRun)return;
-      var out3=await _passV19(_rahOcrFile,3,'Urdu OCR — full page pass…');
-      if(run!==_rahOcrRun)return;
-
-      var score6=_scoreUrduOcrV19(out6),score3=_scoreUrduOcrV19(out3);
-      var out=score6>=score3?out6:out3;
-      if(tx)tx.value=out;
-
-      if(out){
-        setStatus('✅ 2 OCR passes me se behtar Urdu result select hua — check/edit karke add karein.',100,false);
-        if(ib)ib.disabled=false;
-      }else{
-        setStatus('Text nahi mila. Clear/cropped screenshot se dobara try karein.',100,true);
-      }
-      if(rb)rb.disabled=false;
-    }catch(e){
-      if(run!==_rahOcrRun)return;
-      console.warn('Rahnumai OCR:',e);
-      setStatus('❌ '+(e&&e.message?e.message:'OCR failed')+'. Clear screenshot ya doosri language se retry karein.',0,true);
-      if(rb)rb.disabled=false;
-    }finally{
-      if(_rahOcrWorker){
-        try{await _rahOcrWorker.terminate();}catch(e){}
-        _rahOcrWorker=null;
-      }
+    if(run!==_rahOcrRun){
+      try{await _rahOcrWorker.terminate();}catch(e){}
+      _rahOcrWorker=null;return;
     }
-  };
+
+    async function pass(input,psm,label){
+      try{
+        await _rahOcrWorker.setParameters({
+          tessedit_pageseg_mode:String(psm),
+          preserve_interword_spaces:'1',
+          user_defined_dpi:'300',
+          textord_tabfind_find_tables:'0'
+        });
+      }catch(_p){}
+      setStatus(label,20,false);
+      var rr=await _rahOcrWorker.recognize(input);
+      return {
+        text:cleanText(rr&&rr.data&&rr.data.text),
+        confidence:Number(rr&&rr.data&&rr.data.confidence||0)
+      };
+    }
+
+    var results=[];
+    results.push(await pass(prep.binary,3,'Urdu OCR 1/4 — page layout…'));
+    if(run!==_rahOcrRun)return;
+    results.push(await pass(prep.gray,6,'Urdu OCR 2/4 — paragraph/block…'));
+    if(run!==_rahOcrRun)return;
+    results.push(await pass(prep.gray,4,'Urdu OCR 3/4 — column mode…'));
+    if(run!==_rahOcrRun)return;
+    results.push(await pass(prep.original,11,'Urdu OCR 4/4 — sparse text…'));
+    if(run!==_rahOcrRun)return;
+
+    var best={text:'',confidence:0,score:-Infinity};
+    results.forEach(function(r){
+      var s=_scoreUrduOcrV19(r.text,r.confidence);
+      if(s>best.score)best={text:r.text,confidence:r.confidence,score:s};
+    });
+
+    var out=best.text||'';
+    if(tx)tx.value=out;
+
+    if(out){
+      setStatus('✅ Urdu BEST model ke 4 passes me se behtar result select hua. Insert se pehle ek baar check kar lein.',100,false);
+      if(ib)ib.disabled=false;
+    }else{
+      setStatus('Text nahi mila. Sirf text-area ka cropped screenshot use karein.',100,true);
+    }
+    if(rb)rb.disabled=false;
+  }catch(e){
+    if(run!==_rahOcrRun)return;
+    console.warn('Rahnumai OCR V21:',e);
+    setStatus('❌ High-Quality Urdu OCR fail: '+(e&&e.message?e.message:'unknown error'),0,true);
+    if(rb)rb.disabled=false;
+  }finally{
+    if(_rahOcrWorker){
+      try{await _rahOcrWorker.terminate();}catch(e){}
+      _rahOcrWorker=null;
+    }
+  }
+};
 
   function insertPlainTextIntoRahnumai(txt){
     txt=cleanText(txt);
@@ -14841,11 +15408,8 @@ function deptClose(){
       <button class="btn bout bsm" onclick="cmo('mForgotPw')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
     </div>
     <div class="mb" style="padding:20px">
-      <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:9px;padding:11px;margin-bottom:14px;font-size:.76rem;color:#1b5e20;line-height:1.5">
-        <b>₹0 / Spark mode:</b> Firebase Authentication khud password reset email bhejega. Cloud Functions, SMTP aur Blaze plan ki zarurat nahi hai.
-      </div>
       <div class="fgr">
-        <label>Registered Email ID *</label>
+        <label>Email ID *</label>
         <input id="fpReqEmail" type="email" autocomplete="email" placeholder="name@example.com">
       </div>
       <div id="fpReqMsg" style="display:none;margin-top:11px;padding:9px 11px;border-radius:7px;font-size:.75rem;line-height:1.45"></div>
