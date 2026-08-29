@@ -1079,7 +1079,10 @@ function _cleanC(o){
 
             <!-- RAQAM SECTION -->
             <div id="tRaqamSection" style="display:none;background:#f3f9ff;border:1.5px solid #90caf9;border-radius:9px;padding:14px;margin-bottom:12px">
-              <div style="font-size:.76rem;font-weight:800;color:var(--blue);margin-bottom:12px">💵 Raqam (Money) Details</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div style="font-size:.76rem;font-weight:800;color:var(--blue)">💵 Raqam (Money) Details</div>
+                <button type="button" id="tawnOcrBtn" onclick="tawnOcrPick()" class="btn bout bsm" title="Bank receipt ya screenshot se amount khud bharein">📷 Receipt scan karein</button>
+              </div>
               <div class="fg">
                 <div class="fgr" id="tWajRow"><label>Wajiba (₹)</label><input type="text" inputmode="decimal" id="tWaj" placeholder="0" oninput="amtNum(this);calcTawnTotal()"></div>
                 <div class="fgr" id="tNafRow" style="display:none"><label>Nafila (₹)</label><input type="text" inputmode="decimal" id="tNaf" placeholder="0" oninput="amtNum(this);calcTawnTotal()"></div>
@@ -1147,8 +1150,10 @@ function _cleanC(o){
                       <select id="tDirectMode">
                         <option value="">Select...</option>
                         <option value="upi">📱 UPI (PhonePe / GPay / Paytm)</option>
+                        <option value="cdm">🏧 CDM (ATM Cash Deposit)</option>
                         <option value="neft">🏦 NEFT / RTGS</option>
                         <option value="imps">⚡ IMPS</option>
+                        <option value="salary">💼 Salary Deduction</option>
                         <option value="cash">💵 Cash</option>
                         <option value="cheque">📋 Cheque</option>
                         <option value="other">🔹 Other</option>
@@ -4069,7 +4074,7 @@ function addDirectPayment(){
   var mode = document.getElementById('tDirectMode').value;
   var notes= document.getElementById('tDirectNotes').value.trim();
   if(!amt || parseFloat(amt)<=0){ toast('⚠️ Amount likhein pehle'); return; }
-  var modeLabels = {upi:'📱 UPI',neft:'🏦 NEFT/RTGS',imps:'⚡ IMPS',cash:'💵 Cash',cheque:'📋 Cheque',other:'🔹 Other'};
+  var modeLabels = {upi:'📱 UPI',neft:'🏦 NEFT/RTGS',imps:'⚡ IMPS',cdm:'🏧 CDM',salary:'💼 Salary Deduction',cash:'💵 Cash',cheque:'📋 Cheque',other:'🔹 Other'};
   var modeLabel = modeLabels[mode]||'🏦 Direct';
   var id='inst_'+Date.now();
   var txnNote = [ref, notes].filter(Boolean).join(' — ');
@@ -4465,8 +4470,10 @@ function renderInstallments(){
           <option value="" ${!inst.mode?'selected':''}>Select...</option>
           <option value="cash" ${inst.mode==='cash'?'selected':''}>💵 Cash (Haath mein)</option>
           <option value="upi" ${inst.mode==='upi'?'selected':''}>📱 UPI (PhonePe / GPay / Paytm)</option>
+          <option value="cdm" ${inst.mode==='cdm'?'selected':''}>🏧 CDM (ATM Cash Deposit)</option>
           <option value="neft" ${inst.mode==='neft'?'selected':''}>🏦 NEFT / RTGS</option>
           <option value="imps" ${inst.mode==='imps'?'selected':''}>⚡ IMPS</option>
+          <option value="salary" ${inst.mode==='salary'?'selected':''}>💼 Salary Deduction</option>
           <option value="cheque" ${inst.mode==='cheque'?'selected':''}>📋 Cheque</option>
           <option value="fin" ${inst.mode==='fin'?'selected':''}>🏢 Finance Office</option>
           <option value="other" ${inst.mode==='other'?'selected':''}>🔹 Other</option>
@@ -6908,6 +6915,8 @@ function calcContactTotal(){
 }
 function resetF(){
   eId=null;
+  // OCR result box hatao — naye case mein purana box nahi chahiye
+  var _ob = document.getElementById('tawnOcrResult'); if(_ob) _ob.remove();
   // FIX: Reset ke baad purana draft zinda reh jaata tha aur agli dafa
   // "Restore karein?" poochh leta tha. Ab wo bhi saaf ho jaata hai.
   try{ localStorage.removeItem('caseAutoSave'); }catch(e){}
@@ -9760,16 +9769,141 @@ var _resetUId = null;
 // Key file mein NAHI likhi jaati. App pehli dafa khud poochh leti hai aur
 // browser mein mehfooz kar leti hai. Faida: file GitHub par chali bhi jaye
 // to key us mein hoti hi nahi.
+// Gemini key: pehle sessionStorage (tab ke andar), phir localStorage
+// file:// mode mein localStorage tab ke saath bound hoti hai — isliye
+// sessionStorage mein bhi rakhte hain taaki same session mein dobara na maange
+var _geminiKeyCache = '';
 function getGeminiKey(){
-  try{ return localStorage.getItem('sab_gemini_key') || ''; }catch(e){ return ''; }
+  if(_geminiKeyCache) return _geminiKeyCache;
+  try{ var k = sessionStorage.getItem('sab_gemini_key') || localStorage.getItem('sab_gemini_key') || ''; _geminiKeyCache=k; return k; }
+  catch(e){ return _geminiKeyCache; }
 }
 function setGeminiKey(k){
+  _geminiKeyCache = k || '';
   try{
-    if(k) localStorage.setItem('sab_gemini_key', k);
-    else   localStorage.removeItem('sab_gemini_key');
+    if(k){ sessionStorage.setItem('sab_gemini_key', k); localStorage.setItem('sab_gemini_key', k); }
+    else { sessionStorage.removeItem('sab_gemini_key'); localStorage.removeItem('sab_gemini_key'); }
     return true;
   }catch(e){ return false; }
 }
+// =====================================================================
+// TAWAN OCR — receipt/slip se amount aur details nikaalo
+// =====================================================================
+function tawnOcrPick(){
+  var inp = document.getElementById('tawnOcrFile');
+  if(!inp){
+    inp = document.createElement('input');
+    inp.type='file'; inp.id='tawnOcrFile';
+    inp.accept='image/*,application/pdf,.pdf';
+    inp.style.display='none';
+    inp.onchange = function(){ if(inp.files&&inp.files[0]) tawnOcrRun(inp.files[0]); };
+    document.body.appendChild(inp);
+  }
+  inp.value=''; inp.click();
+}
+async function tawnOcrRun(file){
+  var btn = document.getElementById('tawnOcrBtn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Padha ja raha hai...'; }
+  try{
+    var key = getGeminiKey();
+    if(!key){ key = await askGeminiKey(); if(!key){ toast('❌ Gemini key nahi mili'); return; } }
+
+    var prompt = 'Ye bank receipt / deposit slip / payment screenshot hai.'
+      + ' Sirf JSON object return karo — koi explanation nahi:'
+      + ' { "amount": <sirf number, rupee sign nahi>, "date": "YYYY-MM-DD ya khali", '
+      + '"account_no": "khali ya partial", "txn_id": "transaction id ya reference no ya cheque no", '
+      + '"bank": "bank ka naam", "paid_to": "jis ko diya" }'
+      + ' Agar koi field nahi dikh rahi to khali string rakho.';
+
+    // File ko base64 mein badlo, phir seedha Gemini API call
+    var b64 = await new Promise(function(res, rej){
+      var r = new FileReader();
+      r.onload = function(){ res(r.result.split(',')[1]); };
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    var mtype = file.type || 'image/jpeg';
+    var body = {
+      contents:[{role:'user', parts:[
+        {text: prompt},
+        {inline_data:{mime_type: mtype, data: b64}}
+      ]}],
+      generationConfig:{temperature:0}
+    };
+    var text = '';
+    for(var mi=0; mi<GEMINI_MODELS.length; mi++){
+      try{
+        var gRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'
+          +GEMINI_MODELS[mi]+':generateContent?key='+key,
+          {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        var gData = await gRes.json();
+        text = ((gData.candidates||[])[0]||{}).content?.parts?.[0]?.text || '';
+        if(text) break;
+      }catch(e){ continue; }
+    }
+    if(!text){ toast('❌ Kuch nahi mila'); return; }
+
+    // JSON nikaalo
+    var clean = text.replace(/```json|```/g,'').trim();
+    var data;
+    try{ data = JSON.parse(clean); }
+    catch(e){
+      // Partial match karo
+      var m = text.match(/"amount"\s*:\s*(\d[\d,\.]*)/);
+      data = { amount: m ? m[1].replace(/,/g,'') : '' };
+    }
+
+    // Fields bharo
+    if(data.amount){
+      var amt = String(data.amount).replace(/[^0-9.]/g,'');
+      // Kaunsa installment add kar rahe hain? — turant amount field mein
+      var instAmt = document.getElementById('instAmt') || document.querySelector('[placeholder*="Amount"]');
+      if(instAmt && instAmt.offsetParent !== null){
+        instAmt.value = amt;
+        instAmt.dispatchEvent(new Event('input'));
+        toast('✅ Amount: ₹' + amt);
+      } else {
+        // Direct amount field
+        var da = document.getElementById('tDirectAmt');
+        if(da && da.offsetParent !== null){ da.value=amt; da.dispatchEvent(new Event('input')); }
+        toast('✅ Amount: ₹' + amt);
+      }
+    }
+    if(data.txn_id){
+      var txnField = document.getElementById('instTxn') || document.querySelector('[placeholder*="TXN"]') || document.querySelector('[placeholder*="Reference"]');
+      if(txnField && txnField.offsetParent !== null){ txnField.value = data.txn_id; }
+    }
+    if(data.date){
+      var dtField = document.getElementById('instDate');
+      if(dtField && dtField.offsetParent !== null){ dtField.value = data.date; }
+    }
+
+    // Ek chhota box dikhao — toast mein poori tafseel nahi aati
+    var old2 = document.getElementById('tawnOcrResult'); if(old2) old2.remove();
+    var box = document.createElement('div');
+    box.id = 'tawnOcrResult';
+    box.style.cssText = 'background:#e8f5e9;border:1.5px solid #66bb6a;border-radius:9px;padding:12px 14px;margin-top:10px;font-size:.8rem;line-height:1.8';
+    box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      + '<div style="font-weight:700;color:#2e7d32">✅ Receipt padh li</div>'
+      + '<button onclick="document.getElementById(\'tawnOcrResult\').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#555">✕</button>'
+      + '</div>'
+      + (data.amount ? '<div>💰 Amount: <b>₹'+data.amount+'</b></div>' : '')
+      + (data.date   ? '<div>📅 Date: <b>'+data.date+'</b></div>' : '')
+      + (data.txn_id ? '<div>🔖 TXN: <b>'+data.txn_id+'</b></div>' : '')
+      + (data.bank   ? '<div>🏦 Bank: <b>'+data.bank+'</b></div>' : '')
+      + (data.paid_to? '<div>👤 Paid to: <b>'+data.paid_to+'</b></div>' : '')
+      + '<div style="font-size:.73rem;color:#555;margin-top:6px">Fields mein bhar diya — check kar ke save karein.</div>';
+    var wrap = document.getElementById('tRaqamSection');
+    if(wrap) wrap.appendChild(box);
+    else document.getElementById('tawnOcrBtn').parentNode.appendChild(box);
+  }catch(e){
+    console.error('tawnOcr:', e);
+    toast('❌ Receipt nahi padh saka: '+(e.message||e));
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='📷 Receipt scan karein'; }
+  }
+}
+
 // Key maangne wali chhoti window
 function askGeminiKey(){
   return new Promise(function(resolve){
@@ -12512,14 +12646,32 @@ function _clientCases(c){
   // English/Roman version — agar client Urdu mein aur case English mein (ya ulta)
   var prevNm = _normNm(c._prevNaam || '');
   var byId = c.id ? ((_clientCaseIdx.byClientId||{})[c.id]||[]) : [];
+
+  // Fuzzy: client ka pehla ya doosra lafz case ke naam mein ho
+  // Misaal: client "ارباز قریشی", case mein sirf "ارباز" — pehla lafz se mile
+  var nmWords = nm ? nm.split(' ').filter(Boolean) : [];
+  var fuzzyMatches = [];
+  if(nmWords.length >= 1){
+    var w0 = nmWords[0], w1 = nmWords[1] || '';
+    Object.keys(_clientCaseIdx.byName).forEach(function(k){
+      if(!k) return;
+      var kWords = k.split(' ');
+      // Match sirf tab jab pehla lafz mile AUR doosra bhi ho ya case naam chhota ho
+      if(kWords.indexOf(w0) > -1 && (!w1 || kWords.indexOf(w1) > -1 || kWords.length <= 2)){
+        if(k !== nm)(_clientCaseIdx.byName[k]||[]).forEach(function(cs){ fuzzyMatches.push(cs); });
+      }
+    });
+  }
+
   var seen = {}, out = [];
   [byId,
    ph && _clientCaseIdx.byPhone[ph],
    em && _clientCaseIdx.byEmp[em],
    nm && _clientCaseIdx.byName[nm],
    (prevNm && prevNm !== nm) ? _clientCaseIdx.byName[prevNm] : null
-  ].forEach(function(arr){
-    (arr||[]).forEach(function(cs){ if(cs && !seen[cs.id]){ seen[cs.id]=1; out.push(cs); } });
+  ].concat(fuzzyMatches).forEach(function(arr){
+    var items = Array.isArray(arr) ? arr : (arr ? [arr] : []);
+    items.forEach(function(cs){ if(cs && !seen[cs.id]){ seen[cs.id]=1; out.push(cs); } });
   });
   return out;
 }
