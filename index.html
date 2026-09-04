@@ -178,7 +178,7 @@ tbody td{padding:7px 7px;color:var(--tx);vertical-align:middle;}
 .fgr input,.fgr select,.fgr textarea{padding:8px 10px;border:1.5px solid var(--bor);border-radius:var(--rsm);font-size:.8rem;outline:none;}
 .fgr input:focus,.fgr select:focus,.fgr textarea:focus{border-color:var(--blue);}
 input[type="date"],input[type="month"]{cursor:pointer;position:relative;}
-input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webkit-calendar-picker-indicator{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;}
+input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webkit-calendar-picker-indicator{position:absolute;right:0;top:0;width:32px;height:100%;opacity:0;cursor:pointer;padding:0;margin:0;}
 /* Firefox/Edge fallback — full width clickable */
 input[type="date"]::-moz-calendar-picker-indicator,input[type="month"]::-moz-calendar-picker-indicator{width:100%;height:100%;opacity:0;cursor:pointer;}
 .fgr textarea{resize:vertical;min-height:68px;}
@@ -6569,6 +6569,8 @@ function rRep(){
 
   _scopedAll.forEach(function(c){
     var r = c.region||'Unknown';
+    // Hidden region filter — toggle se control hota hai
+    if(_isHiddenRegion(r)) return;
     if(!regionStats[r]) regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
@@ -6693,7 +6695,10 @@ function rRep(){
   });
 
   // Hidden regions (Bareilly/Nagpur) ke cards chhupao — Grand Total/calc pe asar nahi
-  regionKeys = regionKeys.filter(function(r){ return !_isHiddenRegion(r); });
+  // FIX: _showHiddenRegions=true hone par filter nahi lagao
+  if(!_showHiddenRegions){
+    regionKeys = regionKeys.filter(function(r){ return !_isHiddenRegion(r); });
+  }
 
   var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span><button onclick="toggleHiddenRegions()" class="hidRegBtn" style="margin-left:auto;padding:3px 10px;font-size:.68rem;border:1.5px solid '+(_showHiddenRegions?'#c62828':'var(--blue)')+';background:#fff;color:'+(_showHiddenRegions?'#c62828':'var(--blue)')+';border-radius:6px;cursor:pointer;font-weight:600">'+(_showHiddenRegions?'🙈 Hidden chhupao':'👁️ Hidden regions')+'</button></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
 
@@ -6924,7 +6929,7 @@ function resetF(){
   window._draftDismissed = false;   // naya form = naya draft ban sakta hai
   setTimeout(updateDraftBtn, 50);
   document.getElementById('formTit').textContent='➕ New Case';
-  ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher','fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt','tCategory','tPurpose','tDonor','hNt','tfNt','tbPl','tbNt','fMuf','fKT','fSael'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['fCNo','fCity','fOldRegion','fOldDivision','fOldKabina','fOldSheher','fIdN','fSub','fDet','fCD','fRem','fRah','tDR','tDRCustom','tNt','tCategory','tPurpose','tDonor','hNt','tfNt','tfDate','tbPl','tbNt','tbDate','fMuf','fKT','fSael'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   // Region, State, Division, District bhi clear karo
   ['fReg','fSt','fDiv','fDist'].forEach(id=>{const e=document.getElementById(id);if(e)e.selectedIndex=0;});
   clearRTE('rte-fSub'); clearRTE('rte-fRem'); clearRTE('rte-fRah');
@@ -7242,7 +7247,7 @@ async function _saveCaseInner(){
       tWapasAshiyaDesc:document.getElementById('tWapasAshiyaDesc')?document.getElementById('tWapasAshiyaDesc').value.trim():'',
       tWapasDate:document.getElementById('tWapasDate')?document.getElementById('tWapasDate').value:'',
       tWapasDone:document.getElementById('tWapasDone')?document.getElementById('tWapasDone').value:'',
-      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}var _ms=document.getElementById('mazSt')?document.getElementById('mazSt').value:'';if(_ms==='yes')return 'closed';if(_ms==='no'||_ms==='')return 'open';return document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
+      tawnPersons:getTawnPersons(),tawnMode:_tawnMode,tawnSplit:(_tawnMode==='perperson'?getTawnSplit():[]),hSt:document.getElementById('hSt').value,halfiaSt:(function(){var hpp=(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]);if(hpp.length){return hpp.every(function(p){return p.st==='yes';})?'closed':'open';}var h=document.getElementById('hSt').value;return h==='yes'?'closed':'open';})(),hDt:document.getElementById('hDt').value,halfiaPersons:(typeof getHalfiaPersons==='function'?getHalfiaPersons():[]),hNt:document.getElementById('hNt').value.trim(),tfDate:document.getElementById('tfDate')?document.getElementById('tfDate').value:'',tfT:document.getElementById('tfT').value,tfD:document.getElementById('tfD').value,tafhimPersons:(typeof getTafhimPersons==='function'?getTafhimPersons():[]),tfNt:document.getElementById('tfNt').value.trim(),tbDate:document.getElementById('tbDate')?document.getElementById('tbDate').value:'',tbO:document.getElementById('tbO').value,tbD:document.getElementById('tbD').value,tabadlaSt:(function(){var tpp=(typeof getTransferPersons==='function'?getTransferPersons():[]);if(tpp.length){return tpp.every(function(p){return p.d==='yes';})?'closed':'open';}var d=document.getElementById('tbD').value;return d==='yes'?'closed':'open';})(),tbPl:document.getElementById('tbPl').value.trim(),transferPersons:(typeof getTransferPersons==='function'?getTransferPersons():[]),tbNt:document.getElementById('tbNt').value.trim(),mazSt:document.getElementById('mazSt')?document.getElementById('mazSt').value:'open',mazratSt:(function(){var mpp=(typeof getMazratPersons==='function'?getMazratPersons():[]);if(mpp.length){return mpp.every(function(p){return p.st==='yes';})?'closed':'open';}var _ms=document.getElementById('mazSt')?document.getElementById('mazSt').value:'';if(_ms==='yes')return 'closed';if(_ms==='no'||_ms==='')return 'open';return document.getElementById('mazratSt')?document.getElementById('mazratSt').value:'open';})(),mazDt:document.getElementById('mazDt')?document.getElementById('mazDt').value:'',mazratPersons:(typeof getMazratPersons==='function'?getMazratPersons():[]),mazNt:document.getElementById('mazNt')?document.getElementById('mazNt').value.trim():'',updatedAt:new Date().toISOString()};
   // ===== AUDIT TRAIL (FIX) =====
   // Pehle koi record nahi tha ki kis ne case banaya ya badla.
   data.updatedBy = { id: (cu&&cu.id)||'', name: (cu&&cu.fullname)||'', at: new Date().toISOString() };
@@ -7375,7 +7380,7 @@ function editC(id){
       var _hr=document.getElementById('hPPRows');
       if(_hr){ c.halfiaPersons.forEach(function(hp){ var row=_hr.querySelector('.hPPRow[data-name="'+(hp.name||'').replace(/"/g,'&quot;')+'"]'); if(row){ var s=row.querySelector('.hppSt'); if(s)s.value=hp.st||''; var d=row.querySelector('.hppDt'); if(d)d.value=hp.dt||''; } }); }
     }
-    const sv={fIdr:'idarati',fSael:'sael',fStat:'status',tDO:'tDO',tDC:'tDC',tMd:'tMd',tMq:'tMq',tJm:'tJm',tPM:'tPM',hSt:'hSt',halfiaSt:'halfiaSt',tawnSt:'tawnSt',tfT:'tfT',tfD:'tfD',tbO:'tbO',tbD:'tbD',mazSt:'mazSt',mazratSt:'mazratSt'};
+    const sv={fIdr:'idarati',fSael:'sael',fStat:'status',tDO:'tDO',tDC:'tDC',tMd:'tMd',tMq:'tMq',tJm:'tJm',tPM:'tPM',hSt:'hSt',halfiaSt:'halfiaSt',tawnSt:'tawnSt',tfDate:'tfDate',tfT:'tfT',tfD:'tfD',tbDate:'tbDate',tbO:'tbO',tbD:'tbD',mazSt:'mazSt',mazratSt:'mazratSt'};
     // Restore guide checkboxes
     setGuideValues(c.guides&&c.guides.length ? c.guides : (c.guide ? [c.guide] : []));
     Object.entries(sv).forEach(([fi,k])=>{const e=document.getElementById(fi);if(e&&c[k])e.value=c[k];});
@@ -7540,6 +7545,8 @@ function editC(id){
   if(typeof _pooledSyncWithTotal==='function') _pooledSyncWithTotal(_editTot);
   if(typeof _ppSyncWithTotal==='function') _ppSyncWithTotal(_editTot);
           ssRef('hSt'); ssRef('halfiaSt'); ssRef('tawnSt');
+          if(document.getElementById('tfDate')) document.getElementById('tfDate').value = c.tfDate||'';
+          if(document.getElementById('tbDate')) document.getElementById('tbDate').value = c.tbDate||'';
           ssRef('tfT'); ssRef('tfD'); ssRef('tbO'); ssRef('tbD');
         }, 100);
       }, 100);
