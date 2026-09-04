@@ -6569,8 +6569,6 @@ function rRep(){
 
   _scopedAll.forEach(function(c){
     var r = c.region||'Unknown';
-    // Hidden region filter — toggle se control hota hai
-    if(_isHiddenRegion(r)) return;
     if(!regionStats[r]) regionStats[r]={sabiqa:0,moujuda:0,kulMasail:0,halShuda:0,pending:0};
     var od = parseLocalDate(c.openDate);
     if(!od) return;
@@ -6696,9 +6694,7 @@ function rRep(){
 
   // Hidden regions (Bareilly/Nagpur) ke cards chhupao — Grand Total/calc pe asar nahi
   // FIX: _showHiddenRegions=true hone par filter nahi lagao
-  if(!_showHiddenRegions){
-    regionKeys = regionKeys.filter(function(r){ return !_isHiddenRegion(r); });
-  }
+  regionKeys = regionKeys.filter(function(r){ return !_isHiddenRegion(r); });
 
   var regionCards = '<div style="grid-column:1/-1"><h3 style="font-size:.92rem;color:var(--bd);margin-bottom:12px;display:flex;align-items:center;gap:8px">🗺️ Region-wise Summary <span style="font-size:.72rem;color:var(--mt);font-weight:400">('+filterLabel+')</span><button onclick="toggleHiddenRegions()" class="hidRegBtn" style="margin-left:auto;padding:3px 10px;font-size:.68rem;border:1.5px solid '+(_showHiddenRegions?'#c62828':'var(--blue)')+';background:#fff;color:'+(_showHiddenRegions?'#c62828':'var(--blue)')+';border-radius:6px;cursor:pointer;font-weight:600">'+(_showHiddenRegions?'🙈 Hidden chhupao':'👁️ Hidden regions')+'</button></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">';
 
